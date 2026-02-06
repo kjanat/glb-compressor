@@ -9,6 +9,7 @@ import {
 	execFile as nodeExecFile,
 	spawn as nodeSpawn,
 } from 'node:child_process';
+import { once } from 'node:events';
 import { accessSync, constants as fsConstants } from 'node:fs';
 import { access, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -190,13 +191,24 @@ function serve(config: ServeConfig) {
 				);
 				if (response.body) {
 					const reader = response.body.getReader();
-					for (;;) {
-						const { done, value } = await reader.read();
-						if (done) break;
-						nodeRes.write(value);
+					try {
+						for (;;) {
+							const { done, value } = await reader.read();
+							if (done) break;
+							const canContinue = nodeRes.write(value);
+							if (!canContinue) {
+								await once(nodeRes, 'drain');
+							}
+						}
+					} catch (streamErr) {
+						reader.cancel().catch(() => {});
+						throw streamErr;
+					} finally {
+						nodeRes.end();
 					}
+				} else {
+					nodeRes.end();
 				}
-				nodeRes.end();
 			} catch (err) {
 				if (config.error) {
 					try {
