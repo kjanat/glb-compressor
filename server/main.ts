@@ -62,15 +62,122 @@ interface ApiError {
 	requestId: string;
 }
 
-/** Build the standard CORS headers included in every response. */
-function corsHeaders(): Record<string, string> {
-	return {
-		'Access-Control-Allow-Origin': '*',
-		'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-		'Access-Control-Allow-Headers': 'Content-Type, X-Request-ID',
-		'Access-Control-Expose-Headers':
-			'X-Request-ID, X-Original-Size, X-Compressed-Size, X-Compression-Method, X-Compression-Ratio',
-	};
+/** Standard CORS headers included in every response. */
+const CORS_HEADERS: Record<string, string> = {
+	'Access-Control-Allow-Origin': '*',
+	'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+	'Access-Control-Allow-Headers': 'Content-Type, X-Request-ID',
+	'Access-Control-Expose-Headers':
+		'X-Request-ID, X-Original-Size, X-Compressed-Size, X-Compression-Method, X-Compression-Ratio',
+};
+
+/**
+ * Parsed and validated compression request data extracted from an incoming HTTP request.
+ */
+interface ParsedRequest {
+	input: Uint8Array;
+	filename: string;
+	preset: CompressPreset;
+	simplifyRatio: number | undefined;
+}
+
+/**
+ * Parse and validate a compression request from multipart form data or raw binary body.
+ *
+ * Extracts the file, validates size and GLB magic bytes, and resolves preset/simplify
+ * options from query params and form fields (form fields take precedence).
+ *
+ * @param req            - Incoming HTTP request.
+ * @param requestId      - UUID tracking this request.
+ * @param requireMultipart - If `true`, reject non-multipart requests with 415.
+ * @returns Parsed request data or an error Response.
+ */
+async function parseCompressRequest(
+	req: globalThis.Request,
+	requestId: string,
+	requireMultipart: boolean,
+): Promise<ParsedRequest | Response> {
+	const url = new URL(req.url);
+	const contentType = req.headers.get('content-type') ?? '';
+
+	let input: Uint8Array;
+	let filename = 'model.glb';
+	let simplifyRatio: number | undefined = parseSimplifyRatio(
+		url.searchParams.get('simplify'),
+	);
+	let preset = parsePreset(url.searchParams.get('preset'));
+
+	if (contentType.includes('multipart/form-data')) {
+		const formData = await req.formData();
+		const file = formData.get('file') as File | null;
+		if (!file) {
+			return jsonError(
+				ErrorCode.NO_FILE_PROVIDED,
+				'No file provided in form data',
+				400,
+				requestId,
+			);
+		}
+		if (file.size > MAX_FILE_SIZE) {
+			return jsonError(
+				ErrorCode.FILE_TOO_LARGE,
+				`File too large: ${formatBytes(file.size)} exceeds ${formatBytes(MAX_FILE_SIZE)} limit`,
+				413,
+				requestId,
+			);
+		}
+		input = new Uint8Array(await file.arrayBuffer());
+		filename = file.name;
+		// Form data overrides query params
+		const formSimplify = formData.get('simplify');
+		if (formSimplify) {
+			simplifyRatio = parseSimplifyRatio(String(formSimplify));
+		}
+		const formPreset = formData.get('preset');
+		if (formPreset) {
+			preset = parsePreset(String(formPreset));
+		}
+	} else if (requireMultipart) {
+		return jsonError(
+			ErrorCode.INVALID_CONTENT_TYPE,
+			'Use multipart/form-data for streaming endpoint',
+			415,
+			requestId,
+		);
+	} else {
+		const contentLength = req.headers.get('content-length');
+		if (contentLength && parseInt(contentLength, 10) > MAX_FILE_SIZE) {
+			return jsonError(
+				ErrorCode.FILE_TOO_LARGE,
+				`File too large: exceeds ${formatBytes(MAX_FILE_SIZE)} limit`,
+				413,
+				requestId,
+			);
+		}
+		input = new Uint8Array(await req.arrayBuffer());
+		if (input.byteLength > MAX_FILE_SIZE) {
+			return jsonError(
+				ErrorCode.FILE_TOO_LARGE,
+				`File too large: ${formatBytes(input.byteLength)} exceeds ${formatBytes(MAX_FILE_SIZE)} limit`,
+				413,
+				requestId,
+			);
+		}
+	}
+
+	// GLB magic byte validation
+	try {
+		validateGlbMagic(input);
+	} catch (err) {
+		return jsonError(
+			ErrorCode.INVALID_GLB,
+			err instanceof Error ? err.message : 'Invalid GLB file',
+			400,
+			requestId,
+		);
+	}
+
+	return { input, filename, preset, simplifyRatio };
 }
 
 /**
@@ -93,7 +200,7 @@ function jsonError(
 	};
 	return Response.json(body, {
 		status,
-		headers: { ...corsHeaders(), 'X-Request-ID': requestId },
+		headers: { ...CORS_HEADERS, 'X-Request-ID': requestId },
 	});
 }
 
@@ -111,80 +218,10 @@ function jsonError(
  */
 async function handleCompress(req: globalThis.Request): Promise<Response> {
 	const requestId = crypto.randomUUID();
-	const url = new URL(req.url);
-	const contentType = req.headers.get('content-type') ?? '';
 
-	let input: Uint8Array;
-	let filename = 'model.glb';
-	let simplifyRatio: number | undefined = parseSimplifyRatio(
-		url.searchParams.get('simplify'),
-	);
-	let preset = parsePreset(url.searchParams.get('preset'));
-
-	// Handle multipart/form-data (file upload) or raw binary
-	if (contentType.includes('multipart/form-data')) {
-		const formData = await req.formData(); // TODO: `formData` is deprecated...
-		const file = formData.get('file') as File | null;
-		if (!file) {
-			return jsonError(
-				ErrorCode.NO_FILE_PROVIDED,
-				'No file provided in form data',
-				400,
-				requestId,
-			);
-		}
-		// File size validation
-		if (file.size > MAX_FILE_SIZE) {
-			return jsonError(
-				ErrorCode.FILE_TOO_LARGE,
-				`File too large: ${formatBytes(file.size)} exceeds ${formatBytes(MAX_FILE_SIZE)} limit`,
-				413,
-				requestId,
-			);
-		}
-		input = new Uint8Array(await file.arrayBuffer());
-		filename = file.name;
-		// Form data overrides query params
-		const formSimplify = formData.get('simplify');
-		if (formSimplify) {
-			simplifyRatio = parseSimplifyRatio(String(formSimplify));
-		}
-		const formPreset = formData.get('preset');
-		if (formPreset) {
-			preset = parsePreset(String(formPreset));
-		}
-	} else {
-		const contentLength = req.headers.get('content-length');
-		if (contentLength && parseInt(contentLength, 10) > MAX_FILE_SIZE) {
-			return jsonError(
-				ErrorCode.FILE_TOO_LARGE,
-				`File too large: exceeds ${formatBytes(MAX_FILE_SIZE)} limit`,
-				413,
-				requestId,
-			);
-		}
-		input = new Uint8Array(await req.arrayBuffer());
-		if (input.byteLength > MAX_FILE_SIZE) {
-			return jsonError(
-				ErrorCode.FILE_TOO_LARGE,
-				`File too large: ${formatBytes(input.byteLength)} exceeds ${formatBytes(MAX_FILE_SIZE)} limit`,
-				413,
-				requestId,
-			);
-		}
-	}
-
-	// GLB magic byte validation (returns 400, not 500)
-	try {
-		validateGlbMagic(input);
-	} catch (err) {
-		return jsonError(
-			ErrorCode.INVALID_GLB,
-			err instanceof Error ? err.message : 'Invalid GLB file',
-			400,
-			requestId,
-		);
-	}
+	const parsed = await parseCompressRequest(req, requestId, false);
+	if (parsed instanceof Response) return parsed;
+	const { input, filename, preset, simplifyRatio } = parsed;
 
 	console.log(
 		`[${requestId}] Received ${filename}: ${formatBytes(input.byteLength)} (preset: ${preset})`,
@@ -214,9 +251,9 @@ async function handleCompress(req: globalThis.Request): Promise<Response> {
 		)} (${ratio}% reduction, ${method})`,
 	);
 
-	return new Response(new Uint8Array(buffer).buffer, {
+	return new Response(buffer, {
 		headers: {
-			...corsHeaders(),
+			...CORS_HEADERS,
 			'Content-Type': 'model/gltf-binary',
 			'Content-Disposition': `attachment; filename="${filename.replace(/\.(glb|gltf)$/i, '-compressed.glb')}"`,
 			'Content-Length': String(buffer.byteLength),
@@ -245,67 +282,10 @@ async function handleCompressStream(
 	req: globalThis.Request,
 ): Promise<Response> {
 	const requestId = crypto.randomUUID();
-	const url = new URL(req.url);
-	const contentType = req.headers.get('content-type') ?? '';
 
-	let input: Uint8Array;
-	let filename = 'model.glb';
-	let simplifyRatio: number | undefined = parseSimplifyRatio(
-		url.searchParams.get('simplify'),
-	);
-	let preset = parsePreset(url.searchParams.get('preset'));
-
-	if (contentType.includes('multipart/form-data')) {
-		const formData = await req.formData(); // TODO: `formData` is deprecated...
-		const file = formData.get('file') as File | null;
-		if (!file) {
-			return jsonError(
-				ErrorCode.NO_FILE_PROVIDED,
-				'No file provided in form data',
-				400,
-				requestId,
-			);
-		}
-		// File size validation
-		if (file.size > MAX_FILE_SIZE) {
-			return jsonError(
-				ErrorCode.FILE_TOO_LARGE,
-				`File too large: ${formatBytes(file.size)} exceeds ${formatBytes(MAX_FILE_SIZE)} limit`,
-				413,
-				requestId,
-			);
-		}
-		input = new Uint8Array(await file.arrayBuffer());
-		filename = file.name;
-		// Form data overrides query params
-		const formSimplify = formData.get('simplify');
-		if (formSimplify) {
-			simplifyRatio = parseSimplifyRatio(String(formSimplify));
-		}
-		const formPreset = formData.get('preset');
-		if (formPreset) {
-			preset = parsePreset(String(formPreset));
-		}
-	} else {
-		return jsonError(
-			ErrorCode.INVALID_CONTENT_TYPE,
-			'Use multipart/form-data for streaming endpoint',
-			415,
-			requestId,
-		);
-	}
-
-	// GLB magic byte validation (returns 400, not 500)
-	try {
-		validateGlbMagic(input);
-	} catch (err) {
-		return jsonError(
-			ErrorCode.INVALID_GLB,
-			err instanceof Error ? err.message : 'Invalid GLB file',
-			400,
-			requestId,
-		);
-	}
+	const parsed = await parseCompressRequest(req, requestId, true);
+	if (parsed instanceof Response) return parsed;
+	const { input, filename, preset, simplifyRatio } = parsed;
 
 	const safeFilename = sanitizeFilename(filename);
 	const encoder = new TextEncoder();
@@ -361,7 +341,7 @@ async function handleCompressStream(
 
 	return new Response(stream, {
 		headers: {
-			...corsHeaders(),
+			...CORS_HEADERS,
 			'Content-Type': 'text/event-stream',
 			'Cache-Control': 'no-cache',
 			'X-Request-ID': requestId,
@@ -374,7 +354,7 @@ async function handleCompressStream(
 function handleOptions(): Response {
 	return new Response(null, {
 		status: 204,
-		headers: corsHeaders(),
+		headers: CORS_HEADERS,
 	});
 }
 
@@ -383,7 +363,7 @@ if (import.meta.main) {
 		port: PORT,
 
 		routes: {
-			'/healthz': new Response('ok', { headers: corsHeaders() }),
+			'/healthz': new Response('ok', { headers: CORS_HEADERS }),
 			'/compress': {
 				POST: handleCompress,
 				OPTIONS: handleOptions,
@@ -395,13 +375,13 @@ if (import.meta.main) {
 		},
 
 		fetch: () =>
-			new Response('Not found', { status: 404, headers: corsHeaders() }),
+			new Response('Not found', { status: 404, headers: CORS_HEADERS }),
 
 		error(error) {
 			console.error('Server error:', error);
 			return Response.json(
 				{ error: String(error) },
-				{ status: 500, headers: corsHeaders() },
+				{ status: 500, headers: CORS_HEADERS },
 			);
 		},
 	});

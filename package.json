@@ -12,11 +12,13 @@
 			"default": "./dist/node/lib/mod.js"
 		},
 		"./server": {
+			"types": "./dist/types/server/main.d.ts",
 			"bun": "./dist/bun-bytecode/server/main.js",
 			"node": "./dist/node/server/main.js",
 			"default": "./dist/node/server/main.js"
 		},
 		"./cli": {
+			"types": "./dist/types/cli/main.d.ts",
 			"bun": "./dist/bun-bytecode/cli/main.js",
 			"node": "./dist/node/cli/main.js",
 			"default": "./dist/node/cli/main.js"
@@ -39,7 +41,7 @@
 		"cli": "bun --bun cli/main.ts",
 		"dev": "bun --hot run server/main.ts",
 		"fmt": "dprint fmt",
-		"licences": "pnpm licenses ls --long --prod --json>licenses.json",
+		"licences": "bunx license-checker --production --json --out licenses.json",
 		"lint": "bunx --bun biome lint",
 		"start": "bun --bun server/main.ts",
 		"typecheck": "tsgo --noEmit"

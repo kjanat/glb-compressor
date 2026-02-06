@@ -5,12 +5,19 @@
  * Requires Node 18+ for global Request/Response/ReadableStream.
  */
 
-import { execSync, spawn as nodeSpawn } from 'node:child_process';
+import {
+	execFile as nodeExecFile,
+	spawn as nodeSpawn,
+} from 'node:child_process';
+import { accessSync, constants as fsConstants } from 'node:fs';
 import { access, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createServer } from 'node:http';
 import { dirname, join, relative } from 'node:path';
 import { Readable } from 'node:stream';
+import { promisify } from 'node:util';
+
+const execFile = promisify(nodeExecFile);
 
 // ─── Bun.file() ────────────────────────────────────────────
 
@@ -230,17 +237,26 @@ function serve(config: ServeConfig) {
 // Resolves a binary name to its absolute path, like Bun.which.
 
 function which(cmd: string): string | null {
-	try {
-		const isWin = process.platform === 'win32';
-		// Use where.exe explicitly on Windows to avoid PowerShell alias conflicts
-		const result = execSync(isWin ? `where.exe ${cmd}` : `command -v ${cmd}`, {
-			encoding: 'utf-8',
-			stdio: ['pipe', 'pipe', 'ignore'],
-		});
-		return result.trim().split('\n')[0] || null;
-	} catch {
-		return null;
+	const isWin = process.platform === 'win32';
+	const pathEnv = process.env.PATH ?? '';
+	const pathDirs = pathEnv.split(isWin ? ';' : ':');
+	const extensions = isWin
+		? (process.env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';')
+		: [''];
+
+	for (const dir of pathDirs) {
+		if (!dir) continue;
+		for (const ext of extensions) {
+			const candidate = join(dir, cmd + ext);
+			try {
+				accessSync(candidate, isWin ? fsConstants.F_OK : fsConstants.X_OK);
+				return candidate;
+			} catch {
+				// not found or not executable, try next
+			}
+		}
 	}
+	return null;
 }
 
 // ─── Bun namespace (shadows the global) ────────────────────
@@ -262,6 +278,12 @@ export class Glob {
 	private rawPattern: string;
 
 	constructor(pattern: string) {
+		// Cap pattern length to prevent ReDoS from unbounded input
+		if (pattern.length > 1024) {
+			throw new Error(
+				`Glob pattern too long (${pattern.length} chars, max 1024)`,
+			);
+		}
 		this.rawPattern = pattern;
 		const escaped = pattern
 			.replace(/[.+^${}()|[\]\\]/g, '\\$&')
@@ -269,7 +291,13 @@ export class Glob {
 			.replace(/\*/g, '[^/]*')
 			.replace(/\?/g, '[^/]')
 			.replace(/\0GLOBSTAR\0/g, '.*');
-		this.re = new RegExp(`^${escaped}$`);
+		try {
+			this.re = new RegExp(`^${escaped}$`);
+		} catch (err) {
+			throw new Error(
+				`Invalid glob pattern "${pattern}": ${err instanceof Error ? err.message : String(err)}`,
+			);
+		}
 	}
 
 	async *scan(opts?: {
@@ -330,9 +358,13 @@ export class Glob {
 
 export function $(strings: TemplateStringsArray, ...values: unknown[]) {
 	const cmd = String.raw(strings, ...values);
+	const parts = cmd.trim().split(/\s+/);
+	const [bin, ...args] = parts;
 	return {
 		async text(): Promise<string> {
-			return execSync(cmd, { encoding: 'utf-8' });
+			if (!bin) throw new Error('$: empty command');
+			const { stdout } = await execFile(bin, args, { encoding: 'utf-8' });
+			return stdout;
 		},
 	};
 }

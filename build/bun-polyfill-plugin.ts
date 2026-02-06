@@ -25,7 +25,10 @@ function isBunLoader(ext: string): ext is BunLoader {
 }
 
 const BUN_GLOBAL_RE = /\bBun\.(file|write|spawn|argv|serve|which)\b/;
-const IMPORT_META_MAIN_RE = /\bimport\.meta\.main\b/;
+/** Non-global regex for .test() detection (avoids lastIndex interference). */
+const IMPORT_META_MAIN_TEST_RE = /\bimport\.meta\.main\b/;
+/** Global regex for .replace() to substitute all occurrences. */
+const IMPORT_META_MAIN_RE = /\bimport\.meta\.main\b/g;
 
 export function bunPolyfillPlugin(): BunPlugin {
 	return {
@@ -39,14 +42,14 @@ export function bunPolyfillPlugin(): BunPlugin {
 			// ── Hook 2: Transform Bun.* globals & import.meta.main ──
 			build.onLoad({ filter: /\.(ts|tsx|js|jsx)$/ }, async (args) => {
 				// Skip node_modules — only transform project source
-				if (args.path.includes('node_modules')) return undefined;
+				if (args.path.split(/[\//]/).includes('node_modules')) return undefined;
 				// Skip the polyfill file itself to avoid circular injection
 				if (args.path === POLYFILL_PATH) return undefined;
 
 				const raw = await Bun.file(args.path).text();
 
 				const usesBunGlobal = BUN_GLOBAL_RE.test(raw);
-				const usesImportMetaMain = IMPORT_META_MAIN_RE.test(raw);
+				const usesImportMetaMain = IMPORT_META_MAIN_TEST_RE.test(raw);
 
 				if (!usesBunGlobal && !usesImportMetaMain) return undefined;
 

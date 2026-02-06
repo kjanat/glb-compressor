@@ -170,12 +170,7 @@ async function compressFile(
 			quiet,
 		});
 
-		// Ensure output directory exists
-		if (output) {
-			await mkdir(output, { recursive: true });
-		}
-
-		// Write output
+		// Write output (output directory already created by main())
 		await Bun.write(outputPath, result.buffer);
 
 		const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);

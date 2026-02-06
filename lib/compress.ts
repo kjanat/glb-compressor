@@ -196,10 +196,12 @@ export interface CompressResult {
 let io: NodeIO;
 let hasGltfpack: boolean = false;
 
-// Pre-warm init on module load (eliminates cold start latency)
+// Pre-warm init on module load (eliminates cold start latency).
+// The rejection propagates to callers of init()/compress() so CLI/server
+// entry points can decide how to handle it — library consumers aren't killed.
 const initPromise: Promise<void> = doInit().catch((err) => {
 	console.error('Init failed:', err);
-	process.exit(1);
+	throw err;
 });
 
 /**

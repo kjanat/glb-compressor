@@ -7,5 +7,5 @@
 		"declarationDir": "./dist/types",
 		"allowImportingTsExtensions": false
 	},
-	"include": ["lib/**/*.ts"]
+	"include": ["lib/**/*.ts", "cli/**/*.ts", "server/**/*.ts"]
 }
