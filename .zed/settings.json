@@ -1,0 +1,68 @@
+{
+	"hard_tabs": true,
+	"tab_size": 2,
+	"formatter": [
+		{
+			"external": {
+				"command": "dprint",
+				"arguments": ["fmt", "--stdin", "{buffer_path}"]
+			}
+		}
+	],
+	"prettier": { "allowed": false },
+	"wrap_guides": [80],
+	"file_types": {
+		"Dockerfile": ["Dockerfile", "Dockerfile.*"],
+		"XML": ["*.svg"],
+		"Markdown": [".rules"]
+	},
+	"languages": {
+		"Python": {
+			"language_servers": ["pylsp", "ty", "ruff", "basedpyright", "..."],
+			"wrap_guides": [88]
+		},
+		"TOML": { "wrap_guides": [110] },
+		"YAML": { "wrap_guides": [140] },
+		"TypeScript": {
+			"wrap_guides": [80],
+			"language_servers": ["tsgo", "!vtsls", "biome"],
+			"formatter": [{ "language_server": { "name": "biome" } }],
+			"code_actions_on_format": {
+				"source.fixAll.biome": true,
+				"source.organizeImports.biome": true
+			}
+		}
+	},
+	"context_servers": {
+		"blender-remote": {
+			"enabled": false,
+			"command": "uvx",
+			"args": ["blender-remote"],
+			"env": {}
+		}
+	},
+	"lsp": {
+		"biome": {
+			"binary": {
+				"path": "./node_modules/.bin/biome",
+				"arguments": ["lsp-proxy"]
+			},
+			"settings": { "require_config_file": false }
+		},
+		"json-language-server": {
+			"settings": {
+				"json": {
+					"schemas": [
+						{
+							"fileMatch": [
+								".claude/settings.json",
+								".claude/settings.local.json"
+							],
+							"url": "https://www.schemastore.org/claude-code-settings.json"
+						}
+					]
+				}
+			}
+		}
+	}
+}

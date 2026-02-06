@@ -1,0 +1,10 @@
+# Docker ignore for container build
+node_modules
+dist
+*.md
+*.log
+.git
+.gitignore
+.DS_Store
+*.test.ts
+*.spec.ts
