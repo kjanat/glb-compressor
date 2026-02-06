@@ -1,3 +1,18 @@
+/**
+ * Custom glTF-Transform transforms for geometry cleanup, animation optimization,
+ * and mesh analysis.
+ *
+ * These transforms complement the standard `@gltf-transform/functions` library
+ * with operations specifically tuned for avatar and game-asset workflows:
+ *
+ * - **Geometry**: spatial vertex dedup, degenerate face removal, bloat detection
+ * - **Animation**: global-consensus static track removal
+ * - **Validation**: bone weight normalization, unused UV cleanup
+ * - **Diagnostics**: mesh complexity and animation statistics
+ *
+ * @module transforms
+ */
+
 import type {
 	Accessor,
 	Animation,
@@ -14,7 +29,10 @@ import type {
 import * as transform from '@gltf-transform/functions';
 import type { MeshoptSimplifier as MeshoptSimplifierType } from 'meshoptimizer';
 
-/** Index into a TypedArray, asserting the value is defined (safe under noUncheckedIndexedAccess). */
+/** Index into a `TypedArray`, asserting the value is defined.
+ *
+ * > safe under `noUncheckedIndexedAccess`.
+ */
 function at(arr: TypedArray | number[], i: number): number {
 	const v = arr[i];
 	if (v === undefined)
@@ -24,7 +42,18 @@ function at(arr: TypedArray | number[], i: number): number {
 
 /**
  * Merge vertices by position within a distance tolerance (like Blender's "Merge by Distance").
- * Unlike glTF-Transform's weld(), this only compares positions, ignoring normals/UVs.
+ *
+ * Unlike glTF-Transform's `weld()`, this only compares **positions**, ignoring
+ * normals and UVs. Vertices whose quantized positions match are collapsed into a
+ * single vertex, and all attributes (normals, UVs, colors, etc.) are compacted
+ * accordingly. The index buffer is remapped to reference the deduplicated vertices.
+ *
+ * Best suited for static (non-skinned) meshes — merging skinned vertices can
+ * break weight assignments.
+ *
+ * @param tolerance - Maximum distance between two positions to consider them identical.
+ *                    Internally converted to a spatial-hash precision of `1 / tolerance`.
+ * @returns A glTF-Transform `Transform` function.
  */
 export function mergeByDistance(tolerance = 0.0001): Transform {
 	return (doc: Document): void => {
@@ -112,8 +141,16 @@ export function mergeByDistance(tolerance = 0.0001): Transform {
 }
 
 /**
- * Auto-decimate bloated meshes (like notso-glb's bloat detection).
- * Meshes with vertex count > threshold get simplified.
+ * Auto-decimate meshes that exceed a vertex-count threshold.
+ *
+ * Scans every mesh primitive and identifies those with more vertices than
+ * `threshold`. If any are found, applies meshoptimizer simplification with an
+ * adaptive ratio derived from the worst offender's vertex count.
+ *
+ * @param threshold   - Vertex count above which a mesh is considered "bloated".
+ * @param targetRatio - Desired vertex reduction factor (0.5 = target 50% of threshold).
+ * @param simplifier  - The meshoptimizer `MeshoptSimplifier` WASM module instance.
+ * @returns A glTF-Transform `Transform` function (async).
  */
 export function decimateBloatedMeshes(
 	threshold = 2000,
@@ -168,7 +205,14 @@ export function decimateBloatedMeshes(
 }
 
 /**
- * Remove unused texture coordinates (UV maps not referenced by materials).
+ * Remove unused texture coordinates (UV sets not referenced by any material).
+ *
+ * Inspects all materials for `TEXCOORD_N` references (base color, normal,
+ * occlusion, emissive, metallic-roughness), then strips any `TEXCOORD_N`
+ * attribute whose index is not in the referenced set. Falls back to keeping
+ * `TEXCOORD_0` if textures exist but no explicit UV channel is referenced.
+ *
+ * @returns A glTF-Transform `Transform` function.
  */
 export function removeUnusedUVs(): Transform {
 	return (doc: Document): void => {
@@ -220,8 +264,14 @@ export function removeUnusedUVs(): Transform {
 }
 
 /**
- * Normalize bone weights so they sum to exactly 1.0.
- * Fixes ACCESSOR_WEIGHTS_NON_NORMALIZED validation errors.
+ * Normalize bone weights so each vertex's `WEIGHTS_0` components sum to exactly 1.0.
+ *
+ * Iterates every vertex in every mesh primitive that has a `WEIGHTS_0` attribute.
+ * If the weight sum deviates from 1.0 by more than `1e-6`, all components are
+ * divided by their sum. This fixes `ACCESSOR_WEIGHTS_NON_NORMALIZED` glTF
+ * validation errors that commonly appear after mesh transforms.
+ *
+ * @returns A glTF-Transform `Transform` function.
  */
 export function normalizeWeights(): Transform {
 	return (doc: Document): void => {
@@ -262,7 +312,17 @@ export function normalizeWeights(): Transform {
 }
 
 /**
- * Log mesh complexity analysis (like notso-glb's bloat warnings).
+ * Diagnostic transform that logs scene complexity statistics to the console.
+ *
+ * Reports total mesh count, vertex count, skin count, and animation count.
+ * Individually lists meshes exceeding `warnThreshold` vertices (up to 5) and
+ * emits a warning if the total scene vertex count exceeds `totalWarnThreshold`.
+ *
+ * This transform is read-only — it does not modify the document.
+ *
+ * @param warnThreshold      - Per-mesh vertex count that triggers a "bloated" warning.
+ * @param totalWarnThreshold - Total scene vertex count that triggers a high-complexity warning.
+ * @returns A glTF-Transform `Transform` function.
  */
 export function analyzeMeshComplexity(
 	warnThreshold = 2000,
@@ -312,7 +372,15 @@ export function analyzeMeshComplexity(
 }
 
 /**
- * Remove degenerate (zero-area) triangles.
+ * Remove degenerate (zero-area) triangles from all TRIANGULAR mesh primitives.
+ *
+ * A triangle is considered degenerate if any two of its vertex indices are
+ * identical, or if its cross-product area falls below `minArea`. The index
+ * buffer is rewritten in-place with only the surviving triangles.
+ *
+ * @param minArea - Minimum triangle area (in world units squared) to keep.
+ *                  Triangles smaller than this are discarded.
+ * @returns A glTF-Transform `Transform` function.
  */
 export function removeDegenerateFaces(minArea = 1e-10): Transform {
 	return (doc: Document): void => {
@@ -389,15 +457,24 @@ export function removeDegenerateFaces(minArea = 1e-10): Transform {
 }
 
 /**
- * Remove static animation tracks using global consensus.
+ * Remove static animation tracks using a 3-pass global-consensus algorithm.
  *
- * A track is only removed if ALL of these conditions are met for a given node+path:
- *   1. Every animation that targets this node+path has a static track (all keyframes identical)
- *   2. All those static values agree (same value across every animation)
- *   3. That consensus value matches the node's base transform
+ * A track is only removed when **all** of these conditions hold for a given
+ * `node + targetPath` combination across **every** animation in the document:
  *
- * This preserves animation "coverage" — each animation still claims ownership of the
- * bones it controls, which is critical for correct blending/switching at runtime.
+ * 1. **Static** — every animation targeting this node+path has identical keyframes.
+ * 2. **Consensus** — all those static values agree with each other.
+ * 3. **Matches base** — the agreed-upon value equals the node's rest-pose transform.
+ *
+ * This is intentionally conservative: it preserves animation "coverage" so that
+ * each clip still claims ownership of the bones it controls, which is critical
+ * for correct blending and switching at runtime.
+ *
+ * Tracks that are individually static but lack cross-animation consensus are
+ * counted and reported but **not** removed.
+ *
+ * @param tolerance - Maximum per-component difference to consider two values equal.
+ * @returns A glTF-Transform `Transform` function.
  */
 export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 	return (doc: Document): void => {
@@ -407,7 +484,7 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 		const animations: Animation[] = doc.getRoot().listAnimations();
 		if (animations.length === 0) return;
 
-		// ── Pass 1: Analyze every channel across all animations ──────────
+		// Pass 1: Analyze every channel across all animations
 		// For each node+path, collect: is each channel static? what's its value?
 		// Key: "nodeIndex::path"  (use index for uniqueness, not name)
 		const nodeIndexMap = new Map<
@@ -484,7 +561,7 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 			}
 		}
 
-		// ── Pass 2: Determine which node+paths have global consensus ────
+		// Pass 2: Determine which node+paths have global consensus
 		const removableKeys = new Set<string>();
 
 		for (const [key, tracks] of globalTrackMap) {
@@ -547,7 +624,7 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 			}
 		}
 
-		// ── Pass 3: Remove only globally-consensed tracks ────────────────
+		// Pass 3: Remove only globally-consensed tracks
 		for (const animation of animations) {
 			for (const channel of animation.listChannels()) {
 				const targetNode: Node | null = channel.getTargetNode();
@@ -604,7 +681,12 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 }
 
 /**
- * Log animation statistics.
+ * Diagnostic transform that logs animation statistics to the console.
+ *
+ * Reports total animation clip count, channel count, and keyframe count.
+ * This transform is read-only — it does not modify the document.
+ *
+ * @returns A glTF-Transform `Transform` function.
  */
 export function analyzeAnimations(): Transform {
 	return (doc: Document): void => {
