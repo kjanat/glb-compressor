@@ -23,6 +23,7 @@
 		"cli": "bun --bun cli/main.ts",
 		"dev": "bun --hot run server/main.ts",
 		"fmt": "dprint fmt",
+		"licences": "pnpm licenses ls --long --prod --json>licenses.json",
 		"lint": "bunx --bun biome lint",
 		"start": "bun --bun server/main.ts",
 		"typecheck": "tsgo --noEmit"
