@@ -1,7 +1,7 @@
 {
-	"name": "@kjanat/glb-compressor",
-	"version": "0.0.1",
-	"private": true,
+	"name": "glb-compressor",
+	"version": "0.0.0",
+	"repository": "github:kjanat/glb-compressor",
 	"type": "module",
 	"exports": {
 		".": "./lib/mod.ts",
