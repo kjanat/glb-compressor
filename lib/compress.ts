@@ -92,12 +92,12 @@ export const PRESETS: Record<CompressPreset, GltfpackPresetConfig> = {
 	balanced: {
 		// biome-ignore format: align cli flags with the values
 		skinned: [
-			"-vp", "20",
-			"-kn",
-			"-at", "14",
-			"-ar", "10",
-			"-as", "14",
-			"-af", "24",
+			'-vp', '20',
+			'-kn',
+			'-at', '14',
+			'-ar', '10',
+			'-as', '14',
+			'-af', '24',
 		],
 		// biome-ignore format: align cli flags with the values
 		static: [
@@ -268,10 +268,13 @@ async function doInit(): Promise<void> {
  * extensions are metadata-only. Stripping them avoids conflicts when
  * re-compressing with a different backend.
  */
-function stripCompressionExtensions(document: Document): void {
+function stripCompressionExtensions(
+	document: Document,
+	log: (msg: string) => void = console.log,
+): void {
 	for (const ext of document.getRoot().listExtensionsUsed()) {
 		if (COMPRESSION_EXTENSIONS.includes(ext.extensionName)) {
-			console.log(`  Removing extension: ${ext.extensionName}`);
+			log(`  Removing extension: ${ext.extensionName}`);
 			ext.dispose();
 		}
 	}
@@ -326,7 +329,7 @@ export async function compress(
 	}
 
 	// Strip existing compression (already decoded by NodeIO), then clean up geometry
-	stripCompressionExtensions(document);
+	stripCompressionExtensions(document, log);
 
 	// Check for skinned meshes - skip transforms that break skeleton hierarchy
 	const hasSkins: boolean = document.getRoot().listSkins().length > 0;
@@ -369,14 +372,12 @@ export async function compress(
 	}
 
 	// Phase 3: GPU optimizations (batched)
+	// Skip reorder() for skinned models - causes weight denormalization
 	const gpuTransforms: Transform[] = [
 		transform.instance({ min: INSTANCE_MIN }),
+		...(!hasSkins ? [transform.reorder({ encoder: MeshoptEncoder })] : []),
 		transform.sparse(),
 	];
-	// Skip reorder() for skinned models - causes weight denormalization
-	if (!hasSkins) {
-		gpuTransforms.splice(1, 0, transform.reorder({ encoder: MeshoptEncoder }));
-	}
 	await document.transform(...gpuTransforms);
 
 	// Phase 4: Animation + weights (batched)
@@ -427,7 +428,12 @@ export async function compress(
 	const preset = options.preset ?? 'default';
 	if (hasGltfpack) {
 		log(`  Running gltfpack (preset: ${preset})...`);
-		const result = await compressWithGltfpack(cleanBuffer, hasSkins, preset);
+		const result = await compressWithGltfpack(
+			cleanBuffer,
+			hasSkins,
+			preset,
+			log,
+		);
 		if (result) {
 			log(`  gltfpack: ${formatBytes(result.buffer.byteLength)}`);
 			return { ...result, originalSize: input.byteLength };
@@ -435,7 +441,7 @@ export async function compress(
 	}
 
 	log('  Running meshopt fallback...');
-	const result = await compressWithMeshopt(document, hasSkins);
+	const result = await compressWithMeshopt(document, hasSkins, log);
 	log(`  meshopt: ${formatBytes(result.buffer.byteLength)}`);
 	return { ...result, originalSize: input.byteLength };
 }
@@ -451,6 +457,7 @@ async function compressWithGltfpack(
 	cleanBuffer: Uint8Array,
 	hasSkins: boolean,
 	preset: CompressPreset,
+	log: (msg: string) => void = console.log,
 ): Promise<CompressResult | null> {
 	return withTempDir(async (dir) => {
 		const inputPath = join(dir, 'clean.glb');
@@ -488,10 +495,10 @@ async function compressWithGltfpack(
 			}
 
 			const buffer = new Uint8Array(await Bun.file(outputPath).arrayBuffer());
-			console.log(`gltfpack: ${formatBytes(buffer.byteLength)}`);
+			log(`gltfpack: ${formatBytes(buffer.byteLength)}`);
 			return { buffer, method: 'gltfpack' };
 		} catch (err) {
-			console.warn('gltfpack failed:', err);
+			log(`gltfpack failed: ${err instanceof Error ? err.message : err}`);
 			return null;
 		}
 	});
@@ -507,6 +514,7 @@ async function compressWithGltfpack(
 async function compressWithMeshopt(
 	document: Document,
 	hasSkins: boolean,
+	log: (msg: string) => void = console.log,
 ): Promise<CompressResult> {
 	if (hasSkins) {
 		// Skip quantize for skinned models to avoid deformation
@@ -518,16 +526,9 @@ async function compressWithMeshopt(
 		);
 	}
 	const buffer = await io.writeBinary(document);
-	console.log(`meshopt fallback: ${formatBytes(buffer.byteLength)}`);
+	log(`meshopt fallback: ${formatBytes(buffer.byteLength)}`);
 	return { buffer, method: 'meshopt' };
 }
-
-export {
-	formatBytes,
-	parseSimplifyRatio,
-	sanitizeFilename,
-	validateGlbMagic,
-} from './utils';
 
 /** Returns whether the `gltfpack` binary was found during initialization. */
 export function getHasGltfpack(): boolean {

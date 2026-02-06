@@ -217,7 +217,7 @@ Built on the shoulders of:
 
 ## License
 
-Private
+MIT
 
 [sharp]: https://sharp.pixelplumbing.com
 [draco3dgltf]: https://github.com/google/draco#readme

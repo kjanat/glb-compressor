@@ -144,12 +144,11 @@ async function handleCompress(req: globalThis.Request): Promise<Response> {
 		}
 		input = new Uint8Array(await file.arrayBuffer());
 		filename = file.name;
-		// Check form data for simplify param
+		// Form data overrides query params
 		const formSimplify = formData.get('simplify');
-		if (formSimplify && !simplifyRatio) {
+		if (formSimplify) {
 			simplifyRatio = parseSimplifyRatio(String(formSimplify));
 		}
-		// Check form data for preset param
 		const formPreset = formData.get('preset');
 		if (formPreset) {
 			preset = parsePreset(String(formPreset));
@@ -190,7 +189,21 @@ async function handleCompress(req: globalThis.Request): Promise<Response> {
 	console.log(
 		`[${requestId}] Received ${filename}: ${formatBytes(input.byteLength)} (preset: ${preset})`,
 	);
-	const { buffer, method } = await compress(input, { simplifyRatio, preset });
+
+	let buffer: Uint8Array;
+	let method: string;
+	try {
+		({ buffer, method } = await compress(input, { simplifyRatio, preset }));
+	} catch (err) {
+		console.error(`[${requestId}] Compression failed:`, err);
+		return jsonError(
+			ErrorCode.COMPRESSION_FAILED,
+			err instanceof Error ? err.message : 'Compression failed',
+			500,
+			requestId,
+		);
+	}
+
 	const ratio: string = (
 		(1 - buffer.byteLength / input.byteLength) *
 		100
@@ -232,12 +245,15 @@ async function handleCompressStream(
 	req: globalThis.Request,
 ): Promise<Response> {
 	const requestId = crypto.randomUUID();
+	const url = new URL(req.url);
 	const contentType = req.headers.get('content-type') ?? '';
 
 	let input: Uint8Array;
 	let filename = 'model.glb';
-	let simplifyRatio: number | undefined;
-	let preset: CompressPreset = 'default';
+	let simplifyRatio: number | undefined = parseSimplifyRatio(
+		url.searchParams.get('simplify'),
+	);
+	let preset = parsePreset(url.searchParams.get('preset'));
 
 	if (contentType.includes('multipart/form-data')) {
 		const formData = await req.formData(); // TODO: `formData` is deprecated...
@@ -261,6 +277,7 @@ async function handleCompressStream(
 		}
 		input = new Uint8Array(await file.arrayBuffer());
 		filename = file.name;
+		// Form data overrides query params
 		const formSimplify = formData.get('simplify');
 		if (formSimplify) {
 			simplifyRatio = parseSimplifyRatio(String(formSimplify));

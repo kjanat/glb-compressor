@@ -15,6 +15,7 @@
  * @module cli
  */
 
+import { mkdir } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { Glob } from 'bun';
@@ -171,7 +172,7 @@ async function compressFile(
 
 		// Ensure output directory exists
 		if (output) {
-			await Bun.write(join(output, '.keep'), ''); // Create dir
+			await mkdir(output, { recursive: true });
 		}
 
 		// Write output
@@ -242,14 +243,15 @@ async function main() {
 		process.exit(1);
 	}
 
-	// Parse preset
-	const preset: CompressPreset = (values.preset as CompressPreset) ?? 'default';
-	if (!VALID_PRESETS.includes(preset)) {
+	// Parse preset — validate before casting
+	const rawPreset = values.preset ?? 'default';
+	if (!VALID_PRESETS.includes(rawPreset as CompressPreset)) {
 		console.error(
 			`${c.red}Error:${c.reset} Invalid preset: "${values.preset}" (must be one of: ${VALID_PRESETS.join(', ')})`,
 		);
 		process.exit(1);
 	}
+	const preset = rawPreset as CompressPreset;
 
 	// Parse simplify ratio
 	const simplify = values.simplify
@@ -265,7 +267,7 @@ async function main() {
 	// Expand globs
 	const files: string[] = [];
 	for (const pattern of positionals) {
-		if (pattern.includes('*')) {
+		if (/[*?[\]{]/.test(pattern)) {
 			const glob = new Glob(pattern);
 			for await (const file of glob.scan({
 				cwd: process.cwd(),
@@ -285,7 +287,7 @@ async function main() {
 
 	// Create output directory if specified
 	if (values.output) {
-		await Bun.write(join(values.output, '.keep'), '');
+		await mkdir(values.output, { recursive: true });
 	}
 
 	const options: Options = {
