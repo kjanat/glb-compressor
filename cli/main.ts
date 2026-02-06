@@ -1,17 +1,17 @@
 #!/usr/bin/env bun
-import {
-	compress,
-	type CompressPreset,
-	formatBytes,
-	init,
-	parseSimplifyRatio,
-	PRESETS,
-	validateGlbMagic,
-} from '$lib/mod';
-import { Glob } from 'bun';
 import { basename, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
+import { Glob } from 'bun';
 import { version } from 'pkg';
+import {
+	type CompressPreset,
+	compress,
+	formatBytes,
+	init,
+	PRESETS,
+	parseSimplifyRatio,
+	validateGlbMagic,
+} from '$lib/mod';
 
 const VALID_PRESETS = Object.keys(PRESETS) as CompressPreset[];
 

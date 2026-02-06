@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { type Document, NodeIO, type Transform } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import * as transform from '@gltf-transform/functions';
@@ -8,7 +9,6 @@ import {
 	MeshoptEncoder,
 	MeshoptSimplifier,
 } from 'meshoptimizer';
-import { join } from 'node:path';
 import sharp from 'sharp';
 
 import {

@@ -1,11 +1,14 @@
 // Core compression API
-export { compress, getHasGltfpack, init, PRESETS } from './compress';
 export type {
 	CompressOptions,
 	CompressPreset,
 	CompressResult,
 } from './compress';
-
+export { compress, getHasGltfpack, init, PRESETS } from './compress';
+// Constants
+export * from './constants';
+// Transforms (for advanced users)
+export * from './transforms';
 // Utilities
 export {
 	formatBytes,
@@ -14,9 +17,3 @@ export {
 	validateGlbMagic,
 	withTempDir,
 } from './utils';
-
-// Constants
-export * from './constants';
-
-// Transforms (for advanced users)
-export * from './transforms';
