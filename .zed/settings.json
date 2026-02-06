@@ -17,23 +17,16 @@
 		"Markdown": [".rules"]
 	},
 	"languages": {
-		"Python": {
-			"language_servers": ["pylsp", "ty", "ruff", "basedpyright", "..."],
-			"wrap_guides": [88]
-		},
 		"TOML": { "wrap_guides": [110] },
 		"YAML": { "wrap_guides": [140] },
 		"TypeScript": {
 			"wrap_guides": [80],
-			"language_servers": ["biome", "tsgo", "vtsls"],
+			"language_servers": ["vtsls", "biome", "tsgo"],
 			"formatter": [
-				{ "language_server": { "name": "biome" } },
+				{ "code_action": "source.fixAll.biome" },
+				{ "code_action": "source.organizeImports.biome" },
 				{ "language_server": { "name": "dprint" } }
-			],
-			"code_actions_on_format": {
-				"source.fixAll.biome": true,
-				"source.organizeImports.biome": true
-			}
+			]
 		}
 	},
 	"context_servers": {
