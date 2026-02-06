@@ -4,21 +4,33 @@
 	"repository": "github:kjanat/glb-compressor",
 	"type": "module",
 	"exports": {
-		".": "./lib/mod.ts",
-		"./server": "./server/main.ts",
-		"./cli": "./cli/main.ts",
+		".": {
+			"bun": "./dist/bun/lib/mod.js",
+			"node": "./dist/node/lib/mod.js",
+			"default": "./dist/node/lib/mod.js"
+		},
+		"./server": {
+			"bun": "./dist/bun/server/main.js",
+			"node": "./dist/node/server/main.js",
+			"default": "./dist/node/server/main.js"
+		},
+		"./cli": {
+			"bun": "./dist/bun/cli/main.js",
+			"node": "./dist/node/cli/main.js",
+			"default": "./dist/node/cli/main.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"bin": {
-		"glb-compress": "./cli/main.ts",
-		"glb-server": "./server/main.ts"
+		"glb-compress": "./dist/node/cli/main.js",
+		"glb-server": "./dist/node/server/main.js"
 	},
 	"files": [
-		"cli",
-		"lib",
-		"server"
+		"dist/node",
+		"dist/bun"
 	],
 	"scripts": {
+		"build": "bun build.ts",
 		"check": "bunx --bun biome check",
 		"cli": "bun --bun cli/main.ts",
 		"dev": "bun --hot run server/main.ts",
@@ -45,6 +57,7 @@
 	},
 	"packageManager": "bun@1.3.8",
 	"engines": {
-		"bun": ">=1.3"
+		"bun": ">=1.3",
+		"node": ">=18"
 	}
 }

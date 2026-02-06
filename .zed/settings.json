@@ -25,8 +25,11 @@
 		"YAML": { "wrap_guides": [140] },
 		"TypeScript": {
 			"wrap_guides": [80],
-			"language_servers": ["tsgo", "!vtsls", "biome"],
-			"formatter": [{ "language_server": { "name": "biome" } }],
+			"language_servers": ["biome", "tsgo", "vtsls"],
+			"formatter": [
+				{ "language_server": { "name": "biome" } },
+				{ "language_server": { "name": "dprint" } }
+			],
 			"code_actions_on_format": {
 				"source.fixAll.biome": true,
 				"source.organizeImports.biome": true
