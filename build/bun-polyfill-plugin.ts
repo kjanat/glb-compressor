@@ -42,7 +42,7 @@ export function bunPolyfillPlugin(): BunPlugin {
 			// ── Hook 2: Transform Bun.* globals & import.meta.main ──
 			build.onLoad({ filter: /\.(ts|tsx|js|jsx)$/ }, async (args) => {
 				// Skip node_modules — only transform project source
-				if (args.path.split(/[\//]/).includes('node_modules')) return undefined;
+				if (args.path.split(/[//]/).includes('node_modules')) return undefined;
 				// Skip the polyfill file itself to avoid circular injection
 				if (args.path === POLYFILL_PATH) return undefined;
 
