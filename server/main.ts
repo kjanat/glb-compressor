@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import type { CompressPreset } from '$lib/mod';
 import {
 	compress,
