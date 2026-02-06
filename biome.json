@@ -35,5 +35,11 @@
 				"organizeImports": "on"
 			}
 		}
-	}
+	},
+	"overrides": [
+		{
+			"includes": ["**/mod.ts", "**/index.ts", "**/main.ts"],
+			"assist": { "actions": { "source": { "organizeImports": "off" } } }
+		}
+	]
 }

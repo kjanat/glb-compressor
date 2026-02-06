@@ -1,4 +1,20 @@
 #!/usr/bin/env bun
+/**
+ * CLI entry point for `glb-compress`.
+ *
+ * Compresses one or more GLB files using the core library pipeline.
+ * Supports glob patterns, configurable presets, optional mesh simplification,
+ * quiet mode for scripting, and custom output directories.
+ *
+ * @example
+ * ```sh
+ * glb-compress model.glb -p aggressive -o ./out/
+ * glb-compress *.glb -s 0.5 -f -q
+ * ```
+ *
+ * @module cli
+ */
+
 import { basename, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { Glob } from 'bun';
@@ -15,7 +31,7 @@ import {
 
 const VALID_PRESETS = Object.keys(PRESETS) as CompressPreset[];
 
-// ANSI colors
+/** ANSI escape codes for colored terminal output. */
 const c = {
 	reset: '\x1b[0m',
 	bold: '\x1b[1m',
@@ -28,6 +44,7 @@ const c = {
 	cyan: '\x1b[36m',
 };
 
+/** Print the full help text with usage, options, presets, and examples. */
 function printHelp() {
 	console.log(`
 ${c.bold}${c.cyan}glb-compress${c.reset} - Compress GLB/glTF files
@@ -69,14 +86,31 @@ ${c.bold}EXAMPLES${c.reset}
 `);
 }
 
+/** Parsed and validated CLI options passed to each file compression. */
 interface Options {
+	/** Output directory path, or `undefined` for same-directory output. */
 	output?: string;
+	/** Mesh simplification ratio in `(0, 1)`, or `undefined` to skip. */
 	simplify?: number;
+	/** Named compression preset. */
 	preset: CompressPreset;
+	/** Suppress all progress output. */
 	quiet: boolean;
+	/** Overwrite existing output files without prompting. */
 	force: boolean;
 }
 
+/**
+ * Compress a single GLB file and write the result to disk.
+ *
+ * Resolves the output path (same dir or `--output` dir), validates the input,
+ * runs the compression pipeline, and writes the compressed GLB. Prints progress
+ * and results to stdout unless `quiet` is set.
+ *
+ * @param inputPath - Absolute path to the input `.glb` file.
+ * @param options   - Parsed CLI options.
+ * @returns `{ success: true }` or `{ success: false, error: string }`.
+ */
 async function compressFile(
 	inputPath: string,
 	options: Options,
@@ -170,6 +204,13 @@ async function compressFile(
 	}
 }
 
+/**
+ * CLI entry point — parses arguments, expands globs, and compresses each file sequentially.
+ *
+ * Exit codes:
+ * - `0` — all files compressed successfully.
+ * - `1` — one or more files failed, or invalid arguments.
+ */
 async function main() {
 	const { values, positionals } = parseArgs({
 		args: Bun.argv.slice(2),

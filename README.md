@@ -1,4 +1,4 @@
-# @kjanat/glb-compressor
+# glb-compressor
 
 Multi-phase GLB/glTF 3D model compression toolkit built on [Bun].
 
@@ -98,7 +98,7 @@ curl -X POST -F "file=@model.glb" "http://localhost:8080/compress-stream"
 ### Library
 
 ```ts
-import { compress, init, type CompressOptions } from '@kjanat/glb-compressor';
+import { compress, init, type CompressOptions } from 'glb-compressor';
 
 await init(); // Optional, called automatically by compress()
 
@@ -126,7 +126,7 @@ import {
 	normalizeWeights,
 	analyzeMeshComplexity,
 	decimateBloatedMeshes,
-} from '@kjanat/glb-compressor';
+} from 'glb-compressor';
 ```
 
 ## Presets
