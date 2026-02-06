@@ -2,7 +2,7 @@
 ---
 name: autofix.ci
 on:
-  push: { branches: ["master"] }
+  push: { branches: ["master"], paths-ignore: [".github/**"] }
   pull_request:
   workflow_call:
 permissions: { contents: read }
