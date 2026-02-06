@@ -539,8 +539,7 @@ async function main() {
 	const sorted = [...results]
 		.filter((r) => r.size > 0)
 		.sort((a, b) => a.size - b.size);
-	for (let i = 0; i < sorted.length; i++) {
-		const r = sorted[i];
+	for (const [i, r] of sorted.entries()) {
 		const sizeStr = formatBytes(r.size).padStart(10);
 		const ratioStr = `-${r.ratio}%`.padStart(10);
 		const timeStr = `${r.time}s`.padStart(8);

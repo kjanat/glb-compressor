@@ -14,6 +14,14 @@ import type {
 import * as transform from '@gltf-transform/functions';
 import type { MeshoptSimplifier as MeshoptSimplifierType } from 'meshoptimizer';
 
+/** Index into a TypedArray, asserting the value is defined (safe under noUncheckedIndexedAccess). */
+function at(arr: TypedArray | number[], i: number): number {
+	const v = arr[i];
+	if (v === undefined)
+		throw new RangeError(`Index ${i} out of bounds (length ${arr.length})`);
+	return v;
+}
+
 /**
  * Merge vertices by position within a distance tolerance (like Blender's "Merge by Distance").
  * Unlike glTF-Transform's weld(), this only compares positions, ignoring normals/UVs.
@@ -40,9 +48,9 @@ export function mergeByDistance(tolerance = 0.0001): Transform {
 
 				// Build spatial hash - map position to canonical vertex index
 				for (let i: number = 0; i < vertCount; i++) {
-					const x: number = Math.round(positions[i * 3] * precision);
-					const y: number = Math.round(positions[i * 3 + 1] * precision);
-					const z: number = Math.round(positions[i * 3 + 2] * precision);
+					const x: number = Math.round(at(positions, i * 3) * precision);
+					const y: number = Math.round(at(positions, i * 3 + 1) * precision);
+					const z: number = Math.round(at(positions, i * 3 + 2) * precision);
 					const key = `${x},${y},${z}`;
 
 					const existing: number | undefined = vertexMap.get(key);
@@ -63,7 +71,7 @@ export function mergeByDistance(tolerance = 0.0001): Transform {
 				// Remap indices
 				const newIndices = new Uint32Array(indices.length);
 				for (let i: number = 0; i < indices.length; i++) {
-					newIndices[i] = remap[indices[i]];
+					newIndices[i] = at(remap, at(indices, i));
 				}
 
 				// Compact all vertex attributes
@@ -77,15 +85,15 @@ export function mergeByDistance(tolerance = 0.0001): Transform {
 					const itemSize: number = attr.getElementSize();
 					const TypedArrayCtor = oldArray.constructor as new (
 						len: number,
-					) => typeof oldArray;
+					) => TypedArray;
 					const newArray: TypedArray = new TypedArrayCtor(
 						newToOld.length * itemSize,
-					)!;
+					);
 
 					for (let i: number = 0; i < newToOld.length; i++) {
-						const oldIdx: number = newToOld[i];
+						const oldIdx: number = at(newToOld, i);
 						for (let j: number = 0; j < itemSize; j++) {
-							newArray[i * itemSize + j] = oldArray[oldIdx * itemSize + j];
+							newArray[i * itemSize + j] = at(oldArray, oldIdx * itemSize + j);
 						}
 					}
 					attr.setArray(newArray);
@@ -192,7 +200,10 @@ export function removeUnusedUVs(): Transform {
 			for (const prim of mesh.listPrimitives()) {
 				for (const semantic of prim.listSemantics()) {
 					if (semantic.startsWith('TEXCOORD_')) {
-						const idx: number = parseInt(semantic.split('_')[1], 10);
+						const idx: number = parseInt(
+							semantic.slice('TEXCOORD_'.length),
+							10,
+						);
 						if (!usedUVSets.has(idx)) {
 							prim.setAttribute(semantic, null);
 							removed++;
@@ -230,11 +241,11 @@ export function normalizeWeights(): Transform {
 				for (let i: number = 0; i < count; i++) {
 					let sum: number = 0;
 					for (let j: number = 0; j < elementSize; j++) {
-						sum += arr[i * elementSize + j];
+						sum += at(arr, i * elementSize + j);
 					}
 					if (sum > 0 && Math.abs(sum - 1.0) > 1e-6) {
 						for (let j: number = 0; j < elementSize; j++) {
-							arr[i * elementSize + j] /= sum;
+							arr[i * elementSize + j] = at(arr, i * elementSize + j) / sum;
 						}
 						normalized++;
 					}
@@ -322,9 +333,9 @@ export function removeDegenerateFaces(minArea = 1e-10): Transform {
 				const validIndices: number[] = [];
 
 				for (let i: number = 0; i < indices.length; i += 3) {
-					const i0: number = indices[i],
-						i1: number = indices[i + 1],
-						i2: number = indices[i + 2];
+					const i0: number = at(indices, i),
+						i1: number = at(indices, i + 1),
+						i2: number = at(indices, i + 2);
 
 					// Skip if indices are the same (degenerate)
 					if (i0 === i1 || i1 === i2 || i0 === i2) {
@@ -333,29 +344,23 @@ export function removeDegenerateFaces(minArea = 1e-10): Transform {
 					}
 
 					// Get vertices
-					const v0: number[] = [
-						positions[i0 * 3],
-						positions[i0 * 3 + 1],
-						positions[i0 * 3 + 2],
-					];
-					const v1: number[] = [
-						positions[i1 * 3],
-						positions[i1 * 3 + 1],
-						positions[i1 * 3 + 2],
-					];
-					const v2: number[] = [
-						positions[i2 * 3],
-						positions[i2 * 3 + 1],
-						positions[i2 * 3 + 2],
-					];
+					const v0x = at(positions, i0 * 3),
+						v0y = at(positions, i0 * 3 + 1),
+						v0z = at(positions, i0 * 3 + 2);
+					const v1x = at(positions, i1 * 3),
+						v1y = at(positions, i1 * 3 + 1),
+						v1z = at(positions, i1 * 3 + 2);
+					const v2x = at(positions, i2 * 3),
+						v2y = at(positions, i2 * 3 + 1),
+						v2z = at(positions, i2 * 3 + 2);
 
 					// Compute triangle area via cross product
-					const ax: number = v1[0] - v0[0],
-						ay: number = v1[1] - v0[1],
-						az: number = v1[2] - v0[2];
-					const bx: number = v2[0] - v0[0],
-						by: number = v2[1] - v0[1],
-						bz: number = v2[2] - v0[2];
+					const ax: number = v1x - v0x,
+						ay: number = v1y - v0y,
+						az: number = v1z - v0z;
+					const bx: number = v2x - v0x,
+						by: number = v2y - v0y,
+						bz: number = v2z - v0z;
 					const cx: number = ay * bz - az * by;
 					const cy: number = az * bx - ax * bz;
 					const cz: number = ax * by - ay * bx;
@@ -456,8 +461,9 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 					for (let i: number = 1; i < keyframeCount && isStatic; i++) {
 						for (let j: number = 0; j < elementSize; j++) {
 							if (
-								Math.abs(outputArray[i * elementSize + j] - firstValues[j]) >
-								tolerance
+								Math.abs(
+									at(outputArray, i * elementSize + j) - at(firstValues, j),
+								) > tolerance
 							) {
 								isStatic = false;
 								break;
@@ -466,8 +472,12 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 					}
 				}
 
-				if (!globalTrackMap.has(key)) globalTrackMap.set(key, []);
-				globalTrackMap.get(key)!.push({
+				let trackList = globalTrackMap.get(key);
+				if (!trackList) {
+					trackList = [];
+					globalTrackMap.set(key, trackList);
+				}
+				trackList.push({
 					isStatic,
 					staticValue: isStatic ? firstValues : null,
 				});
@@ -482,24 +492,29 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 			if (tracks.some((t: TrackInfo): boolean => !t.isStatic)) continue;
 
 			// All static values must agree
-			const reference: number[] = tracks[0].staticValue!;
+			const firstTrack = tracks[0];
+			if (!firstTrack) continue;
+			const reference = firstTrack.staticValue;
+			if (!reference) continue;
 			const allAgree: boolean = tracks.every((t: TrackInfo): boolean => {
 				if (!t.staticValue || t.staticValue.length !== reference.length) {
 					return false;
 				}
 				return t.staticValue.every(
 					(v: number, i: number): boolean =>
-						Math.abs(v - reference[i]) <= tolerance,
+						Math.abs(v - at(reference, i)) <= tolerance,
 				);
 			});
 			if (!allAgree) continue;
 
 			// The consensus value must match the node's base transform
 			const [nodeIdxStr, path] = key.split('::');
+			if (!nodeIdxStr || !path) continue;
 			const nodeIdx: number = parseInt(nodeIdxStr, 10);
 			const allNodes: Node[] = doc.getRoot().listNodes();
 			if (nodeIdx < 0 || nodeIdx >= allNodes.length) continue;
 			const node = allNodes[nodeIdx];
+			if (!node) continue;
 
 			let baseValue: number[] | null = null;
 			switch (path) {
@@ -524,7 +539,7 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 				baseValue.length === reference.length &&
 				baseValue.every(
 					(v: number, i: number): boolean =>
-						Math.abs(v - reference[i]) <= tolerance,
+						Math.abs(v - at(reference, i)) <= tolerance,
 				);
 
 			if (matchesBase) {
@@ -562,7 +577,7 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 								for (let j: number = 0; j < elementSize; j++) {
 									if (
 										Math.abs(
-											outputArray[i * elementSize + j] - outputArray[j],
+											at(outputArray, i * elementSize + j) - at(outputArray, j),
 										) > tolerance
 									) {
 										isStatic = false;

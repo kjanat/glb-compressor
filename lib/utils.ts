@@ -11,21 +11,13 @@ export function formatBytes(bytes: number): string {
 }
 
 export function sanitizeFilename(name: string): string {
-	// biome-ignore lint/suspicious/noControlCharactersInRegex: security
-	const CONTROL_CHARS = /[\x00-\x1f]/g;
-	return (
-		(name.split(/[\\/]/).pop() || 'model.glb')
-			// Replace invalid filename characters with underscores
-			.replace(/[<>:"|?*]/g, '_')
-			// Remove leading/trailing dots
-			.replace(/^\.*|\.*$/g, '')
-			// Remove control characters
-			.replace(CONTROL_CHARS, '')
-			// Trim whitespace
-			.trim()
-			// Limit length to 200 characters
-			.slice(0, 200)
-	);
+	const base = name.split(/[\\/]/).pop() || '';
+	const clean = base
+		// biome-ignore lint/suspicious/noControlCharactersInRegex: security
+		.replace(/[<>:"|?*\x00-\x1f]/g, '_')
+		.replace(/^[.\s]+|[.\s]+$/g, '')
+		.slice(0, 200);
+	return clean || 'model.glb';
 }
 
 export function validateGlbMagic(input: Uint8Array): void {
