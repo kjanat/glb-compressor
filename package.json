@@ -25,6 +25,8 @@
 		},
 		"./package.json": "./package.json"
 	},
+	"main": "./dist/node/lib/mod.js",
+	"types": "./dist/types/lib/mod.d.ts",
 	"bin": {
 		"glb-compress": "./dist/node/cli/main.js",
 		"glb-server": "./dist/node/server/main.js"

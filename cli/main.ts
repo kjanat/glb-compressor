@@ -32,18 +32,31 @@ import {
 
 const VALID_PRESETS = Object.keys(PRESETS) as CompressPreset[];
 
-/** ANSI escape codes for colored terminal output. */
-const c = {
-	reset: '\x1b[0m',
-	bold: '\x1b[1m',
-	dim: '\x1b[2m',
-	red: '\x1b[31m',
-	green: '\x1b[32m',
-	yellow: '\x1b[33m',
-	blue: '\x1b[34m',
-	magenta: '\x1b[35m',
-	cyan: '\x1b[36m',
-};
+/** ANSI escape codes for colored terminal output (disabled when not a TTY). */
+const useColor = process.stdout.isTTY ?? false;
+const c = useColor
+	? {
+			reset: '\x1b[0m',
+			bold: '\x1b[1m',
+			dim: '\x1b[2m',
+			red: '\x1b[31m',
+			green: '\x1b[32m',
+			yellow: '\x1b[33m',
+			blue: '\x1b[34m',
+			magenta: '\x1b[35m',
+			cyan: '\x1b[36m',
+		}
+	: {
+			reset: '',
+			bold: '',
+			dim: '',
+			red: '',
+			green: '',
+			yellow: '',
+			blue: '',
+			magenta: '',
+			cyan: '',
+		};
 
 /** Print the full help text with usage, options, presets, and examples. */
 function printHelp() {
@@ -129,6 +142,14 @@ async function compressFile(
 		outputPath = inputPath.replace(/\.(glb|gltf)$/i, '-compressed.glb');
 	}
 
+	// Guard against overwriting the input when the extension doesn't match .glb/.gltf
+	if (resolve(outputPath) === resolve(inputPath)) {
+		return {
+			success: false,
+			error: `Output path is the same as input (non-standard extension?): ${inputPath}`,
+		};
+	}
+
 	// Check if output exists
 	if (!force && (await Bun.file(outputPath).exists())) {
 		return {
@@ -143,7 +164,7 @@ async function compressFile(
 		return { success: false, error: `File not found: ${inputPath}` };
 	}
 
-	const input = new Uint8Array(await inputFile.arrayBuffer());
+	const input = await inputFile.bytes();
 
 	// Validate GLB
 	try {
@@ -174,10 +195,10 @@ async function compressFile(
 		await Bun.write(outputPath, result.buffer);
 
 		const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
-		const ratio = (
-			(1 - result.buffer.byteLength / input.byteLength) *
-			100
-		).toFixed(1);
+		const ratio =
+			input.byteLength > 0
+				? ((1 - result.buffer.byteLength / input.byteLength) * 100).toFixed(1)
+				: '0.0';
 
 		if (!quiet) {
 			console.log(
@@ -262,7 +283,7 @@ async function main() {
 	// Expand globs
 	const files: string[] = [];
 	for (const pattern of positionals) {
-		if (/[*?[\]{]/.test(pattern)) {
+		if (/[*?[\]{!]/.test(pattern)) {
 			const glob = new Glob(pattern);
 			for await (const file of glob.scan({
 				cwd: process.cwd(),
@@ -289,8 +310,8 @@ async function main() {
 		output: values.output,
 		simplify,
 		preset,
-		quiet: values.quiet ?? false,
-		force: values.force ?? false,
+		quiet: values.quiet,
+		force: values.force,
 	};
 
 	if (!options.quiet) {

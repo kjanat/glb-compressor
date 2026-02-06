@@ -177,7 +177,7 @@ async function parseCompressRequest(
 		);
 	}
 
-	return { input, filename, preset, simplifyRatio };
+	return { input, filename: sanitizeFilename(filename), preset, simplifyRatio };
 }
 
 /**
@@ -287,7 +287,7 @@ async function handleCompressStream(
 	if (parsed instanceof Response) return parsed;
 	const { input, filename, preset, simplifyRatio } = parsed;
 
-	const safeFilename = sanitizeFilename(filename);
+	// filename is already sanitized by parseCompressRequest
 	const encoder = new TextEncoder();
 	const stream = new ReadableStream({
 		async start(controller) {
@@ -298,7 +298,7 @@ async function handleCompressStream(
 			};
 
 			send('log', {
-				message: `[${requestId}] Received ${safeFilename}: ${formatBytes(input.byteLength)} (preset: ${preset})`,
+				message: `[${requestId}] Received ${filename}: ${formatBytes(input.byteLength)} (preset: ${preset})`,
 			});
 
 			try {
@@ -316,11 +316,14 @@ async function handleCompressStream(
 					message: `Done: ${formatBytes(input.byteLength)} -> ${formatBytes(buffer.byteLength)} (${ratio}% reduction)`,
 				});
 
-				// Send result as base64
+				// Send result as base64.
+				// NOTE: For very large files this creates a string ~33% larger than
+				// the binary in memory. The SSE design inherently requires this; for
+				// files approaching MAX_FILE_SIZE, prefer the /compress endpoint.
 				const base64 = Buffer.from(buffer).toString('base64');
 				send('result', {
 					requestId,
-					filename: safeFilename.replace(/\.(glb|gltf)$/i, '-compressed.glb'),
+					filename: filename.replace(/\.(glb|gltf)$/i, '-compressed.glb'),
 					data: base64,
 					originalSize: input.byteLength,
 					compressedSize: buffer.byteLength,
