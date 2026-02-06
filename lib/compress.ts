@@ -272,7 +272,7 @@ async function doInit(): Promise<void> {
  */
 function stripCompressionExtensions(
 	document: Document,
-	log: (msg: string) => void = console.log,
+	log: (msg: string) => void,
 ): void {
 	for (const ext of document.getRoot().listExtensionsUsed()) {
 		if (COMPRESSION_EXTENSIONS.includes(ext.extensionName)) {
@@ -459,7 +459,7 @@ async function compressWithGltfpack(
 	cleanBuffer: Uint8Array,
 	hasSkins: boolean,
 	preset: CompressPreset,
-	log: (msg: string) => void = console.log,
+	log: (msg: string) => void,
 ): Promise<CompressResult | null> {
 	return withTempDir(async (dir) => {
 		const inputPath = join(dir, 'clean.glb');
@@ -516,7 +516,7 @@ async function compressWithGltfpack(
 async function compressWithMeshopt(
 	document: Document,
 	hasSkins: boolean,
-	log: (msg: string) => void = console.log,
+	log: (msg: string) => void,
 ): Promise<CompressResult> {
 	if (hasSkins) {
 		// Skip quantize for skinned models to avoid deformation

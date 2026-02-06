@@ -86,7 +86,6 @@ async function build() {
 		naming: {
 			entry: '[dir]/[name].js',
 		},
-		metafile: true,
 	});
 
 	if (!bytecodeResult.success) {
