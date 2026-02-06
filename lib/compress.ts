@@ -239,9 +239,11 @@ async function doInit(): Promise<void> {
 	console.log('Initialized glTF-Transform with Draco + Meshopt');
 
 	try {
-		const gltfpackBin = Bun.which('gltfpack');
+		// Bun.which is native on Bun, polyfilled via build/polyfills.ts for Node
+		const gltfpackBin =
+			typeof Bun?.which === 'function' ? Bun.which('gltfpack') : null;
 		if (!gltfpackBin) {
-			console.warn('gltfpack not found, will use meshopt fallback');
+			console.warn('gltfpack not found in PATH, will use meshopt fallback');
 		} else {
 			const version =
 				(await $`gltfpack -v`.text()).trim().split(/\s/, 2)[1] || 'unknown';
@@ -250,8 +252,12 @@ async function doInit(): Promise<void> {
 			else console.log('gltfpack:', version);
 			hasGltfpack = true;
 		}
-	} catch {
-		console.warn('gltfpack not found, will use meshopt fallback');
+	} catch (err) {
+		console.warn(
+			'gltfpack detection failed:',
+			err instanceof Error ? err.message : err,
+		);
+		console.warn('Will use meshopt fallback');
 	}
 }
 

@@ -7,6 +7,7 @@
  *   dist/bun-bytecode/  Bun CJS + .jsc bytecode cache
  */
 
+import { rm } from 'node:fs/promises';
 import { bunPolyfillPlugin } from './build/bun-polyfill-plugin';
 
 const entrypoints = ['./lib/mod.ts', './cli/main.ts', './server/main.ts'];
@@ -15,6 +16,9 @@ const entrypoints = ['./lib/mod.ts', './cli/main.ts', './server/main.ts'];
 const external = ['sharp', 'draco3dgltf', 'meshoptimizer'];
 
 async function build() {
+	// Clean previous build artifacts so stale files don't accumulate
+	await rm('./dist', { recursive: true, force: true });
+
 	const start = performance.now();
 
 	// ── 1. Node.js ESM ──────────────────────────────────────
@@ -82,6 +86,7 @@ async function build() {
 		naming: {
 			entry: '[dir]/[name].js',
 		},
+		metafile: true,
 	});
 
 	if (!bytecodeResult.success) {
@@ -90,6 +95,32 @@ async function build() {
 		process.exit(1);
 	}
 	console.log(`  ${bytecodeResult.outputs.length} files`);
+
+	// ── 4. Re-inject shebangs stripped by polyfill plugin ────
+	const NODE_SHEBANG = '#!/usr/bin/env node\n';
+	const binFiles = ['./dist/node/cli/main.js', './dist/node/server/main.js'];
+	for (const binFile of binFiles) {
+		const content = await Bun.file(binFile).text();
+		if (!content.startsWith('#!')) {
+			await Bun.write(binFile, NODE_SHEBANG + content);
+		}
+	}
+	console.log(`  Shebangs restored in ${binFiles.length} bin files`);
+
+	// ── 5. TypeScript declarations ───────────────────────────
+	console.log('Generating TypeScript declarations...');
+	const tscProc = Bun.spawn(['tsgo', '-p', 'tsconfig.build.json'], {
+		stdout: 'pipe',
+		stderr: 'pipe',
+	});
+	const tscExit = await tscProc.exited;
+	if (tscExit !== 0) {
+		const tscStderr = await new Response(tscProc.stderr).text();
+		console.error('TypeScript declaration generation failed:');
+		console.error(tscStderr);
+		process.exit(1);
+	}
+	console.log('  dist/types/ generated');
 
 	// ── Summary ─────────────────────────────────────────────
 	const elapsed = ((performance.now() - start) / 1000).toFixed(2);
@@ -103,6 +134,7 @@ async function build() {
 	console.log(
 		`  dist/bun-bytecode/  ${bytecodeResult.outputs.length} files (Bun CJS + bytecode)`,
 	);
+	console.log(`  dist/types/         TypeScript declarations`);
 }
 
 build().catch((err) => {

@@ -9,7 +9,7 @@ import { execSync, spawn as nodeSpawn } from 'node:child_process';
 import { access, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createServer } from 'node:http';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { Readable } from 'node:stream';
 
 // ─── Bun.file() ────────────────────────────────────────────
@@ -73,7 +73,17 @@ interface SpawnOptions {
 }
 
 function spawn(args: string[], opts?: SpawnOptions) {
-	const [cmd = '', ...rest] = args;
+	if (!args || args.length === 0) {
+		throw new Error(
+			'spawn: args must contain at least one element (the command)',
+		);
+	}
+	const [cmd, ...rest] = args;
+	if (!cmd) {
+		throw new Error(
+			'spawn: command (first element of args) must be a non-empty string',
+		);
+	}
 	const child = nodeSpawn(cmd, rest, {
 		stdio: [
 			'ignore',
@@ -202,9 +212,35 @@ function serve(config: ServeConfig) {
 		},
 	);
 
+	server.on('error', (err) => {
+		if (config.error) {
+			config.error(err instanceof Error ? err : new Error(String(err)));
+		} else {
+			console.error('Server listen error:', err);
+			process.exit(1);
+		}
+	});
+
 	server.listen(port);
 	const url = new URL(`http://localhost:${port}/`);
 	return { url };
+}
+
+// ─── Bun.which() ───────────────────────────────────────────
+// Resolves a binary name to its absolute path, like Bun.which.
+
+function which(cmd: string): string | null {
+	try {
+		const isWin = process.platform === 'win32';
+		// Use where.exe explicitly on Windows to avoid PowerShell alias conflicts
+		const result = execSync(isWin ? `where.exe ${cmd}` : `command -v ${cmd}`, {
+			encoding: 'utf-8',
+			stdio: ['pipe', 'pipe', 'ignore'],
+		});
+		return result.trim().split('\n')[0] || null;
+	} catch {
+		return null;
+	}
 }
 
 // ─── Bun namespace (shadows the global) ────────────────────
@@ -214,6 +250,7 @@ export const Bun = {
 	write,
 	spawn,
 	serve,
+	which,
 	argv: process.argv,
 } as const;
 
@@ -240,22 +277,49 @@ export class Glob {
 		absolute?: boolean;
 	}): AsyncGenerator<string> {
 		const cwd = opts?.cwd ?? process.cwd();
+		const hasGlobstar = this.rawPattern.includes('**');
 		const lastSlash = this.rawPattern.lastIndexOf('/');
 		const dirPart = lastSlash >= 0 ? this.rawPattern.slice(0, lastSlash) : '';
-		const searchDir = dirPart ? join(cwd, dirPart) : cwd;
+
+		// For '**' patterns, find the stable directory prefix before the first '**'
+		let searchDir: string;
+		if (hasGlobstar) {
+			const prefixBeforeGlobstar =
+				dirPart.split('**')[0]?.replace(/\/$/, '') || '';
+			searchDir = prefixBeforeGlobstar ? join(cwd, prefixBeforeGlobstar) : cwd;
+		} else {
+			searchDir = dirPart ? join(cwd, dirPart) : cwd;
+		}
 
 		let entries: import('node:fs').Dirent[];
 		try {
-			entries = await readdir(searchDir, { withFileTypes: true });
+			entries = await readdir(searchDir, {
+				withFileTypes: true,
+				recursive: hasGlobstar,
+			});
 		} catch {
 			return; // directory doesn't exist
 		}
 
 		for (const entry of entries) {
 			if (!entry.isFile()) continue;
-			const rel = dirPart ? `${dirPart}/${entry.name}` : entry.name;
-			if (this.re.test(rel)) {
-				yield opts?.absolute ? join(cwd, rel) : rel;
+			if (hasGlobstar) {
+				// entry.parentPath (Node 20+) or entry.path (Node 18.17+)
+				const entryDir =
+					(entry as { parentPath?: string }).parentPath ??
+					(entry as { path?: string }).path ??
+					searchDir;
+				const rel = relative(cwd, join(entryDir, entry.name));
+				// Normalize path separators on Windows
+				const normalized = rel.replace(/\\/g, '/');
+				if (this.re.test(normalized)) {
+					yield opts?.absolute ? join(cwd, rel) : normalized;
+				}
+			} else {
+				const rel = dirPart ? `${dirPart}/${entry.name}` : entry.name;
+				if (this.re.test(rel)) {
+					yield opts?.absolute ? join(cwd, rel) : rel;
+				}
 			}
 		}
 	}

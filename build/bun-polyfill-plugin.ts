@@ -13,7 +13,18 @@ import type { BunPlugin } from 'bun';
 
 const POLYFILL_PATH = join(import.meta.dir, 'polyfills.ts');
 
-const BUN_GLOBAL_RE = /\bBun\.(file|write|spawn|argv|serve)\b/;
+type BunLoader = 'ts' | 'tsx' | 'js' | 'jsx';
+const ALLOWED_LOADERS: ReadonlySet<string> = new Set<string>([
+	'ts',
+	'tsx',
+	'js',
+	'jsx',
+]);
+function isBunLoader(ext: string): ext is BunLoader {
+	return ALLOWED_LOADERS.has(ext);
+}
+
+const BUN_GLOBAL_RE = /\bBun\.(file|write|spawn|argv|serve|which)\b/;
 const IMPORT_META_MAIN_RE = /\bimport\.meta\.main\b/;
 
 export function bunPolyfillPlugin(): BunPlugin {
@@ -66,11 +77,7 @@ export function bunPolyfillPlugin(): BunPlugin {
 				}
 
 				const ext = args.path.split('.').pop() ?? 'ts';
-				const loader = (['ts', 'tsx', 'js', 'jsx'] as const).includes(
-					ext as 'ts',
-				)
-					? (ext as 'ts')
-					: 'ts';
+				const loader: BunLoader = isBunLoader(ext) ? ext : 'ts';
 
 				return { contents: transformed, loader };
 			});

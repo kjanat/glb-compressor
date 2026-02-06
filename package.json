@@ -5,17 +5,18 @@
 	"type": "module",
 	"exports": {
 		".": {
+			"types": "./dist/types/lib/mod.d.ts",
 			"bun": "./dist/bun/lib/mod.js",
 			"node": "./dist/node/lib/mod.js",
 			"default": "./dist/node/lib/mod.js"
 		},
 		"./server": {
-			"bun": "./dist/bun/server/main.js",
+			"bun": "./dist/bun-bytecode/server/main.js",
 			"node": "./dist/node/server/main.js",
 			"default": "./dist/node/server/main.js"
 		},
 		"./cli": {
-			"bun": "./dist/bun/cli/main.js",
+			"bun": "./dist/bun-bytecode/cli/main.js",
 			"node": "./dist/node/cli/main.js",
 			"default": "./dist/node/cli/main.js"
 		},
@@ -27,7 +28,9 @@
 	},
 	"files": [
 		"dist/node",
-		"dist/bun"
+		"dist/bun",
+		"dist/bun-bytecode",
+		"dist/types"
 	],
 	"scripts": {
 		"build": "bun build.ts",
