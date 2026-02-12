@@ -1,6 +1,27 @@
 {
 	"name": "glb-compressor",
-	"version": "0.0.2",
+	"version": "0.1.0",
+	"description": "Multi-phase GLB/glTF 3D model compression CLI, HTTP server & library",
+	"keywords": [
+		"glb",
+		"gltf",
+		"3d",
+		"compression",
+		"mesh",
+		"meshopt",
+		"meshoptimizer",
+		"gltfpack",
+		"draco",
+		"webp",
+		"avatar",
+		"skinned",
+		"animation",
+		"texture",
+		"cli",
+		"server",
+		"sse",
+		"gltf-transform"
+	],
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/kjanat/glb-compressor.git"

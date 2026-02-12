@@ -1,5 +1,7 @@
 # glb-compressor
 
+[![npm](https://img.shields.io/npm/v/glb-compressor)](https://www.npmjs.com/package/glb-compressor)
+
 Multi-phase GLB/glTF 3D model compression toolkit built on [Bun].
 
 Strips existing compression, cleans geometry, optimizes animations, compresses
@@ -20,7 +22,20 @@ API**.
 ## Installation
 
 ```sh
-bun install
+# Global install (recommended for CLI & server usage)
+npm i -g glb-compressor
+# or
+bun i -g glb-compressor
+```
+
+This provides two binaries: `glb-compressor` (CLI) and `glb-server` (HTTP server
+with SSE streaming).
+
+```sh
+# As a project dependency (for library usage)
+npm install glb-compressor
+# or
+bun add glb-compressor
 ```
 
 ## Usage
@@ -29,19 +44,19 @@ bun install
 
 ```sh
 # Compress a single file
-bun run cli model.glb
+glb-compressor model.glb
 
 # Compress with a preset
-bun run cli model.glb -p aggressive
+glb-compressor model.glb -p aggressive
 
 # Compress multiple files to an output directory
-bun run cli *.glb -o ./compressed/ -p balanced
+glb-compressor *.glb -o ./compressed/ -p balanced
 
 # Additional mesh simplification (50%)
-bun run cli model.glb -s 0.5
+glb-compressor model.glb -s 0.5
 
 # Quiet mode
-bun run cli model.glb -q -p max -f
+glb-compressor model.glb -q -p max -f
 ```
 
 **Options:**
@@ -58,15 +73,14 @@ bun run cli model.glb -q -p max -f
 
 ### Server
 
+The `glb-server` binary starts an HTTP server that accepts GLB uploads and
+returns compressed files — useful for integrating compression into web
+pipelines, CI/CD, or editor plugins without shelling out to the CLI.
+
 ```sh
-# Development (hot-reload)
-bun run dev
-
-# Production
-bun run start
-
-# Custom port
-PORT=3000 bun run start
+glb-server                  # default port 8080
+PORT=3000 glb-server        # custom port
+bun run dev                 # from source with hot-reload
 ```
 
 **Endpoints:**
@@ -153,21 +167,17 @@ Strip existing compression (Draco/Meshopt)
   |
   v
 Phase 1 - Cleanup: dedup, prune, removeUnusedUVs
-          [static only: flatten, join, weld]
-  |
+  |       [static only: flatten, join, weld]
   v
 Phase 2 - Geometry (static only):
-          mergeByDistance, removeDegenerateFaces, decimateBloatedMeshes
-  |
+  |       mergeByDistance, removeDegenerateFaces, decimateBloatedMeshes
   v
 Phase 3 - GPU optimizations:
-          instance detection, vertex reorder (static only), sparse encoding
-  |
+  |       instance detection, vertex reorder (static only), sparse encoding
   v
 Phase 4 - Animation + Weights:
-          resample keyframes, remove static tracks (global consensus),
-          normalize bone weights (skinned only)
-  |
+  |       resample keyframes, remove static tracks (global consensus),
+  |       normalize bone weights (skinned only)
   v
 Phase 5 - Textures: compress to WebP (max 1024x1024)
   |
@@ -217,8 +227,11 @@ Built on the shoulders of:
 
 ## License
 
-MIT
+[MIT]
 
+<!--link-definitions-->
+
+[MIT]: https://github.com/kjanat/glb-compressor/blob/master/LICENSE
 [sharp]: https://sharp.pixelplumbing.com
 [draco3dgltf]: https://github.com/google/draco#readme
 [meshoptimizer]: https://github.com/zeux/meshoptimizer
