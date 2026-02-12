@@ -12,6 +12,9 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: ${{ steps.publish.outputs.npm_url }}
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2

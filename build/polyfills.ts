@@ -25,6 +25,7 @@ const execFile = promisify(nodeExecFile);
 interface BunFile {
 	exists(): Promise<boolean>;
 	arrayBuffer(): Promise<ArrayBuffer>;
+	bytes(): Promise<Uint8Array>;
 	text(): Promise<string>;
 }
 
@@ -44,6 +45,10 @@ function file(path: string): BunFile {
 				buf.byteOffset,
 				buf.byteOffset + buf.byteLength,
 			) as ArrayBuffer;
+		},
+		async bytes() {
+			const buf = await readFile(path);
+			return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 		},
 		async text() {
 			return readFile(path, 'utf-8');

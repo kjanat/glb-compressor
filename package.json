@@ -32,8 +32,8 @@
 		"glb-server": "./dist/node/server/main.js"
 	},
 	"files": [
-		"dist/node",
-		"dist/bun",
+		"dist/node/**/*.*js",
+		"dist/bun/**/*.*js",
 		"dist/bun-bytecode",
 		"dist/types"
 	],
