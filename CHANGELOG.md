@@ -8,12 +8,14 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [1.0.2]
+
 ### Added
 
 - Skills validated against source code — all types, exports, flags, endpoints
   confirmed accurate.
-- User-facing skill installation docs in README and AGENTS.md (`npx skills add`
-  - manual paths for Claude Code, Cursor, OpenCode).
+- User-facing skill installation docs in README and AGENTS.md
+  (`npx skills add`  - manual paths for Claude Code, Cursor, OpenCode).
 - Skills section in `.rules` (AGENTS.md/CLAUDE.md) with directory structure,
   conventions, and "when to update" guide.
 - Skills relocated from `.agents/skills/` to `skills/` (standard discovery
@@ -91,7 +93,8 @@ and this project adheres to
 - README with usage docs, preset benchmarks, and pipeline diagram.
 - GitHub Actions: autofix CI, Claude PR assistant, npm publish on release.
 
-[Unreleased]: https://github.com/kjanat/glb-compressor/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/kjanat/glb-compressor/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/kjanat/glb-compressor/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/kjanat/glb-compressor/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/kjanat/glb-compressor/compare/v0.0.2...v1.0.0
 [0.0.2]: https://github.com/kjanat/glb-compressor/compare/v0.0.1...v0.0.2
