@@ -1,0 +1,25 @@
+# Progress Log
+
+PRD: ci-npm-publish
+Started: 2026-02-12
+
+## Codebase Patterns
+
+- Workflows use `yaml-language-server` schema comment at top
+- `actions/checkout@v6`, `oven-sh/setup-bun@v2` are standard
+- Package uses `bun build.ts` for multi-target build (node/bun/bun-bytecode)
+- `"type": "module"` ESM package with `exports` map
+- Existing CI: autofix.yml (lint/fmt), claude.yml (AI assistant)
+
+---
+
+<!-- Task logs below - APPEND ONLY -->
+
+## Task - publish-workflow
+
+- Created `.github/workflows/publish.yml` triggered on `release: [published]`
+- Steps: checkout, setup-bun, setup-node (for registry auth), install, build, stamp version from git tag, npm publish with provenance
+- Uses `npm publish --provenance --access public` (bun publish lacks --provenance support)
+- `id-token: write` permission for OIDC provenance signing
+- `npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version` stamps the release tag version into package.json before publish
+- **Learnings:** bun publish doesn't support `--provenance` flag yet (oven-sh/bun#15601); use npm for the publish step while building with bun

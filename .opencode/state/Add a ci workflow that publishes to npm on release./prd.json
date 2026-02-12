@@ -1,0 +1,12 @@
+{
+	"prdName": "ci-npm-publish",
+	"description": "Add a CI workflow that publishes to npm on release.",
+	"tasks": [
+		{
+			"id": "publish-workflow",
+			"description": "Create GitHub Actions workflow that builds and publishes to npm when a GitHub release is created",
+			"priority": 1,
+			"passes": true
+		}
+	]
+}
