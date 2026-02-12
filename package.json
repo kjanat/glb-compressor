@@ -13,13 +13,13 @@
 		},
 		"./server": {
 			"types": "./dist/types/server/main.d.ts",
-			"bun": "./dist/bun-bytecode/server/main.js",
+			"bun": "./dist/bun-bytecode/server/main.cjs",
 			"node": "./dist/node/server/main.js",
 			"default": "./dist/node/server/main.js"
 		},
 		"./cli": {
 			"types": "./dist/types/cli/main.d.ts",
-			"bun": "./dist/bun-bytecode/cli/main.js",
+			"bun": "./dist/bun-bytecode/cli/main.cjs",
 			"node": "./dist/node/cli/main.js",
 			"default": "./dist/node/cli/main.js"
 		},

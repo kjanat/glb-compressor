@@ -90,7 +90,7 @@ async function build() {
 		minify: true,
 		external,
 		naming: {
-			entry: '[dir]/[name].js',
+			entry: '[dir]/[name].cjs',
 		},
 	});
 
