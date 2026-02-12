@@ -24,8 +24,9 @@ jobs:
       - run: bun build.ts
       - id: version
         run: |
-          echo "version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
-          echo "npm_url=https://www.npmjs.com/package/glb-compressor/v/${version}" >> $GITHUB_OUTPUT
+          VERSION=$(jq -r .version package.json)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "npm_url=https://www.npmjs.com/package/glb-compressor/v/${VERSION}" >> $GITHUB_OUTPUT
 
       # Stamp release version from the git tag into package.json
       - name: Set package version from tag
