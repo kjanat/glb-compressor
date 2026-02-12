@@ -64,8 +64,7 @@ function file(path: string): BunFile {
 			) as ArrayBuffer;
 		},
 		async bytes() {
-			const buf = await readFile(path);
-			return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+			return Uint8Array.from(await readFile(path));
 		},
 		async text() {
 			return readFile(path, 'utf-8');
