@@ -104,7 +104,7 @@ async function build() {
 	// ── 4. TypeScript declarations ───────────────────────────
 	console.log('Generating TypeScript declarations...');
 	// tsgo is provided by @typescript/native-preview in devDependencies
-	const tscProc = Bun.spawn(['tsgo', '-p', 'tsconfig.build.json'], {
+	const tscProc = Bun.spawn(['bun', 'run', 'tsgo', '-p', 'tsconfig.build.json'], {
 		stdout: 'pipe',
 		stderr: 'pipe',
 	});
