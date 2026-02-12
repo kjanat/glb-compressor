@@ -37,7 +37,8 @@ export function sanitizeFilename(name: string): string {
 	const clean = base
 		// biome-ignore lint/suspicious/noControlCharactersInRegex: security
 		.replace(/[<>:"|?*\x00-\x1f]/g, '_')
-		.replace(/^[.\s]+|[.\s]+$/g, '')
+		.replace(/^[\s.]+/, '')
+		.replace(/[\s.]+$/, '')
 		.slice(0, 200);
 	return clean || 'model.glb';
 }
