@@ -8,6 +8,19 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-02-12
+
+### Added
+
+- Agent skills for CLI, HTTP server, and library API usage
+  (`.agents/skills/glb-compressor-{cli,server,library}/`).
+- CHANGELOG.md and `.agents/` included in published npm tarball.
+
+### Fixed
+
+- `dist/bun-bytecode` files glob narrowed to `*.{cjs,cjs.jsc}` to exclude
+  extraneous files from tarball.
+
 ## [1.0.0] - 2026-02-12
 
 ### Added
@@ -67,7 +80,8 @@ and this project adheres to
 - README with usage docs, preset benchmarks, and pipeline diagram.
 - GitHub Actions: autofix CI, Claude PR assistant, npm publish on release.
 
-[Unreleased]: https://github.com/kjanat/glb-compressor/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/kjanat/glb-compressor/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/kjanat/glb-compressor/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/kjanat/glb-compressor/compare/v0.0.2...v1.0.0
 [0.0.2]: https://github.com/kjanat/glb-compressor/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/kjanat/glb-compressor/compare/v0.0.0...v0.0.1

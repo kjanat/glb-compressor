@@ -58,8 +58,10 @@
 	"files": [
 		"dist/node/**/*.*js",
 		"dist/bun/**/*.*js",
-		"dist/bun-bytecode",
-		"dist/types"
+		"dist/bun-bytecode/**/*.{cjs,cjs.jsc}",
+		"dist/types",
+		"CHANGELOG.md",
+		".agents"
 	],
 	"scripts": {
 		"build": "bun build.ts",
