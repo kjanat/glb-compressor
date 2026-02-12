@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-02-12
+
 ### Added
 
 - LICENSE file (MIT).
@@ -65,7 +67,8 @@ and this project adheres to
 - README with usage docs, preset benchmarks, and pipeline diagram.
 - GitHub Actions: autofix CI, Claude PR assistant, npm publish on release.
 
-[Unreleased]: https://github.com/kjanat/glb-compressor/compare/v0.0.2...HEAD
+[Unreleased]: https://github.com/kjanat/glb-compressor/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/kjanat/glb-compressor/compare/v0.0.2...v1.0.0
 [0.0.2]: https://github.com/kjanat/glb-compressor/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/kjanat/glb-compressor/compare/v0.0.0...v0.0.1
 [0.0.0]: https://github.com/kjanat/glb-compressor/releases/tag/v0.0.0

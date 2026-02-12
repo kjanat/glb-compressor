@@ -1,6 +1,6 @@
 {
 	"name": "glb-compressor",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"description": "Multi-phase GLB/glTF 3D model compression CLI, HTTP server & library",
 	"keywords": [
 		"glb",
