@@ -1,116 +1,102 @@
-# Agent/claude rules
+# glb-compressor
 
-The file you are reading right now is a symlink to [`.rules`](./rules) in the
-root of the project.\
-This file contains rules for using Bun instead of Node.js and other tools.
+Multi-phase GLB/glTF 3D model compression toolkit. CLI (`glb-compressor`), HTTP
+server (`glb-server`), and library API.
 
-Default to using Bun instead of Node.js.
+AGENTS.md and CLAUDE.md are symlinks to this file (`.rules`).
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or
-  `pnpm run <script>`
-- Use `bunx <package> <command>` instead of `npx <package> <command>`
-- Bun automatically loads .env, so don't use dotenv.
+## Structure
 
-## APIs
-
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
-
-## Testing
-
-Use `bun test` to run tests.
-
-```ts #index.test.ts
-import { expect, test } from 'bun:test';
-
-test('hello world', () => {
-	expect(1).toBe(1);
-});
+```text
+lib/            Core library (public API barrel: mod.ts)
+  compress.ts   5-phase compression pipeline orchestrator
+  transforms.ts Custom glTF-Transform transforms (geometry, animation, weights)
+  constants.ts  Shared constants and error codes
+  utils.ts      Utility functions
+cli/main.ts     CLI entry point (bin: glb-compressor)
+server/main.ts  HTTP server entry point (bin: glb-server)
+build/          Build infra (NOT output) — Bun polyfill plugin + Node.js shims
+build.ts        3-target build script (Node ESM, Bun ESM, Bun bytecode)
+bench.ts        Compression benchmark runner (dev-only)
 ```
 
-## Frontend
+## Where to look
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully
-support React, CSS, Tailwind.
+| Task                   | Location                      |
+| ---------------------- | ----------------------------- |
+| Add/change compression | `lib/compress.ts`             |
+| Add glTF transform     | `lib/transforms.ts`           |
+| Change presets         | `lib/compress.ts` → `PRESETS` |
+| Add CLI flag           | `cli/main.ts`                 |
+| Add server endpoint    | `server/main.ts`              |
+| Fix Node.js compat     | `build/polyfills.ts`          |
+| Change build targets   | `build.ts`                    |
+| Public API surface     | `lib/mod.ts` (barrel)         |
 
-Server:
+## Architecture
 
-```ts #index.ts
-import index from './index.html';
+- **Dual-runtime**: written against Bun APIs, compiled to Node.js via polyfill
+  layer. `package.json` exports use conditional `"bun"` vs `"node"` fields.
+- **Skinned-model-aware**: pipeline detects skinned meshes and skips transforms
+  that break skeleton hierarchies (flatten, join, weld, mergeByDistance,
+  reorder, quantize).
+- **gltfpack-first**: prefers external `gltfpack` binary; falls back to meshopt
+  WASM if unavailable.
+- **WASM pre-warm**: Draco + Meshopt WASM initialized eagerly at module load.
+- Path aliases: `$lib/*`, `$cli/*`, `$server/*`, `$models`, `pkg`
+  (package.json).
 
-Bun.serve({
-	routes: {
-		'/': index,
-		'/api/users/:id': {
-			GET: (req) => {
-				return new Response(JSON.stringify({ id: req.params.id }));
-			},
-		},
-	},
-	// optional websocket support
-	websocket: {
-		open: (ws) => {
-			ws.send('Hello, world!');
-		},
-		message: (ws, message) => {
-			ws.send(message);
-		},
-		close: (ws) => {
-			// handle close
-		},
-	},
-	development: {
-		hmr: true,
-		console: true,
-	},
-});
-```
+## Conventions
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will
-transpile & bundle automatically. `<link>` tags can point to stylesheets and
-Bun's CSS bundler will bundle.
+- **Bun-first** — always prefer Bun APIs over Node.js equivalents.
+- **Tabs**, single quotes, 80-char line width.
+- **Strict TypeScript** — `strict: true`, `noUncheckedIndexedAccess`,
+  `verbatimModuleSyntax` (use `import type` for type-only imports).
+- **Biome** for linting, **dprint** for formatting (`bun run fmt`).
+- **Type checker**: `tsgo` (`bun run typecheck`), not `tsc`.
+- Import organization automated by Biome except in barrel/entry files (`mod.ts`,
+  `index.ts`, `main.ts`).
+- Exact dependency versions (`bunfig.toml`: `install.exact = true`).
 
-```html #index.html
-<html>
-	<body>
-		<h1>Hello, world!</h1>
-		<script type="module" src="./frontend.tsx"></script>
-	</body>
-</html>
-```
+## Anti-patterns
 
-With the following `frontend.tsx`:
+- Don't use npm/yarn/pnpm — use `bun`.
+- Don't use express — use `Bun.serve()`.
+- Don't use dotenv — Bun auto-loads `.env`.
+- Don't use `node:fs` readFile/writeFile — use `Bun.file` / `Bun.write`.
+- Don't use execa — use `Bun.$`.
+- No `any`, no `!` non-null assertions, no `as Type` casts.
+- Don't flatten/join/weld/quantize skinned models.
 
-```tsx #frontend.tsx
-import React from 'react';
-import { createRoot } from 'react-dom/client';
-
-// import .css files directly and it works
-import './index.css';
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-	return <h1>Hello, world!</h1>;
-}
-
-root.render(<Frontend />);
-```
-
-Then, run index.ts
+## Commands
 
 ```sh
-bun --hot ./index.ts
+bun run dev         # Hot-reload server
+bun run cli         # Run CLI from source
+bun run check       # Biome lint + format check
+bun run lint        # Biome lint only
+bun run fmt         # dprint format
+bun run typecheck   # tsgo type check
+bun build.ts        # Multi-target build
+bun test            # Run tests (bun:test)
 ```
 
-For more information, read the Bun API docs in
-`node_modules/bun-types/docs/**.mdx`.
+## Build targets
+
+| Target       | Output               | Format       | Notes                    |
+| ------------ | -------------------- | ------------ | ------------------------ |
+| Node.js      | `dist/node/`         | ESM          | Polyfilled, not minified |
+| Bun          | `dist/bun/`          | ESM          | Minified                 |
+| Bun bytecode | `dist/bun-bytecode/` | CJS + `.jsc` | Minified, no sourcemaps  |
+| Types        | `dist/types/`        | `.d.ts`      | Via tsgo                 |
+
+Externals (never bundled): `sharp`, `draco3dgltf`, `meshoptimizer`.
+
+## Notes
+
+- `server/main.ts` guards startup with `import.meta.main` — safe to import as
+  library.
+- Dockerfile builds gltfpack from source with BasisU support; CMD references
+  `./dist/index.js` but build produces `./dist/main.cjs` — potential mismatch.
+- No tests exist yet. Intended framework: `bun:test`.
+- `models/` dir (gitignored) contains `.glb` fixtures for benchmarking.

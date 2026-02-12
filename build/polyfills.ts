@@ -25,9 +25,27 @@ const execFile = promisify(nodeExecFile);
 interface BunFile {
 	exists(): Promise<boolean>;
 	arrayBuffer(): Promise<ArrayBuffer>;
+	bytes(): Promise<Uint8Array>;
 	text(): Promise<string>;
 }
 
+/**
+ * Create a BunFile-like wrapper for the file at the given path.
+ *
+ * The returned object provides convenience methods to check existence and read
+ * the file in different formats.
+ *
+ * - exists(): Checks whether the file is accessible.
+ * - arrayBuffer(): Returns the file contents as an ArrayBuffer slice matching the buffer view.
+ * - bytes(): Returns the file contents as a Uint8Array view.
+ * - text(): Returns the file contents decoded as a UTF-8 string.
+ *
+ * @returns A BunFile object with:
+ * - `exists()`: `true` if the path is accessible, `false` otherwise.
+ * - `arrayBuffer()`: An ArrayBuffer containing the file bytes.
+ * - `bytes()`: A Uint8Array view over the file bytes.
+ * - `text()`: The file contents as a UTF-8 string.
+ */
 function file(path: string): BunFile {
 	return {
 		async exists() {
@@ -44,6 +62,9 @@ function file(path: string): BunFile {
 				buf.byteOffset,
 				buf.byteOffset + buf.byteLength,
 			) as ArrayBuffer;
+		},
+		async bytes() {
+			return Uint8Array.from(await readFile(path));
 		},
 		async text() {
 			return readFile(path, 'utf-8');

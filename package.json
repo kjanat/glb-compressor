@@ -1,7 +1,31 @@
 {
 	"name": "glb-compressor",
-	"version": "0.0.0",
-	"repository": "github:kjanat/glb-compressor",
+	"version": "1.0.0",
+	"description": "Multi-phase GLB/glTF 3D model compression CLI, HTTP server & library",
+	"keywords": [
+		"glb",
+		"gltf",
+		"3d",
+		"compression",
+		"mesh",
+		"meshopt",
+		"meshoptimizer",
+		"gltfpack",
+		"draco",
+		"webp",
+		"avatar",
+		"skinned",
+		"animation",
+		"texture",
+		"cli",
+		"server",
+		"sse",
+		"gltf-transform"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kjanat/glb-compressor.git"
+	},
 	"license": "MIT",
 	"type": "module",
 	"exports": {
@@ -28,12 +52,12 @@
 	"main": "./dist/node/lib/mod.js",
 	"types": "./dist/types/lib/mod.d.ts",
 	"bin": {
-		"glb-compress": "./dist/node/cli/main.js",
-		"glb-server": "./dist/node/server/main.js"
+		"glb-compressor": "dist/node/cli/main.js",
+		"glb-server": "dist/node/server/main.js"
 	},
 	"files": [
-		"dist/node",
-		"dist/bun",
+		"dist/node/**/*.*js",
+		"dist/bun/**/*.*js",
 		"dist/bun-bytecode",
 		"dist/types"
 	],
@@ -67,5 +91,6 @@
 	"engines": {
 		"bun": ">=1.3",
 		"node": ">=18.17.0"
-	}
+	},
+	"readme": "README.md"
 }
