@@ -20,10 +20,17 @@ jobs:
          (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude'))
         )))
     runs-on: ubuntu-latest
-    permissions: { contents: write, pull-requests: write, issues: write, id-token: write, actions: read }
+    permissions:
+      {
+        contents: write,
+        pull-requests: write,
+        issues: write,
+        id-token: write,
+        actions: read,
+      }
     steps:
       - { uses: actions/checkout@v6, with: { fetch-depth: 0 } }
-      - { uses: actions/setup-node@6, with: { node-version: latest } }
+      - { uses: actions/setup-node@v6, with: { node-version: latest } }
       - uses: oven-sh/setup-bun@v2
       - run: bun install
       - name: "@claude"
@@ -42,7 +49,6 @@ jobs:
           exclude_comments_by_actor: "*[bot]"
           allowed_bots: "coderabbitai[bot],dependabot[bot],renovate[bot]"
           claude_args: |
-            --max-turns 25
             --model claude-opus-4-6
 
   claude-bot-review:
@@ -53,10 +59,17 @@ jobs:
         github.actor == 'renovate[bot]'
       )
     runs-on: ubuntu-latest
-    permissions: { contents: write, pull-requests: write, issues: write, id-token: write, actions: read }
+    permissions:
+      {
+        contents: write,
+        pull-requests: write,
+        issues: write,
+        id-token: write,
+        actions: read,
+      }
     steps:
       - { uses: actions/checkout@v6, with: { fetch-depth: 0 } }
-      - { uses: actions/setup-node@6, with: { node-version: latest } }
+      - { uses: actions/setup-node@v6, with: { node-version: latest } }
       - uses: oven-sh/setup-bun@v2
       - run: bun install
       - name: Review bot PR
@@ -85,5 +98,4 @@ jobs:
             7. Apply a label using `gh pr edit ${{ github.event.pull_request.number }} --add-label "claude: approved"`
                or `--add-label "claude: needs-attention"` if you couldn't fix it
           claude_args: |
-            --max-turns 15
             --model claude-opus-4-6

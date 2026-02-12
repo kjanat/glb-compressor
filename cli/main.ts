@@ -1,4 +1,21 @@
 #!/usr/bin/env bun
+/**
+ * CLI entry point for `glb-compress`.
+ *
+ * Compresses one or more GLB files using the core library pipeline.
+ * Supports glob patterns, configurable presets, optional mesh simplification,
+ * quiet mode for scripting, and custom output directories.
+ *
+ * @example
+ * ```sh
+ * glb-compress model.glb -p aggressive -o ./out/
+ * glb-compress *.glb -s 0.5 -f -q
+ * ```
+ *
+ * @module cli
+ */
+
+import { mkdir } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { Glob } from 'bun';
@@ -15,19 +32,33 @@ import {
 
 const VALID_PRESETS = Object.keys(PRESETS) as CompressPreset[];
 
-// ANSI colors
-const c = {
-	reset: '\x1b[0m',
-	bold: '\x1b[1m',
-	dim: '\x1b[2m',
-	red: '\x1b[31m',
-	green: '\x1b[32m',
-	yellow: '\x1b[33m',
-	blue: '\x1b[34m',
-	magenta: '\x1b[35m',
-	cyan: '\x1b[36m',
-};
+/** ANSI escape codes for colored terminal output (disabled when not a TTY). */
+const useColor = process.stdout.isTTY ?? false;
+const c = useColor
+	? {
+			reset: '\x1b[0m',
+			bold: '\x1b[1m',
+			dim: '\x1b[2m',
+			red: '\x1b[31m',
+			green: '\x1b[32m',
+			yellow: '\x1b[33m',
+			blue: '\x1b[34m',
+			magenta: '\x1b[35m',
+			cyan: '\x1b[36m',
+		}
+	: {
+			reset: '',
+			bold: '',
+			dim: '',
+			red: '',
+			green: '',
+			yellow: '',
+			blue: '',
+			magenta: '',
+			cyan: '',
+		};
 
+/** Print the full help text with usage, options, presets, and examples. */
 function printHelp() {
 	console.log(`
 ${c.bold}${c.cyan}glb-compress${c.reset} - Compress GLB/glTF files
@@ -69,14 +100,31 @@ ${c.bold}EXAMPLES${c.reset}
 `);
 }
 
+/** Parsed and validated CLI options passed to each file compression. */
 interface Options {
+	/** Output directory path, or `undefined` for same-directory output. */
 	output?: string;
+	/** Mesh simplification ratio in `(0, 1)`, or `undefined` to skip. */
 	simplify?: number;
+	/** Named compression preset. */
 	preset: CompressPreset;
+	/** Suppress all progress output. */
 	quiet: boolean;
+	/** Overwrite existing output files without prompting. */
 	force: boolean;
 }
 
+/**
+ * Compress a single GLB file and write the result to disk.
+ *
+ * Resolves the output path (same dir or `--output` dir), validates the input,
+ * runs the compression pipeline, and writes the compressed GLB. Prints progress
+ * and results to stdout unless `quiet` is set.
+ *
+ * @param inputPath - Absolute path to the input `.glb` file.
+ * @param options   - Parsed CLI options.
+ * @returns `{ success: true }` or `{ success: false, error: string }`.
+ */
 async function compressFile(
 	inputPath: string,
 	options: Options,
@@ -94,6 +142,14 @@ async function compressFile(
 		outputPath = inputPath.replace(/\.(glb|gltf)$/i, '-compressed.glb');
 	}
 
+	// Guard against overwriting the input when the extension doesn't match .glb/.gltf
+	if (resolve(outputPath) === resolve(inputPath)) {
+		return {
+			success: false,
+			error: `Output path is the same as input (non-standard extension?): ${inputPath}`,
+		};
+	}
+
 	// Check if output exists
 	if (!force && (await Bun.file(outputPath).exists())) {
 		return {
@@ -108,7 +164,7 @@ async function compressFile(
 		return { success: false, error: `File not found: ${inputPath}` };
 	}
 
-	const input = new Uint8Array(await inputFile.arrayBuffer());
+	const input = await inputFile.bytes();
 
 	// Validate GLB
 	try {
@@ -135,19 +191,14 @@ async function compressFile(
 			quiet,
 		});
 
-		// Ensure output directory exists
-		if (output) {
-			await Bun.write(join(output, '.keep'), ''); // Create dir
-		}
-
-		// Write output
+		// Write output (output directory already created by main())
 		await Bun.write(outputPath, result.buffer);
 
 		const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
-		const ratio = (
-			(1 - result.buffer.byteLength / input.byteLength) *
-			100
-		).toFixed(1);
+		const ratio =
+			input.byteLength > 0
+				? ((1 - result.buffer.byteLength / input.byteLength) * 100).toFixed(1)
+				: '0.0';
 
 		if (!quiet) {
 			console.log(
@@ -170,6 +221,13 @@ async function compressFile(
 	}
 }
 
+/**
+ * CLI entry point — parses arguments, expands globs, and compresses each file sequentially.
+ *
+ * Exit codes:
+ * - `0` — all files compressed successfully.
+ * - `1` — one or more files failed, or invalid arguments.
+ */
 async function main() {
 	const { values, positionals } = parseArgs({
 		args: Bun.argv.slice(2),
@@ -201,14 +259,15 @@ async function main() {
 		process.exit(1);
 	}
 
-	// Parse preset
-	const preset: CompressPreset = (values.preset as CompressPreset) ?? 'default';
-	if (!VALID_PRESETS.includes(preset)) {
+	// Parse preset — validate before casting
+	const rawPreset = values.preset ?? 'default';
+	if (!VALID_PRESETS.includes(rawPreset as CompressPreset)) {
 		console.error(
 			`${c.red}Error:${c.reset} Invalid preset: "${values.preset}" (must be one of: ${VALID_PRESETS.join(', ')})`,
 		);
 		process.exit(1);
 	}
+	const preset = rawPreset as CompressPreset;
 
 	// Parse simplify ratio
 	const simplify = values.simplify
@@ -224,7 +283,7 @@ async function main() {
 	// Expand globs
 	const files: string[] = [];
 	for (const pattern of positionals) {
-		if (pattern.includes('*')) {
+		if (/[*?[\]{!]/.test(pattern)) {
 			const glob = new Glob(pattern);
 			for await (const file of glob.scan({
 				cwd: process.cwd(),
@@ -244,15 +303,15 @@ async function main() {
 
 	// Create output directory if specified
 	if (values.output) {
-		await Bun.write(join(values.output, '.keep'), '');
+		await mkdir(values.output, { recursive: true });
 	}
 
 	const options: Options = {
 		output: values.output,
 		simplify,
 		preset,
-		quiet: values.quiet ?? false,
-		force: values.force ?? false,
+		quiet: values.quiet,
+		force: values.force,
 	};
 
 	if (!options.quiet) {

@@ -1,3 +1,23 @@
+/**
+ * Core compression pipeline — the main entry point for GLB optimization.
+ *
+ * Orchestrates a multi-phase pipeline of glTF-Transform transforms followed by
+ * a final binary compression pass via `gltfpack` (preferred) or meshoptimizer
+ * WASM (fallback). Automatically detects skinned models and takes a conservative
+ * transform path to protect skeleton hierarchies.
+ *
+ * @example
+ * ```ts
+ * import { compress, init } from './compress';
+ *
+ * await init();
+ * const result = await compress(glbBytes, { preset: 'aggressive' });
+ * await Bun.write('out.glb', result.buffer);
+ * ```
+ *
+ * @module compress
+ */
+
 import { join } from 'node:path';
 import { type Document, NodeIO, type Transform } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -59,27 +79,27 @@ interface GltfpackPresetConfig {
  */
 export const PRESETS: Record<CompressPreset, GltfpackPresetConfig> = {
 	default: {
-		// biome-ignore format: just because
+		// biome-ignore format: align cli flags with the values
 		skinned: [
 			'-vp', '20',
 			'-kn'
 		],
-		// biome-ignore format: just because
+		// biome-ignore format: align cli flags with the values
 		static: [
 			'-vp', '16'
 		],
 	},
 	balanced: {
-		// biome-ignore format: just because
+		// biome-ignore format: align cli flags with the values
 		skinned: [
-			"-vp", "20",
-			"-kn",
-			"-at", "14",
-			"-ar", "10",
-			"-as", "14",
-			"-af", "24",
+			'-vp', '20',
+			'-kn',
+			'-at', '14',
+			'-ar', '10',
+			'-as', '14',
+			'-af', '24',
 		],
-		// biome-ignore format: just because
+		// biome-ignore format: align cli flags with the values
 		static: [
 			'-vp', '16',
 			'-at', '14',
@@ -89,7 +109,7 @@ export const PRESETS: Record<CompressPreset, GltfpackPresetConfig> = {
 		],
 	},
 	aggressive: {
-		// biome-ignore format: just because
+		// biome-ignore format: align cli flags with the values
 		skinned: [
 			'-vp', '20',
 			'-kn',
@@ -98,7 +118,7 @@ export const PRESETS: Record<CompressPreset, GltfpackPresetConfig> = {
 			'-as', '12',
 			'-af', '15',
 		],
-		// biome-ignore format: just because
+		// biome-ignore format: align cli flags with the values
 		static: [
 			'-vp', '14',
 			'-at', '12',
@@ -108,7 +128,7 @@ export const PRESETS: Record<CompressPreset, GltfpackPresetConfig> = {
 		],
 	},
 	max: {
-		// biome-ignore format: just because
+		// biome-ignore format: align cli flags with the values
 		skinned: [
 			'-cz',
 			'-vp', '14',
@@ -119,7 +139,7 @@ export const PRESETS: Record<CompressPreset, GltfpackPresetConfig> = {
 			'-si', '0.95',
 			'-slb',
 		],
-		// biome-ignore format: just because
+		// biome-ignore format: align cli flags with the values
 		static: [
 			'-cz',
 			'-vp', '14',
@@ -133,34 +153,72 @@ export const PRESETS: Record<CompressPreset, GltfpackPresetConfig> = {
 	},
 };
 
+/**
+ * Options for the {@link compress} function.
+ */
 export interface CompressOptions {
+	/**
+	 * Additional mesh simplification ratio applied after all other transforms.
+	 * Must be in `(0, 1)` — e.g. `0.5` keeps ~50% of vertices. Omit to skip.
+	 */
 	simplifyRatio?: number;
+
+	/**
+	 * Callback invoked with progress log messages during compression.
+	 * Used by the SSE streaming endpoint to forward real-time updates.
+	 */
 	onLog?: (msg: string) => void;
-	/** Skip console.log output (for quiet mode) */
+
+	/** Suppress all `console.log` output (for quiet/script mode). */
 	quiet?: boolean;
-	/** Compression preset (default: "default") */
+
+	/**
+	 * Named compression preset controlling gltfpack flags.
+	 * @default "default"
+	 */
 	preset?: CompressPreset;
 }
 
+/**
+ * Result returned by {@link compress}.
+ */
 export interface CompressResult {
+	/** The compressed GLB binary. */
 	buffer: Uint8Array;
+
+	/** Compression backend used: `"gltfpack"` or `"meshopt"`. */
 	method: string;
+
+	/** Original input size in bytes (set by {@link compress}, not the backend). */
 	originalSize?: number;
 }
 
 let io: NodeIO;
 let hasGltfpack: boolean = false;
 
-// Pre-warm init on module load (eliminates cold start latency)
+// Pre-warm init on module load (eliminates cold start latency).
+// The rejection propagates to callers of init()/compress() so CLI/server
+// entry points can decide how to handle it — library consumers aren't killed.
 const initPromise: Promise<void> = doInit().catch((err) => {
 	console.error('Init failed:', err);
-	process.exit(1);
+	throw err;
 });
 
+/**
+ * Ensure all WASM modules (Draco, Meshopt) and the I/O layer are initialized.
+ *
+ * This is called automatically by {@link compress}, but can be called ahead of
+ * time to eliminate cold-start latency (e.g. at server boot). The returned
+ * promise is shared — multiple calls are safe and free.
+ */
 export async function init(): Promise<void> {
 	return initPromise;
 }
 
+/**
+ * Internal initialization — pre-warms Meshopt WASM, Draco WASM, configures
+ * the glTF-Transform I/O with all extensions, and probes for the `gltfpack` binary.
+ */
 async function doInit(): Promise<void> {
 	await Promise.all([
 		MeshoptDecoder.ready,
@@ -183,23 +241,66 @@ async function doInit(): Promise<void> {
 	console.log('Initialized glTF-Transform with Draco + Meshopt');
 
 	try {
-		const version: string = (await $`gltfpack -v`.text()).trim();
-		hasGltfpack = true;
-		console.log('gltfpack:', version);
-	} catch {
-		console.warn('gltfpack not found, will use meshopt fallback');
+		// Bun.which is native on Bun, polyfilled via build/polyfills.ts for Node
+		const gltfpackBin =
+			typeof Bun?.which === 'function' ? Bun.which('gltfpack') : null;
+		if (!gltfpackBin) {
+			console.warn('gltfpack not found in PATH, will use meshopt fallback');
+		} else {
+			const version =
+				(await $`gltfpack -v`.text()).trim().split(/\s/, 2)[1] || 'unknown';
+			if (version === 'unknown')
+				console.warn('Could not determine gltfpack version');
+			else console.log('gltfpack:', version);
+			hasGltfpack = true;
+		}
+	} catch (err) {
+		console.warn(
+			'gltfpack detection failed:',
+			err instanceof Error ? err.message : err,
+		);
+		console.warn('Will use meshopt fallback');
 	}
 }
 
-function stripCompressionExtensions(document: Document): void {
+/**
+ * Remove Draco and Meshopt compression extension markers from the document.
+ *
+ * By this point the I/O layer has already decoded the compressed data — these
+ * extensions are metadata-only. Stripping them avoids conflicts when
+ * re-compressing with a different backend.
+ */
+function stripCompressionExtensions(
+	document: Document,
+	log: (msg: string) => void,
+): void {
 	for (const ext of document.getRoot().listExtensionsUsed()) {
 		if (COMPRESSION_EXTENSIONS.includes(ext.extensionName)) {
-			console.log(`  Removing extension: ${ext.extensionName}`);
+			log(`  Removing extension: ${ext.extensionName}`);
 			ext.dispose();
 		}
 	}
 }
 
+/**
+ * Compress a GLB binary through the full multi-phase optimization pipeline.
+ *
+ * **Pipeline phases:**
+ * 1. Cleanup — dedup, prune, remove unused UVs (+ flatten/join/weld for static models)
+ * 2. Geometry — merge by distance, remove degenerate faces, auto-decimate (static only)
+ * 3. GPU — instancing, vertex reorder (static only), sparse encoding
+ * 4. Animation — resample keyframes, remove static tracks, normalize weights (skinned only)
+ * 5. Textures — compress to WebP via sharp (max 1024x1024)
+ * 6. Final — gltfpack subprocess (preferred) or meshopt WASM (fallback)
+ *
+ * Skinned models automatically take a conservative path that skips transforms
+ * known to break skeleton hierarchies or denormalize vertex weights.
+ *
+ * @param input   - Raw GLB file bytes.
+ * @param options - Compression options (preset, simplify ratio, logging).
+ * @returns Compressed GLB buffer, compression method used, and original size.
+ * @throws {Error} If the input cannot be parsed as valid GLB/glTF.
+ */
 export async function compress(
 	input: Uint8Array,
 	options: CompressOptions = {},
@@ -230,7 +331,7 @@ export async function compress(
 	}
 
 	// Strip existing compression (already decoded by NodeIO), then clean up geometry
-	stripCompressionExtensions(document);
+	stripCompressionExtensions(document, log);
 
 	// Check for skinned meshes - skip transforms that break skeleton hierarchy
 	const hasSkins: boolean = document.getRoot().listSkins().length > 0;
@@ -273,14 +374,12 @@ export async function compress(
 	}
 
 	// Phase 3: GPU optimizations (batched)
+	// Skip reorder() for skinned models - causes weight denormalization
 	const gpuTransforms: Transform[] = [
 		transform.instance({ min: INSTANCE_MIN }),
+		...(!hasSkins ? [transform.reorder({ encoder: MeshoptEncoder })] : []),
 		transform.sparse(),
 	];
-	// Skip reorder() for skinned models - causes weight denormalization
-	if (!hasSkins) {
-		gpuTransforms.splice(1, 0, transform.reorder({ encoder: MeshoptEncoder }));
-	}
 	await document.transform(...gpuTransforms);
 
 	// Phase 4: Animation + weights (batched)
@@ -331,7 +430,12 @@ export async function compress(
 	const preset = options.preset ?? 'default';
 	if (hasGltfpack) {
 		log(`  Running gltfpack (preset: ${preset})...`);
-		const result = await compressWithGltfpack(cleanBuffer, hasSkins, preset);
+		const result = await compressWithGltfpack(
+			cleanBuffer,
+			hasSkins,
+			preset,
+			log,
+		);
 		if (result) {
 			log(`  gltfpack: ${formatBytes(result.buffer.byteLength)}`);
 			return { ...result, originalSize: input.byteLength };
@@ -339,15 +443,23 @@ export async function compress(
 	}
 
 	log('  Running meshopt fallback...');
-	const result = await compressWithMeshopt(document, hasSkins);
+	const result = await compressWithMeshopt(document, hasSkins, log);
 	log(`  meshopt: ${formatBytes(result.buffer.byteLength)}`);
 	return { ...result, originalSize: input.byteLength };
 }
 
+/**
+ * Compress a clean (uncompressed) GLB using the external `gltfpack` binary.
+ *
+ * Writes the input to a temp file, spawns `gltfpack` with preset-specific flags
+ * (varying by skinned/static), and reads back the output. Returns `null` on any
+ * failure so the caller can fall back to the WASM path.
+ */
 async function compressWithGltfpack(
 	cleanBuffer: Uint8Array,
 	hasSkins: boolean,
 	preset: CompressPreset,
+	log: (msg: string) => void,
 ): Promise<CompressResult | null> {
 	return withTempDir(async (dir) => {
 		const inputPath = join(dir, 'clean.glb');
@@ -361,7 +473,7 @@ async function compressWithGltfpack(
 			const hasCompressFlag = presetFlags.some(
 				(f) => f === '-cz' || f === '-c',
 			);
-			// biome-ignore format: just because
+			// biome-ignore format: align cli flags with the values
 			const args = [
 				'gltfpack',
 				'-i', inputPath,
@@ -385,18 +497,26 @@ async function compressWithGltfpack(
 			}
 
 			const buffer = new Uint8Array(await Bun.file(outputPath).arrayBuffer());
-			console.log(`gltfpack: ${formatBytes(buffer.byteLength)}`);
+			log(`gltfpack: ${formatBytes(buffer.byteLength)}`);
 			return { buffer, method: 'gltfpack' };
 		} catch (err) {
-			console.warn('gltfpack failed:', err);
+			log(`gltfpack failed: ${err instanceof Error ? err.message : err}`);
 			return null;
 		}
 	});
 }
 
+/**
+ * Fallback compression using glTF-Transform's meshopt encoder (pure WASM).
+ *
+ * For static models, applies `quantize()` before `meshopt()` for better
+ * compression. For skinned models, skips quantization to avoid vertex
+ * deformation artifacts.
+ */
 async function compressWithMeshopt(
 	document: Document,
 	hasSkins: boolean,
+	log: (msg: string) => void,
 ): Promise<CompressResult> {
 	if (hasSkins) {
 		// Skip quantize for skinned models to avoid deformation
@@ -408,16 +528,11 @@ async function compressWithMeshopt(
 		);
 	}
 	const buffer = await io.writeBinary(document);
-	console.log(`meshopt fallback: ${formatBytes(buffer.byteLength)}`);
+	log(`meshopt fallback: ${formatBytes(buffer.byteLength)}`);
 	return { buffer, method: 'meshopt' };
 }
 
-export {
-	formatBytes,
-	parseSimplifyRatio,
-	sanitizeFilename,
-	validateGlbMagic,
-} from './utils';
+/** Returns whether the `gltfpack` binary was found during initialization. */
 export function getHasGltfpack(): boolean {
 	return hasGltfpack;
 }

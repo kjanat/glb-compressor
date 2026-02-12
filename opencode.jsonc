@@ -1,0 +1,26 @@
+{
+	"$schema": "https://opencode.ai/config.json",
+	"formatter": {
+		"dprint": {
+			"command": ["dprint", "fmt", "$FILE"],
+			"extensions": [
+				".ts",
+				".mts",
+				".cts",
+				".js",
+				".mjs",
+				".cjs",
+				".json",
+				".jsonc",
+				".md",
+				".yml",
+				".yaml",
+				".toml",
+				".svg"
+			]
+		}
+	},
+	"mcp": {
+		"bun": { "type": "remote", "url": "https://bun.sh/docs/mcp" }
+	}
+}
