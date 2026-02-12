@@ -23,8 +23,6 @@ API**.
 
 ```sh
 # Global install (recommended for CLI & server usage)
-npm i -g glb-compressor
-# or
 bun i -g glb-compressor
 ```
 
@@ -33,8 +31,6 @@ with SSE streaming).
 
 ```sh
 # As a project dependency (for library usage)
-npm install glb-compressor
-# or
 bun add glb-compressor
 ```
 
