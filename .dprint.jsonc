@@ -3,7 +3,7 @@
 	"useTabs": true,
 	"malva": {},
 	"markup": {},
-	"json": { "useTabs": true },
+	"json": {},
 	"yaml": { "printWidth": 140 },
 	"markdown": {
 		"textWrap": "always",

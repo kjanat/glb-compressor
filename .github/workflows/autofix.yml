@@ -12,11 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - run: |
-          bun run dprint config update &
-          bun check --fix &
-          wait
-      - run: bun fmt --allow-no-files --diff --excludes ".github"
+      - uses: kjanat/install-dprint@v1
+      - run: bunx --bun biome check --write
+      - run: dprint config update
+      - run: dprint fmt --allow-no-files --diff --excludes ".github"
 
       - uses: autofix-ci/action@v1

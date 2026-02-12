@@ -7,14 +7,7 @@ on:
   issues: { types: [opened, assigned, labeled] }
   pull_request_review: { types: [submitted, edited] }
   pull_request: { types: [opened, synchronize] }
-  workflow_dispatch:
-    {
-      inputs:
-        {
-          prompt:
-            { description: "Prompt for Claude", required: false, type: string },
-        },
-    }
+  workflow_dispatch: { inputs: { prompt: { description: "Prompt for Claude", required: false, type: string } } }
 jobs:
   claude:
     if: |
@@ -56,7 +49,6 @@ jobs:
           exclude_comments_by_actor: "*[bot]"
           allowed_bots: "coderabbitai[bot],dependabot[bot],renovate[bot]"
           claude_args: |
-            --max-turns 25
             --model claude-opus-4-6
 
   claude-bot-review:
@@ -106,5 +98,4 @@ jobs:
             7. Apply a label using `gh pr edit ${{ github.event.pull_request.number }} --add-label "claude: approved"`
                or `--add-label "claude: needs-attention"` if you couldn't fix it
           claude_args: |
-            --max-turns 15
             --model claude-opus-4-6

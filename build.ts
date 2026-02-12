@@ -7,17 +7,20 @@
  *   dist/bun-bytecode/  Bun CJS + .jsc bytecode cache
  */
 
-import { rm } from 'node:fs/promises';
 import { bunPolyfillPlugin } from './build/bun-polyfill-plugin';
 
-const entrypoints = ['./lib/mod.ts', './cli/main.ts', './server/main.ts'];
+const entrypoints: string[] = [
+	'./lib/mod.ts',
+	'./cli/main.ts',
+	'./server/main.ts',
+];
 
 // Native addons & WASM packages must stay external
-const external = ['sharp', 'draco3dgltf', 'meshoptimizer'];
+const external: string[] = ['sharp', 'draco3dgltf', 'meshoptimizer'];
 
 async function build() {
 	// Clean previous build artifacts so stale files don't accumulate
-	await rm('./dist', { recursive: true, force: true });
+	await Bun.$`rm -rf dist/`;
 
 	const start = performance.now();
 
@@ -31,12 +34,14 @@ async function build() {
 		splitting: true,
 		sourcemap: 'linked',
 		minify: false,
+		banner: '#!/usr/bin/env node',
 		external,
 		plugins: [bunPolyfillPlugin()],
 		naming: {
 			entry: '[dir]/[name].js',
 			chunk: 'chunks/[name]-[hash].js',
 		},
+		metafile: true,
 	});
 
 	if (!nodeResult.success) {
@@ -61,6 +66,7 @@ async function build() {
 			entry: '[dir]/[name].js',
 			chunk: 'chunks/[name]-[hash].js',
 		},
+		metafile: true,
 	});
 
 	if (!bunResult.success) {
@@ -95,18 +101,7 @@ async function build() {
 	}
 	console.log(`  ${bytecodeResult.outputs.length} files`);
 
-	// ── 4. Re-inject shebangs stripped by polyfill plugin ────
-	const NODE_SHEBANG = '#!/usr/bin/env node\n';
-	const binFiles = ['./dist/node/cli/main.js', './dist/node/server/main.js'];
-	for (const binFile of binFiles) {
-		const content = await Bun.file(binFile).text();
-		if (!content.startsWith('#!')) {
-			await Bun.write(binFile, NODE_SHEBANG + content);
-		}
-	}
-	console.log(`  Shebangs restored in ${binFiles.length} bin files`);
-
-	// ── 5. TypeScript declarations ───────────────────────────
+	// ── 4. TypeScript declarations ───────────────────────────
 	console.log('Generating TypeScript declarations...');
 	// tsgo is provided by @typescript/native-preview in devDependencies
 	const tscProc = Bun.spawn(['tsgo', '-p', 'tsconfig.build.json'], {
