@@ -61,7 +61,7 @@
 		"dist/bun-bytecode/**/*.{cjs,cjs.jsc}",
 		"dist/types",
 		"CHANGELOG.md",
-		".agents"
+		"skills"
 	],
 	"scripts": {
 		"build": "bun build.ts",

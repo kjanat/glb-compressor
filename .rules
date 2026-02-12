@@ -92,6 +92,91 @@ bun test            # Run tests (bun:test)
 
 Externals (never bundled): `sharp`, `draco3dgltf`, `meshoptimizer`.
 
+## Skills
+
+Agent skills in `skills/` following the [Agent Skills](https://agentskills.io/)
+format. Each skill is a self-contained package with a `SKILL.md` frontmatter
+definition and optional reference files.
+
+| Skill                    | Purpose                               | References                |
+| ------------------------ | ------------------------------------- | ------------------------- |
+| `glb-compressor-cli`     | CLI usage, flags, presets, examples   | —                         |
+| `glb-compressor-library` | Programmatic API, types, pipeline     | `api.md`, `transforms.md` |
+| `glb-compressor-server`  | HTTP endpoints, SSE streaming, errors | —                         |
+
+### Structure
+
+```text
+skills/
+  glb-compressor-cli/
+    SKILL.md              # CLI binary, options, presets, pipeline phases
+  glb-compressor-library/
+    SKILL.md              # compress(), init(), types, presets, anti-patterns
+    references/
+      api.md              # Full type surface: CompressOptions, CompressResult,
+                          # constants, ErrorCode, utility functions, PRESETS
+      transforms.md       # Custom Transform functions for a-la-carte use,
+                          # safety matrix (static vs skinned)
+  glb-compressor-server/
+    SKILL.md              # Endpoints, SSE events, error codes, CORS, limits
+```
+
+### Installing skills (for users)
+
+Install via the [`skills` CLI](https://github.com/vercel-labs/skills) (works
+with 35+ agents including Claude Code, Cursor, Codex, OpenCode, Copilot):
+
+```sh
+# Install all glb-compressor skills
+npx skills add kjanat/glb-compressor
+
+# Install a specific skill only
+npx skills add kjanat/glb-compressor --skill glb-compressor-cli
+
+# Install globally (available across all projects)
+npx skills add kjanat/glb-compressor -g
+
+# Install to specific agents
+npx skills add kjanat/glb-compressor -a claude-code -a cursor
+
+# List available skills without installing
+npx skills add kjanat/glb-compressor --list
+```
+
+Manual installation (any agent):
+
+```sh
+# Claude Code
+cp -r skills/glb-compressor-cli ~/.claude/skills/
+
+# Cursor
+cp -r skills/glb-compressor-cli ~/.cursor/skills/
+
+# OpenCode
+cp -r skills/glb-compressor-cli ~/.config/opencode/skills/
+
+# Project-local (committed with repo, shared with team)
+cp -r skills/glb-compressor-cli .claude/skills/
+```
+
+### Skill conventions
+
+- `SKILL.md` frontmatter: `name`, `description` (with trigger phrases),
+  `license`, `compatibility`, optional `references` list.
+- Reference files linked from SKILL.md via `references:` frontmatter field.
+- Skills are read-only documentation — no scripts, no build step.
+- Keep SKILL.md < 500 lines; put detailed reference in separate files.
+
+### When to update skills
+
+- **Add/change CLI flag** → update `glb-compressor-cli/SKILL.md`
+- **Add/change API export** → update `glb-compressor-library/SKILL.md` +
+  `references/api.md`
+- **Add/change transform** → update `references/transforms.md` (safety matrix)
+- **Add/change endpoint** → update `glb-compressor-server/SKILL.md`
+- **Add/change preset** → update all three skills (CLI, library, server)
+- **Add/change constant** → update `references/api.md`
+
 ## Notes
 
 - `server/main.ts` guards startup with `import.meta.main` — safe to import as

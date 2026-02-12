@@ -208,6 +208,55 @@ bun run fmt         # dprint format
 bun run typecheck   # tsgo type check
 ```
 
+## Agent Skills
+
+This project includes [Agent Skills](https://agentskills.io/) that give AI
+coding agents context about the CLI, library API, and server endpoints.
+
+| Skill                    | Purpose                               |
+| ------------------------ | ------------------------------------- |
+| `glb-compressor-cli`     | CLI usage, flags, presets, examples   |
+| `glb-compressor-library` | Programmatic API, types, pipeline     |
+| `glb-compressor-server`  | HTTP endpoints, SSE streaming, errors |
+
+### Install with the [`skills` CLI](https://github.com/vercel-labs/skills)
+
+Works with Claude Code, Cursor, Codex, OpenCode, GitHub Copilot, and
+[35+ more agents](https://github.com/vercel-labs/skills#supported-agents).
+
+```sh
+# Install all glb-compressor skills
+npx skills add kjanat/glb-compressor
+
+# Install a specific skill only
+npx skills add kjanat/glb-compressor --skill glb-compressor-cli
+
+# Install globally (available across all projects)
+npx skills add kjanat/glb-compressor -g
+
+# Install to specific agents
+npx skills add kjanat/glb-compressor -a claude-code -a cursor
+
+# List available skills without installing
+npx skills add kjanat/glb-compressor --list
+```
+
+### Manual installation
+
+```sh
+# Claude Code (project-local, committed with repo)
+cp -r skills/glb-compressor-cli .claude/skills/
+
+# Claude Code (global, available everywhere)
+cp -r skills/glb-compressor-cli ~/.claude/skills/
+
+# Cursor
+cp -r skills/glb-compressor-cli ~/.cursor/skills/
+
+# OpenCode
+cp -r skills/glb-compressor-cli ~/.config/opencode/skills/
+```
+
 ## Acknowledgments
 
 Built on the shoulders of:
