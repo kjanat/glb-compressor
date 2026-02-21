@@ -25,7 +25,12 @@
 			"formatter": [
 				{ "code_action": "source.fixAll.biome" },
 				{ "code_action": "source.organizeImports.biome" },
-				{ "language_server": { "name": "dprint" } }
+				{
+					"external": {
+						"command": "dprint",
+						"arguments": ["fmt", "--stdin", "{buffer_path}"]
+					}
+				}
 			]
 		}
 	},
@@ -40,7 +45,7 @@
 	"lsp": {
 		"biome": {
 			"binary": {
-				"path": "./node_modules/.bin/biome",
+				"path": "biome",
 				"arguments": ["lsp-proxy"]
 			},
 			"settings": { "require_config_file": false }
