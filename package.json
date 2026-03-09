@@ -66,7 +66,7 @@
 	"workspaces": [
 		".",
 		"./compressor-frontend",
-		"./shitty-frontend"
+		"./shitty-frontend/*"
 	],
 	"scripts": {
 		"bd": "bun run build",

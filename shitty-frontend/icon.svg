@@ -1,3 +1,39 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-	<text y="80" font-size="80">📦</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <filter id="box-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="8" flood-opacity="0.15" flood-color="#000000"/>
+    </filter>
+  </defs>
+  <g filter="url(#box-shadow)">
+    <polygon points="40,130 200,220 200,380 40,290" fill="#AE7A47" stroke="#AE7A47" stroke-width="4" stroke-linejoin="round"/>
+    <polygon points="200,220 360,130 360,290 200,380" fill="#955F2E" stroke="#955F2E" stroke-width="4" stroke-linejoin="round"/>
+    <polygon points="200,40 360,130 200,220 40,130" fill="#D29F6C" stroke="#D29F6C" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="200" y1="40" x2="200" y2="220" stroke="#C4915C" stroke-width="3" stroke-linecap="round"/>
+    <polygon points="160,62.5 320,152.5 240,197.5 80,107.5" fill="#F1D6B4" stroke="#F1D6B4" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M 240 197.5 
+             L 320 152.5 
+             L 320 212.5 
+             L 304 215 
+             L 288 238 
+             L 272 233 
+             L 256 255 
+             L 240 257.5 Z" fill="#CDB090" stroke="#CDB090" stroke-width="1.5" stroke-linejoin="round"/>
+    <g transform="translate(60, 270) scale(0.65)">
+      <line x1="0" y1="20" x2="55" y2="51" stroke="#5C3A21" stroke-width="7" stroke-linecap="round"/>
+      <line x1="10" y1="22" x2="10" y2="-25" stroke="#5C3A21" stroke-width="7" stroke-linecap="round"/>
+      <polyline points="-2,-10 10,-25 22,-5" fill="none" stroke="#5C3A21" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="35" y1="36" x2="35" y2="-11" stroke="#5C3A21" stroke-width="7" stroke-linecap="round"/>
+      <polyline points="23,4 35,-11 47,9" fill="none" stroke="#5C3A21" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="75" y1="62" x2="105" y2="79" stroke="#5C3A21" stroke-width="7" stroke-linecap="round"/>
+      <line x1="90" y1="70.5" x2="90" y2="42" stroke="#5C3A21" stroke-width="7" stroke-linecap="round"/>
+      <path d="M 73 15 
+               L 90 42 
+               L 107 31 
+               L 107 18 
+               L 100 25 
+               L 93 14 
+               L 83 22 
+               L 78 8 Z" fill="#5C3A21" stroke="#5C3A21" stroke-width="2" stroke-linejoin="round"/>
+    </g>
+  </g>
 </svg>
