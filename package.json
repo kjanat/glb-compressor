@@ -64,6 +64,7 @@
 		"skills"
 	],
 	"scripts": {
+		"bd": "bun run build",
 		"build": "bun build.ts",
 		"check": "biome check",
 		"cli": "bun --bun cli/main.ts",
@@ -71,6 +72,7 @@
 		"fmt": "dprint fmt",
 		"licences": "bunx license-checker --production --json --out licenses.json",
 		"lint": "biome lint",
+		"prepublishOnly": "bunx prettier README.md --write",
 		"start": "bun --bun server/main.ts",
 		"typecheck": "tsgo --noEmit"
 	},
