@@ -20,7 +20,7 @@
 		"TOML": { "wrap_guides": [110] },
 		"YAML": { "wrap_guides": [140] },
 		"TypeScript": {
-			"wrap_guides": [80],
+			"wrap_guides": [120],
 			"language_servers": ["vtsls", "biome", "tsgo"],
 			"formatter": [
 				{ "code_action": "source.fixAll.biome" },
@@ -55,10 +55,7 @@
 				"json": {
 					"schemas": [
 						{
-							"fileMatch": [
-								".claude/settings.json",
-								".claude/settings.local.json"
-							],
+							"fileMatch": [".claude/settings.json", ".claude/settings.local.json"],
 							"url": "https://www.schemastore.org/claude-code-settings.json"
 						}
 					]

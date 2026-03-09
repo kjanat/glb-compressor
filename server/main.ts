@@ -102,21 +102,14 @@ async function parseCompressRequest(
 
 	let input: Uint8Array;
 	let filename = 'model.glb';
-	let simplifyRatio: number | undefined = parseSimplifyRatio(
-		url.searchParams.get('simplify'),
-	);
+	let simplifyRatio: number | undefined = parseSimplifyRatio(url.searchParams.get('simplify'));
 	let preset = parsePreset(url.searchParams.get('preset'));
 
 	if (contentType.includes('multipart/form-data')) {
 		const formData = await req.formData();
 		const file = formData.get('file') as File | null;
 		if (!file) {
-			return jsonError(
-				ErrorCode.NO_FILE_PROVIDED,
-				'No file provided in form data',
-				400,
-				requestId,
-			);
+			return jsonError(ErrorCode.NO_FILE_PROVIDED, 'No file provided in form data', 400, requestId);
 		}
 		if (file.size > MAX_FILE_SIZE) {
 			return jsonError(
@@ -138,12 +131,7 @@ async function parseCompressRequest(
 			preset = parsePreset(String(formPreset));
 		}
 	} else if (requireMultipart) {
-		return jsonError(
-			ErrorCode.INVALID_CONTENT_TYPE,
-			'Use multipart/form-data for streaming endpoint',
-			415,
-			requestId,
-		);
+		return jsonError(ErrorCode.INVALID_CONTENT_TYPE, 'Use multipart/form-data for streaming endpoint', 415, requestId);
 	} else {
 		const contentLength = req.headers.get('content-length');
 		if (contentLength && parseInt(contentLength, 10) > MAX_FILE_SIZE) {
@@ -169,12 +157,7 @@ async function parseCompressRequest(
 	try {
 		validateGlbMagic(input);
 	} catch (err) {
-		return jsonError(
-			ErrorCode.INVALID_GLB,
-			err instanceof Error ? err.message : 'Invalid GLB file',
-			400,
-			requestId,
-		);
+		return jsonError(ErrorCode.INVALID_GLB, err instanceof Error ? err.message : 'Invalid GLB file', 400, requestId);
 	}
 
 	return { input, filename: sanitizeFilename(filename), preset, simplifyRatio };
@@ -188,12 +171,7 @@ async function parseCompressRequest(
  * @param status    - HTTP status code (e.g. 400, 413, 415, 500).
  * @param requestId - UUID tracking this request.
  */
-function jsonError(
-	code: string,
-	message: string,
-	status: number,
-	requestId: string,
-): Response {
+function jsonError(code: string, message: string, status: number, requestId: string): Response {
 	const body: ApiError = {
 		error: { code, message },
 		requestId,
@@ -223,9 +201,7 @@ async function handleCompress(req: globalThis.Request): Promise<Response> {
 	if (parsed instanceof Response) return parsed;
 	const { input, filename, preset, simplifyRatio } = parsed;
 
-	console.log(
-		`[${requestId}] Received ${filename}: ${formatBytes(input.byteLength)} (preset: ${preset})`,
-	);
+	console.log(`[${requestId}] Received ${filename}: ${formatBytes(input.byteLength)} (preset: ${preset})`);
 
 	let buffer: Uint8Array;
 	let method: string;
@@ -241,10 +217,7 @@ async function handleCompress(req: globalThis.Request): Promise<Response> {
 		);
 	}
 
-	const ratio: string = (
-		(1 - buffer.byteLength / input.byteLength) *
-		100
-	).toFixed(1);
+	const ratio: string = ((1 - buffer.byteLength / input.byteLength) * 100).toFixed(1);
 	console.log(
 		`[${requestId}] ${formatBytes(input.byteLength)} -> ${formatBytes(
 			buffer.byteLength,
@@ -278,9 +251,7 @@ async function handleCompress(req: globalThis.Request): Promise<Response> {
  *
  * The stream closes after the `result` or `error` event.
  */
-async function handleCompressStream(
-	req: globalThis.Request,
-): Promise<Response> {
+async function handleCompressStream(req: globalThis.Request): Promise<Response> {
 	const requestId = crypto.randomUUID();
 
 	const parsed = await parseCompressRequest(req, requestId, true);
@@ -292,9 +263,7 @@ async function handleCompressStream(
 	const stream = new ReadableStream({
 		async start(controller) {
 			const send = (event: string, data: unknown) => {
-				controller.enqueue(
-					encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
-				);
+				controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
 			};
 
 			send('log', {
@@ -308,10 +277,7 @@ async function handleCompressStream(
 					onLog: (msg) => send('log', { message: msg }),
 				});
 
-				const ratio = (
-					(1 - buffer.byteLength / input.byteLength) *
-					100
-				).toFixed(1);
+				const ratio = ((1 - buffer.byteLength / input.byteLength) * 100).toFixed(1);
 				send('log', {
 					message: `Done: ${formatBytes(input.byteLength)} -> ${formatBytes(buffer.byteLength)} (${ratio}% reduction)`,
 				});
@@ -377,15 +343,11 @@ if (import.meta.main) {
 			},
 		},
 
-		fetch: () =>
-			new Response('Not found', { status: 404, headers: CORS_HEADERS }),
+		fetch: () => new Response('Not found', { status: 404, headers: CORS_HEADERS }),
 
 		error(error) {
 			console.error('Server error:', error);
-			return Response.json(
-				{ error: String(error) },
-				{ status: 500, headers: CORS_HEADERS },
-			);
+			return Response.json({ error: String(error) }, { status: 500, headers: CORS_HEADERS });
 		},
 	});
 

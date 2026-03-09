@@ -125,19 +125,13 @@ interface Options {
  * @param options   - Parsed CLI options.
  * @returns `{ success: true }` or `{ success: false, error: string }`.
  */
-async function compressFile(
-	inputPath: string,
-	options: Options,
-): Promise<{ success: boolean; error?: string }> {
+async function compressFile(inputPath: string, options: Options): Promise<{ success: boolean; error?: string }> {
 	const { output, simplify, quiet, force } = options;
 
 	// Determine output path
 	let outputPath: string;
 	if (output) {
-		outputPath = join(
-			output,
-			basename(inputPath).replace(/\.(glb|gltf)$/i, '-compressed.glb'),
-		);
+		outputPath = join(output, basename(inputPath).replace(/\.(glb|gltf)$/i, '-compressed.glb'));
 	} else {
 		outputPath = inputPath.replace(/\.(glb|gltf)$/i, '-compressed.glb');
 	}
@@ -195,10 +189,7 @@ async function compressFile(
 		await Bun.write(outputPath, result.buffer);
 
 		const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
-		const ratio =
-			input.byteLength > 0
-				? ((1 - result.buffer.byteLength / input.byteLength) * 100).toFixed(1)
-				: '0.0';
+		const ratio = input.byteLength > 0 ? ((1 - result.buffer.byteLength / input.byteLength) * 100).toFixed(1) : '0.0';
 
 		if (!quiet) {
 			console.log(
@@ -270,13 +261,9 @@ async function main() {
 	const preset = rawPreset as CompressPreset;
 
 	// Parse simplify ratio
-	const simplify = values.simplify
-		? parseSimplifyRatio(values.simplify)
-		: undefined;
+	const simplify = values.simplify ? parseSimplifyRatio(values.simplify) : undefined;
 	if (values.simplify && simplify === undefined) {
-		console.error(
-			`${c.red}Error:${c.reset} Invalid simplify ratio: ${values.simplify} (must be between 0 and 1)`,
-		);
+		console.error(`${c.red}Error:${c.reset} Invalid simplify ratio: ${values.simplify} (must be between 0 and 1)`);
 		process.exit(1);
 	}
 
@@ -341,13 +328,9 @@ async function main() {
 	if (!options.quiet) {
 		console.log();
 		if (failed === 0) {
-			console.log(
-				`${c.green}All ${succeeded} file(s) compressed successfully${c.reset}`,
-			);
+			console.log(`${c.green}All ${succeeded} file(s) compressed successfully${c.reset}`);
 		} else {
-			console.log(
-				`${c.yellow}Completed: ${succeeded} succeeded, ${failed} failed${c.reset}`,
-			);
+			console.log(`${c.yellow}Completed: ${succeeded} succeeded, ${failed} failed${c.reset}`);
 		}
 	}
 

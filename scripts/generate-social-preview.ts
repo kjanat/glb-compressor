@@ -5,10 +5,7 @@ import pkg from '../package.json' with { type: 'json' };
 
 const REPO: string = (await Bun.$`git config --get remote.origin.url`.text())
 	.trim()
-	.replaceAll(
-		/^(?:(?:https?:\/\/|ssh:\/\/)?(?:git@)?)?([^/:]+)[:/](.+?)(?:\.git)?$/g,
-		'$1/$2',
-	);
+	.replaceAll(/^(?:(?:https?:\/\/|ssh:\/\/)?(?:git@)?)?([^/:]+)[:/](.+?)(?:\.git)?$/g, '$1/$2');
 
 // Images should be at least 640×320px (1280×640px for best display).
 const [DESIGN_WIDTH, DESIGN_HEIGHT] = [1280, 640];
@@ -43,10 +40,7 @@ type Dot = {
 	color: string;
 };
 
-const version =
-	typeof pkg?.version === 'string' && pkg.version.trim()
-		? pkg.version.trim()
-		: '0.0.0';
+const version = typeof pkg?.version === 'string' && pkg.version.trim() ? pkg.version.trim() : '0.0.0';
 
 const BADGES: Badge[] = [
 	{ label: 'CLI', x: 0, width: 72 },
@@ -112,8 +106,7 @@ const renderBadge = ({ label, x, width }: Badge): string => {
       <text x="${textX}" y="22" font-family="'SF Mono','Cascadia Code','Fira Code','Consolas',monospace" font-size="14" fill="#58a6ff" text-anchor="middle" font-weight="600">${escapeXml(label)}</text>`;
 };
 
-const renderDot = ({ x, y, r, color }: Dot): string =>
-	`<circle cx="${x}" cy="${y}" r="${r}" fill="${color}"/>`;
+const renderDot = ({ x, y, r, color }: Dot): string => `<circle cx="${x}" cy="${y}" r="${r}" fill="${color}"/>`;
 
 const buildSvg = (): string => `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${DESIGN_WIDTH}" height="${DESIGN_HEIGHT}" viewBox="0 0 ${DESIGN_WIDTH} ${DESIGN_HEIGHT}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="glb-compressor social preview">
@@ -227,16 +220,10 @@ const buildSvg = (): string => `<?xml version="1.0" encoding="UTF-8"?>
 </svg>`;
 
 const isMultiplexer = (): boolean =>
-	Boolean(
-		process.env.TERM?.startsWith('screen') ||
-			process.env.TERM?.startsWith('tmux') ||
-			process.env.TMUX,
-	);
+	Boolean(process.env.TERM?.startsWith('screen') || process.env.TERM?.startsWith('tmux') || process.env.TMUX);
 
 const wrapForMultiplexer = (sequence: string): string =>
-	isMultiplexer()
-		? `\u001BPtmux;${sequence.replaceAll('\u001B', '\u001B\u001B')}\u001B\\`
-		: sequence;
+	isMultiplexer() ? `\u001BPtmux;${sequence.replaceAll('\u001B', '\u001B\u001B')}\u001B\\` : sequence;
 
 /** Create a clickable terminal hyperlink (OSC 8), with tmux/screen support + plain fallback. */
 export const link = (text: string, url: string): string => {
@@ -265,13 +252,9 @@ async function main(): Promise<void> {
 	const settingsUrl = `https://${REPO}/settings`;
 	const socialPreviewUrl = `${settingsUrl}/#:~:text=Social%20preview`;
 
-	console.log(
-		`Generated ${outputPath} (${WIDTH}x${HEIGHT}, ${kb(data.byteLength)})`,
-	);
+	console.log(`Generated ${outputPath} (${WIDTH}x${HEIGHT}, ${kb(data.byteLength)})`);
 	console.info(`Repo settings: ${link(`${REPO}/settings`, settingsUrl)}`);
-	console.info(
-		`Social preview section: ${link('Open Social preview', socialPreviewUrl)}`,
-	);
+	console.info(`Social preview section: ${link('Open Social preview', socialPreviewUrl)}`);
 }
 
 if (import.meta.main) {

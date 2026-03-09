@@ -56,7 +56,4 @@ export type ErrorCodeType = (typeof ErrorCode)[keyof typeof ErrorCode];
  *
  * These are stripped from the document before re-compression to avoid double-encoding.
  */
-export const COMPRESSION_EXTENSIONS = [
-	'KHR_draco_mesh_compression',
-	'EXT_meshopt_compression',
-];
+export const COMPRESSION_EXTENSIONS = ['KHR_draco_mesh_compression', 'EXT_meshopt_compression'];

@@ -10,9 +10,9 @@
 		"ignoreUnknown": true
 	},
 	"formatter": {
-		"enabled": true,
+		"enabled": false,
 		"indentStyle": "tab",
-		"lineWidth": 80
+		"lineWidth": 120
 	},
 	"linter": {
 		"enabled": true,
@@ -27,6 +27,11 @@
 		"formatter": {
 			"quoteStyle": "single"
 		}
+	},
+	"css": {
+		"linter": { "enabled": true },
+		"assist": { "enabled": true },
+		"parser": { "tailwindDirectives": true, "cssModules": true }
 	},
 	"assist": {
 		"enabled": true,

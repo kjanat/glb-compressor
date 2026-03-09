@@ -12,11 +12,7 @@ import { type Document, NodeIO, type Transform } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import * as transform from '@gltf-transform/functions';
 import draco3d from 'draco3dgltf';
-import {
-	MeshoptDecoder,
-	MeshoptEncoder,
-	MeshoptSimplifier,
-} from 'meshoptimizer';
+import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 
 import {
@@ -27,12 +23,7 @@ import {
 	TEXTURE_MAX_SIZE,
 	TOTAL_WARN_THRESHOLD,
 } from '$lib/constants';
-import {
-	analyzeMeshComplexity,
-	normalizeWeights,
-	removeStaticTracksWithBake,
-	removeUnusedUVs,
-} from '$lib/transforms';
+import { analyzeMeshComplexity, normalizeWeights, removeStaticTracksWithBake, removeUnusedUVs } from '$lib/transforms';
 import { formatBytes } from '$lib/utils';
 
 const INPUT = join(import.meta.dir, '$models/owen.glb');
@@ -44,15 +35,8 @@ const PARALLEL = 3;
 let io: NodeIO;
 
 async function init() {
-	await Promise.all([
-		MeshoptDecoder.ready,
-		MeshoptEncoder.ready,
-		MeshoptSimplifier.ready,
-	]);
-	const [enc, dec] = await Promise.all([
-		draco3d.createEncoderModule(),
-		draco3d.createDecoderModule(),
-	]);
+	await Promise.all([MeshoptDecoder.ready, MeshoptEncoder.ready, MeshoptSimplifier.ready]);
+	const [enc, dec] = await Promise.all([draco3d.createEncoderModule(), draco3d.createDecoderModule()]);
 	io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({
 		'draco3d.encoder': enc,
 		'draco3d.decoder': dec,
@@ -78,10 +62,7 @@ async function withTmp<T>(fn: (dir: string) => Promise<T>): Promise<T> {
 	}
 }
 
-async function runGltfpack(
-	cleanBuf: Uint8Array,
-	extraArgs: string[],
-): Promise<Uint8Array> {
+async function runGltfpack(cleanBuf: Uint8Array, extraArgs: string[]): Promise<Uint8Array> {
 	return withTmp(async (dir) => {
 		const inp = join(dir, 'in.glb'),
 			out = join(dir, 'out.glb');
@@ -115,10 +96,7 @@ interface PreProcessOptions {
 	textureMaxSize?: number;
 }
 
-async function preProcess(
-	input: Uint8Array,
-	opts: PreProcessOptions = {},
-): Promise<Uint8Array> {
+async function preProcess(input: Uint8Array, opts: PreProcessOptions = {}): Promise<Uint8Array> {
 	const doc = await io.readBinary(input);
 	stripCompression(doc);
 
@@ -139,20 +117,14 @@ async function preProcess(
 	await doc.transform(...cleanup);
 
 	// Phase 2: GPU opts
-	const gpu: Transform[] = [
-		transform.instance({ min: INSTANCE_MIN }),
-		transform.sparse(),
-	];
+	const gpu: Transform[] = [transform.instance({ min: INSTANCE_MIN }), transform.sparse()];
 	if (!hasSkins || opts.reorderSkinned) {
 		gpu.splice(1, 0, transform.reorder({ encoder: MeshoptEncoder }));
 	}
 	await doc.transform(...gpu);
 
 	// Phase 3: Animation
-	const anim: Transform[] = [
-		transform.resample({ tolerance: opts.resampleTolerance }),
-		removeStaticTracksWithBake(),
-	];
+	const anim: Transform[] = [transform.resample({ tolerance: opts.resampleTolerance }), removeStaticTracksWithBake()];
 	if (hasSkins) anim.push(normalizeWeights());
 	await doc.transform(...anim);
 
@@ -363,35 +335,12 @@ const variants: Variant[] = [
 	{
 		name: '43-full-send',
 		description: 'Anim quant + af15 + vp14 + si95 + cz',
-		gltfpackArgs: [
-			'-cz',
-			'-tc',
-			'-vp',
-			'14',
-			'-kn',
-			...ANIM_Q,
-			'-af',
-			'15',
-			'-si',
-			'0.95',
-			'-slb',
-		],
+		gltfpackArgs: ['-cz', '-tc', '-vp', '14', '-kn', ...ANIM_Q, '-af', '15', '-si', '0.95', '-slb'],
 	},
 	{
 		name: '44-full-send-no-kn',
 		description: 'Anim quant + af15 + vp14 + si95 + cz + no -kn',
-		gltfpackArgs: [
-			'-cz',
-			'-tc',
-			'-vp',
-			'14',
-			...ANIM_Q,
-			'-af',
-			'15',
-			'-si',
-			'0.95',
-			'-slb',
-		],
+		gltfpackArgs: ['-cz', '-tc', '-vp', '14', ...ANIM_Q, '-af', '15', '-si', '0.95', '-slb'],
 	},
 	{
 		name: '45-anim-quant-24hz-cz',
@@ -406,16 +355,7 @@ const variants: Variant[] = [
 	{
 		name: '47-anim-aggro-24hz-vp14-cz',
 		description: 'Aggro anim + 24Hz + vp14 + -cz (push it)',
-		gltfpackArgs: [
-			'-cz',
-			'-tc',
-			'-vp',
-			'14',
-			'-kn',
-			...ANIM_Q_AGGRO,
-			'-af',
-			'24',
-		],
+		gltfpackArgs: ['-cz', '-tc', '-vp', '14', '-kn', ...ANIM_Q_AGGRO, '-af', '24'],
 	},
 	{
 		name: '48-anim-quant-af0-cz',
@@ -446,11 +386,7 @@ interface Result {
 	error?: string;
 }
 
-async function runVariant(
-	v: Variant,
-	rawInput: Uint8Array,
-	originalSize: number,
-): Promise<Result> {
+async function runVariant(v: Variant, rawInput: Uint8Array, originalSize: number): Promise<Result> {
 	const t0 = performance.now();
 	try {
 		const cleanBuf = await preProcess(rawInput, v.preOpts);
@@ -507,20 +443,15 @@ async function main() {
 			console.log(`  ${c.cyan}[${v.name}]${c.reset} ${v.description}`);
 		}
 
-		const batchResults = await Promise.all(
-			batch.map((v) => runVariant(v, rawInput, originalSize)),
-		);
+		const batchResults = await Promise.all(batch.map((v) => runVariant(v, rawInput, originalSize)));
 
 		for (const r of batchResults) {
 			if (r.size > 0) {
 				console.log(
-					`  ${c.green}[${r.name}]${c.reset} ${formatBytes(r.size)} ` +
-						`${c.dim}(-${r.ratio}%, ${r.time}s)${c.reset}`,
+					`  ${c.green}[${r.name}]${c.reset} ${formatBytes(r.size)} ` + `${c.dim}(-${r.ratio}%, ${r.time}s)${c.reset}`,
 				);
 			} else {
-				console.log(
-					`  ${c.red}[${r.name}] FAILED${c.reset} ${c.dim}(${r.time}s)${c.reset}: ${r.error}`,
-				);
+				console.log(`  ${c.red}[${r.name}] FAILED${c.reset} ${c.dim}(${r.time}s)${c.reset}: ${r.error}`);
 			}
 			results.push(r);
 		}
@@ -536,22 +467,13 @@ async function main() {
 	);
 	console.log('─'.repeat(110));
 
-	const sorted = [...results]
-		.filter((r) => r.size > 0)
-		.sort((a, b) => a.size - b.size);
+	const sorted = [...results].filter((r) => r.size > 0).sort((a, b) => a.size - b.size);
 	for (const [i, r] of sorted.entries()) {
 		const sizeStr = formatBytes(r.size).padStart(10);
 		const ratioStr = `-${r.ratio}%`.padStart(10);
 		const timeStr = `${r.time}s`.padStart(8);
-		const rank =
-			i === 0
-				? ` ${c.green}<-- best${c.reset}`
-				: i < 3
-					? ` ${c.yellow}<-- top3${c.reset}`
-					: '';
-		console.log(
-			`${r.name.padEnd(32)} ${sizeStr} ${ratioStr} ${timeStr}  ${c.dim}${r.desc}${c.reset}${rank}`,
-		);
+		const rank = i === 0 ? ` ${c.green}<-- best${c.reset}` : i < 3 ? ` ${c.yellow}<-- top3${c.reset}` : '';
+		console.log(`${r.name.padEnd(32)} ${sizeStr} ${ratioStr} ${timeStr}  ${c.dim}${r.desc}${c.reset}${rank}`);
 	}
 
 	const failed = results.filter((r) => r.size < 0);

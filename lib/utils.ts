@@ -53,15 +53,9 @@ export function validateGlbMagic(input: Uint8Array): void {
 	if (input.length < 4) {
 		throw new Error('File too small to be a valid GLB');
 	}
-	const magic: number = new DataView(
-		input.buffer,
-		input.byteOffset,
-		4,
-	).getUint32(0, true);
+	const magic: number = new DataView(input.buffer, input.byteOffset, 4).getUint32(0, true);
 	if (magic !== GLB_MAGIC) {
-		throw new Error(
-			`Invalid GLB file: expected magic 0x${GLB_MAGIC.toString(16)}, got 0x${magic.toString(16)}`,
-		);
+		throw new Error(`Invalid GLB file: expected magic 0x${GLB_MAGIC.toString(16)}, got 0x${magic.toString(16)}`);
 	}
 }
 
@@ -75,9 +69,7 @@ export function validateGlbMagic(input: Uint8Array): void {
  * @param fn - Async function receiving the temp directory path.
  * @returns The value returned by `fn`.
  */
-export async function withTempDir<T>(
-	fn: (dir: string) => Promise<T>,
-): Promise<T> {
+export async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
 	const dir: string = await mkdtemp(join(tmpdir(), 'gltf-compress-'));
 	try {
 		return await fn(dir);

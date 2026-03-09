@@ -5,10 +5,7 @@
  * Requires Node 18+ for global Request/Response/ReadableStream.
  */
 
-import {
-	execFile as nodeExecFile,
-	spawn as nodeSpawn,
-} from 'node:child_process';
+import { execFile as nodeExecFile, spawn as nodeSpawn } from 'node:child_process';
 import { once } from 'node:events';
 import { accessSync, constants as fsConstants } from 'node:fs';
 import { access, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
@@ -58,10 +55,7 @@ function file(path: string): BunFile {
 		},
 		async arrayBuffer() {
 			const buf = await readFile(path);
-			return buf.buffer.slice(
-				buf.byteOffset,
-				buf.byteOffset + buf.byteLength,
-			) as ArrayBuffer;
+			return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
 		},
 		async bytes() {
 			return Uint8Array.from(await readFile(path));
@@ -75,10 +69,7 @@ function file(path: string): BunFile {
 // ─── Bun.write() ───────────────────────────────────────────
 // Bun.write auto-creates parent directories; polyfill must too.
 
-async function write(
-	path: string,
-	data: string | Uint8Array | ArrayBuffer,
-): Promise<number> {
+async function write(path: string, data: string | Uint8Array | ArrayBuffer): Promise<number> {
 	await mkdir(dirname(path), { recursive: true });
 	let buf: Buffer;
 	if (typeof data === 'string') {
@@ -103,22 +94,14 @@ interface SpawnOptions {
 
 function spawn(args: string[], opts?: SpawnOptions) {
 	if (!args || args.length === 0) {
-		throw new Error(
-			'spawn: args must contain at least one element (the command)',
-		);
+		throw new Error('spawn: args must contain at least one element (the command)');
 	}
 	const [cmd, ...rest] = args;
 	if (!cmd) {
-		throw new Error(
-			'spawn: command (first element of args) must be a non-empty string',
-		);
+		throw new Error('spawn: command (first element of args) must be a non-empty string');
 	}
 	const child = nodeSpawn(cmd, rest, {
-		stdio: [
-			'ignore',
-			opts?.stdout === 'ignore' ? 'ignore' : 'pipe',
-			opts?.stderr === 'pipe' ? 'pipe' : 'ignore',
-		],
+		stdio: ['ignore', opts?.stdout === 'ignore' ? 'ignore' : 'pipe', opts?.stderr === 'pipe' ? 'pipe' : 'ignore'],
 	});
 
 	// Convert Node Readable to Web ReadableStream so
@@ -156,101 +139,87 @@ interface ServeConfig {
 function serve(config: ServeConfig) {
 	const port = config.port ?? 3000;
 
-	const server = createServer(
-		async (nodeReq: IncomingMessage, nodeRes: ServerResponse) => {
-			try {
-				const url = new URL(
-					nodeReq.url ?? '/',
-					`http://${nodeReq.headers.host ?? `localhost:${port}`}`,
-				);
-				const method = nodeReq.method ?? 'GET';
+	const server = createServer(async (nodeReq: IncomingMessage, nodeRes: ServerResponse) => {
+		try {
+			const url = new URL(nodeReq.url ?? '/', `http://${nodeReq.headers.host ?? `localhost:${port}`}`);
+			const method = nodeReq.method ?? 'GET';
 
-				const headers = new Headers();
-				for (const [key, val] of Object.entries(nodeReq.headers)) {
-					if (val != null)
-						headers.set(key, Array.isArray(val) ? val.join(', ') : val);
-				}
+			const headers = new Headers();
+			for (const [key, val] of Object.entries(nodeReq.headers)) {
+				if (val != null) headers.set(key, Array.isArray(val) ? val.join(', ') : val);
+			}
 
-				const hasBody = method !== 'GET' && method !== 'HEAD';
-				const request = new Request(url.toString(), {
-					method,
-					headers,
-					body: hasBody ? (Readable.toWeb(nodeReq) as ReadableStream) : null,
-					duplex: hasBody ? 'half' : undefined,
-				});
+			const hasBody = method !== 'GET' && method !== 'HEAD';
+			const request = new Request(url.toString(), {
+				method,
+				headers,
+				body: hasBody ? (Readable.toWeb(nodeReq) as ReadableStream) : null,
+				duplex: hasBody ? 'half' : undefined,
+			});
 
-				let response: Response | undefined;
+			let response: Response | undefined;
 
-				// Match route
-				if (config.routes) {
-					const route = config.routes[url.pathname];
-					if (route instanceof Response) {
-						// Static responses must be cloned (body is consumed on read)
-						response = route.clone() as Response;
-					} else if (typeof route === 'function') {
-						response = await (route as RouteHandler)(request);
-					} else if (route && typeof route === 'object') {
-						const handler = (route as Record<string, RouteHandler>)[method];
-						if (typeof handler === 'function') {
-							response = await handler(request);
-						}
+			// Match route
+			if (config.routes) {
+				const route = config.routes[url.pathname];
+				if (route instanceof Response) {
+					// Static responses must be cloned (body is consumed on read)
+					response = route.clone() as Response;
+				} else if (typeof route === 'function') {
+					response = await (route as RouteHandler)(request);
+				} else if (route && typeof route === 'object') {
+					const handler = (route as Record<string, RouteHandler>)[method];
+					if (typeof handler === 'function') {
+						response = await handler(request);
 					}
 				}
+			}
 
-				// Fallback handler
-				if (!response && config.fetch) {
-					response = await config.fetch(request);
-				}
-				if (!response) {
-					response = new Response('Not Found', { status: 404 });
-				}
+			// Fallback handler
+			if (!response && config.fetch) {
+				response = await config.fetch(request);
+			}
+			if (!response) {
+				response = new Response('Not Found', { status: 404 });
+			}
 
-				// Write Web Response → Node ServerResponse
-				nodeRes.writeHead(
-					response.status,
-					Object.fromEntries(response.headers.entries()),
-				);
-				if (response.body) {
-					const reader = response.body.getReader();
-					try {
-						for (;;) {
-							const { done, value } = await reader.read();
-							if (done) break;
-							const canContinue = nodeRes.write(value);
-							if (!canContinue) {
-								await once(nodeRes, 'drain');
-							}
+			// Write Web Response → Node ServerResponse
+			nodeRes.writeHead(response.status, Object.fromEntries(response.headers.entries()));
+			if (response.body) {
+				const reader = response.body.getReader();
+				try {
+					for (;;) {
+						const { done, value } = await reader.read();
+						if (done) break;
+						const canContinue = nodeRes.write(value);
+						if (!canContinue) {
+							await once(nodeRes, 'drain');
 						}
-					} catch (streamErr) {
-						reader.cancel().catch(() => {});
-						throw streamErr;
-					} finally {
-						nodeRes.end();
 					}
-				} else {
+				} catch (streamErr) {
+					reader.cancel().catch(() => {});
+					throw streamErr;
+				} finally {
 					nodeRes.end();
 				}
-			} catch (err) {
-				if (config.error) {
-					try {
-						const errResponse = config.error(
-							err instanceof Error ? err : new Error(String(err)),
-						);
-						nodeRes.writeHead(
-							errResponse.status,
-							Object.fromEntries(errResponse.headers.entries()),
-						);
-						nodeRes.end(await errResponse.text());
-						return;
-					} catch {
-						/* fall through to generic 500 */
-					}
-				}
-				nodeRes.writeHead(500);
-				nodeRes.end('Internal Server Error');
+			} else {
+				nodeRes.end();
 			}
-		},
-	);
+		} catch (err) {
+			if (config.error) {
+				try {
+					const errResponse = config.error(err instanceof Error ? err : new Error(String(err)));
+					nodeRes.writeHead(errResponse.status, Object.fromEntries(errResponse.headers.entries()));
+					nodeRes.end(await errResponse.text());
+					return;
+				} catch {
+					/* fall through to generic 500 */
+				}
+			}
+			nodeRes.writeHead(500);
+			nodeRes.end('Internal Server Error');
+		}
+	});
 
 	server.on('error', (err) => {
 		if (config.error) {
@@ -273,9 +242,7 @@ function which(cmd: string): string | null {
 	const isWin = process.platform === 'win32';
 	const pathEnv = process.env.PATH ?? '';
 	const pathDirs = pathEnv.split(isWin ? ';' : ':');
-	const extensions = isWin
-		? (process.env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';')
-		: [''];
+	const extensions = isWin ? (process.env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';') : [''];
 
 	for (const dir of pathDirs) {
 		if (!dir) continue;
@@ -313,9 +280,7 @@ export class Glob {
 	constructor(pattern: string) {
 		// Cap pattern length to prevent ReDoS from unbounded input
 		if (pattern.length > 1024) {
-			throw new Error(
-				`Glob pattern too long (${pattern.length} chars, max 1024)`,
-			);
+			throw new Error(`Glob pattern too long (${pattern.length} chars, max 1024)`);
 		}
 		this.rawPattern = pattern;
 		const escaped = pattern
@@ -327,16 +292,11 @@ export class Glob {
 		try {
 			this.re = new RegExp(`^${escaped}$`);
 		} catch (err) {
-			throw new Error(
-				`Invalid glob pattern "${pattern}": ${err instanceof Error ? err.message : String(err)}`,
-			);
+			throw new Error(`Invalid glob pattern "${pattern}": ${err instanceof Error ? err.message : String(err)}`);
 		}
 	}
 
-	async *scan(opts?: {
-		cwd?: string;
-		absolute?: boolean;
-	}): AsyncGenerator<string> {
+	async *scan(opts?: { cwd?: string; absolute?: boolean }): AsyncGenerator<string> {
 		const cwd = opts?.cwd ?? process.cwd();
 		const hasGlobstar = this.rawPattern.includes('**');
 		const lastSlash = this.rawPattern.lastIndexOf('/');
@@ -345,8 +305,7 @@ export class Glob {
 		// For '**' patterns, find the stable directory prefix before the first '**'
 		let searchDir: string;
 		if (hasGlobstar) {
-			const prefixBeforeGlobstar =
-				dirPart.split('**')[0]?.replace(/\/$/, '') || '';
+			const prefixBeforeGlobstar = dirPart.split('**')[0]?.replace(/\/$/, '') || '';
 			searchDir = prefixBeforeGlobstar ? join(cwd, prefixBeforeGlobstar) : cwd;
 		} else {
 			searchDir = dirPart ? join(cwd, dirPart) : cwd;
@@ -367,9 +326,7 @@ export class Glob {
 			if (hasGlobstar) {
 				// entry.parentPath (Node 20+) or entry.path (Node 18.17+)
 				const entryDir =
-					(entry as { parentPath?: string }).parentPath ??
-					(entry as { path?: string }).path ??
-					searchDir;
+					(entry as { parentPath?: string }).parentPath ?? (entry as { path?: string }).path ?? searchDir;
 				const rel = relative(cwd, join(entryDir, entry.name));
 				// Normalize path separators on Windows
 				const normalized = rel.replace(/\\/g, '/');

@@ -35,8 +35,7 @@ import type { MeshoptSimplifier as MeshoptSimplifierType } from 'meshoptimizer';
  */
 function at(arr: TypedArray | number[], i: number): number {
 	const v = arr[i];
-	if (v === undefined)
-		throw new RangeError(`Index ${i} out of bounds (length ${arr.length})`);
+	if (v === undefined) throw new RangeError(`Index ${i} out of bounds (length ${arr.length})`);
 	return v;
 }
 
@@ -112,12 +111,8 @@ export function mergeByDistance(tolerance = 0.0001): Transform {
 					if (!oldArray) continue;
 
 					const itemSize: number = attr.getElementSize();
-					const TypedArrayCtor = oldArray.constructor as new (
-						len: number,
-					) => TypedArray;
-					const newArray: TypedArray = new TypedArrayCtor(
-						newToOld.length * itemSize,
-					);
+					const TypedArrayCtor = oldArray.constructor as new (len: number) => TypedArray;
+					const newArray: TypedArray = new TypedArrayCtor(newToOld.length * itemSize);
 
 					for (let i: number = 0; i < newToOld.length; i++) {
 						const oldIdx: number = at(newToOld, i);
@@ -133,9 +128,7 @@ export function mergeByDistance(tolerance = 0.0001): Transform {
 		}
 
 		if (totalRemoved > 0) {
-			console.log(
-				`  mergeByDistance: removed ${totalRemoved} duplicate vertices`,
-			);
+			console.log(`  mergeByDistance: removed ${totalRemoved} duplicate vertices`);
 		}
 	};
 }
@@ -182,17 +175,13 @@ export function decimateBloatedMeshes(
 		}
 
 		if (dominated.length > 0) {
-			console.log(
-				`  decimateBloated: ${dominated.length} mesh(es) exceed ${threshold} verts`,
-			);
+			console.log(`  decimateBloated: ${dominated.length} mesh(es) exceed ${threshold} verts`);
 			for (const { mesh, verts, targetVerts } of dominated) {
 				console.log(`    ${mesh}: ${verts} -> ~${targetVerts} verts`);
 			}
 
 			// Use glTF-Transform's simplify with aggressive ratio for bloated meshes
-			const ratio: number =
-				targetRatio *
-				(threshold / Math.max(...dominated.map((d): number => d.verts)));
+			const ratio: number = targetRatio * (threshold / Math.max(...dominated.map((d): number => d.verts)));
 			await doc.transform(
 				transform.simplify({
 					simplifier,
@@ -244,10 +233,7 @@ export function removeUnusedUVs(): Transform {
 			for (const prim of mesh.listPrimitives()) {
 				for (const semantic of prim.listSemantics()) {
 					if (semantic.startsWith('TEXCOORD_')) {
-						const idx: number = parseInt(
-							semantic.slice('TEXCOORD_'.length),
-							10,
-						);
+						const idx: number = parseInt(semantic.slice('TEXCOORD_'.length), 10);
 						if (!usedUVSets.has(idx)) {
 							prim.setAttribute(semantic, null);
 							removed++;
@@ -324,10 +310,7 @@ export function normalizeWeights(): Transform {
  * @param totalWarnThreshold - Total scene vertex count that triggers a high-complexity warning.
  * @returns A glTF-Transform `Transform` function.
  */
-export function analyzeMeshComplexity(
-	warnThreshold = 2000,
-	totalWarnThreshold = 15000,
-): Transform {
+export function analyzeMeshComplexity(warnThreshold = 2000, totalWarnThreshold = 15000): Transform {
 	return (doc: Document): void => {
 		let totalVerts: number = 0;
 		const bloated: Array<{ name: string; verts: number }> = [];
@@ -449,9 +432,7 @@ export function removeDegenerateFaces(minArea = 1e-10): Transform {
 		}
 
 		if (totalRemoved > 0) {
-			console.log(
-				`  removeDegenerateFaces: removed ${totalRemoved} degenerate triangles`,
-			);
+			console.log(`  removeDegenerateFaces: removed ${totalRemoved} degenerate triangles`);
 		}
 	};
 }
@@ -488,9 +469,7 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 		// For each node+path, collect: is each channel static? what's its value?
 		// Key: "nodeIndex::path"  (use index for uniqueness, not name)
 		const nodeIndexMap = new Map<
-			ReturnType<typeof doc.getRoot>['listNodes'] extends () => (infer N)[]
-				? N
-				: never,
+			ReturnType<typeof doc.getRoot>['listNodes'] extends () => (infer N)[] ? N : never,
 			number
 		>();
 		for (const [i, node] of doc.getRoot().listNodes().entries()) {
@@ -511,8 +490,7 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 			for (const channel of animation.listChannels()) {
 				const sampler: AnimationSampler | null = channel.getSampler();
 				const targetNode: Node | null = channel.getTargetNode();
-				const targetPath: GLTF.AnimationChannelTargetPath | null =
-					channel.getTargetPath();
+				const targetPath: GLTF.AnimationChannelTargetPath | null = channel.getTargetPath();
 				if (!sampler || !targetNode || !targetPath) continue;
 
 				const nodeIdx: number = nodeIndexMap.get(targetNode) ?? -1;
@@ -530,18 +508,12 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 
 				// Check if all keyframes are identical
 				let isStatic: boolean = true;
-				const firstValues: number[] = Array.from(
-					outputArray.slice(0, elementSize),
-				);
+				const firstValues: number[] = Array.from(outputArray.slice(0, elementSize));
 
 				if (keyframeCount > 1) {
 					for (let i: number = 1; i < keyframeCount && isStatic; i++) {
 						for (let j: number = 0; j < elementSize; j++) {
-							if (
-								Math.abs(
-									at(outputArray, i * elementSize + j) - at(firstValues, j),
-								) > tolerance
-							) {
+							if (Math.abs(at(outputArray, i * elementSize + j) - at(firstValues, j)) > tolerance) {
 								isStatic = false;
 								break;
 							}
@@ -577,10 +549,7 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 				if (!t.staticValue || t.staticValue.length !== reference.length) {
 					return false;
 				}
-				return t.staticValue.every(
-					(v: number, i: number): boolean =>
-						Math.abs(v - at(reference, i)) <= tolerance,
-				);
+				return t.staticValue.every((v: number, i: number): boolean => Math.abs(v - at(reference, i)) <= tolerance);
 			});
 			if (!allAgree) continue;
 
@@ -614,10 +583,7 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 			const matchesBase: boolean =
 				baseValue !== null &&
 				baseValue.length === reference.length &&
-				baseValue.every(
-					(v: number, i: number): boolean =>
-						Math.abs(v - at(reference, i)) <= tolerance,
-				);
+				baseValue.every((v: number, i: number): boolean => Math.abs(v - at(reference, i)) <= tolerance);
 
 			if (matchesBase) {
 				removableKeys.add(key);
@@ -628,8 +594,7 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 		for (const animation of animations) {
 			for (const channel of animation.listChannels()) {
 				const targetNode: Node | null = channel.getTargetNode();
-				const targetPath: GLTF.AnimationChannelTargetPath | null =
-					channel.getTargetPath();
+				const targetPath: GLTF.AnimationChannelTargetPath | null = channel.getTargetPath();
 				if (!targetNode || !targetPath) continue;
 
 				const nodeIdx: number = nodeIndexMap.get(targetNode) ?? -1;
@@ -652,11 +617,7 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 							let isStatic: boolean = true;
 							for (let i: number = 1; i < keyframeCount && isStatic; i++) {
 								for (let j: number = 0; j < elementSize; j++) {
-									if (
-										Math.abs(
-											at(outputArray, i * elementSize + j) - at(outputArray, j),
-										) > tolerance
-									) {
+									if (Math.abs(at(outputArray, i * elementSize + j) - at(outputArray, j)) > tolerance) {
 										isStatic = false;
 									}
 								}
@@ -669,9 +630,7 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 		}
 
 		if (removedTracks > 0 || skippedNoConsensus > 0) {
-			const parts: string[] = [
-				`${removedTracks} tracks removed (global consensus)`,
-			];
+			const parts: string[] = [`${removedTracks} tracks removed (global consensus)`];
 			if (skippedNoConsensus > 0) {
 				parts.push(`${skippedNoConsensus} kept (no consensus)`);
 			}

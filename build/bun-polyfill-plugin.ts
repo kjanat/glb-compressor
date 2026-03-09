@@ -14,12 +14,7 @@ import type { BunPlugin } from 'bun';
 const POLYFILL_PATH = join(import.meta.dir, 'polyfills.ts');
 
 type BunLoader = 'ts' | 'tsx' | 'js' | 'jsx';
-const ALLOWED_LOADERS: ReadonlySet<string> = new Set<string>([
-	'ts',
-	'tsx',
-	'js',
-	'jsx',
-]);
+const ALLOWED_LOADERS: ReadonlySet<string> = new Set<string>(['ts', 'tsx', 'js', 'jsx']);
 function isBunLoader(ext: string): ext is BunLoader {
 	return ALLOWED_LOADERS.has(ext);
 }
@@ -66,9 +61,7 @@ export function bunPolyfillPlugin(): BunPlugin {
 
 				// Replace import.meta.main with Node-compatible entry check.
 				if (usesImportMetaMain) {
-					imports.push(
-						`import { fileURLToPath as __bunPolyFUTP } from "node:url";`,
-					);
+					imports.push(`import { fileURLToPath as __bunPolyFUTP } from "node:url";`);
 					transformed = transformed.replace(
 						IMPORT_META_MAIN_RE,
 						'(__bunPolyFUTP(import.meta.url) === process.argv[1])',

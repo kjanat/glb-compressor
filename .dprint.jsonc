@@ -11,7 +11,7 @@
 		"associations": [".rules", "*.md", "CLAUDE.md", "AGENTS.md"]
 	},
 	"dockerfile": { "associations": ["Dockerfile", "Dockerfile.*"] },
-	"biome": { "indentStyle": "tab", "lineWidth": 80, "quoteStyle": "single" },
+	"biome": { "indentStyle": "tab", "lineWidth": 120, "quoteStyle": "single" },
 	"exec": {
 		"cwd": "${configDir}",
 		"commands": [
@@ -31,7 +31,7 @@
 	},
 	"excludes": ["**/node_modules", "**/bun.lock"],
 	"plugins": [
-		"https://plugins.dprint.dev/biome-0.12.0.wasm",
+		"https://plugins.dprint.dev/biome-0.12.2.wasm",
 		"https://plugins.dprint.dev/dockerfile-0.3.3.wasm",
 		"https://plugins.dprint.dev/exec-0.6.0.json@a054130d458f124f9b5c91484833828950723a5af3f8ff2bd1523bd47b83b364",
 		"https://plugins.dprint.dev/g-plane/malva-v0.15.2.wasm",

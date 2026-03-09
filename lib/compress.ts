@@ -24,11 +24,7 @@ import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import * as transform from '@gltf-transform/functions';
 import { $ } from 'bun';
 import draco3d from 'draco3dgltf';
-import {
-	MeshoptDecoder,
-	MeshoptEncoder,
-	MeshoptSimplifier,
-} from 'meshoptimizer';
+import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 
 import {
@@ -220,11 +216,7 @@ export async function init(): Promise<void> {
  * the glTF-Transform I/O with all extensions, and probes for the `gltfpack` binary.
  */
 async function doInit(): Promise<void> {
-	await Promise.all([
-		MeshoptDecoder.ready,
-		MeshoptEncoder.ready,
-		MeshoptSimplifier.ready,
-	]);
+	await Promise.all([MeshoptDecoder.ready, MeshoptEncoder.ready, MeshoptSimplifier.ready]);
 
 	const [dracoEncoder, dracoDecoder] = await Promise.all([
 		draco3d.createEncoderModule(),
@@ -242,23 +234,17 @@ async function doInit(): Promise<void> {
 
 	try {
 		// Bun.which is native on Bun, polyfilled via build/polyfills.ts for Node
-		const gltfpackBin =
-			typeof Bun?.which === 'function' ? Bun.which('gltfpack') : null;
+		const gltfpackBin = typeof Bun?.which === 'function' ? Bun.which('gltfpack') : null;
 		if (!gltfpackBin) {
 			console.warn('gltfpack not found in PATH, will use meshopt fallback');
 		} else {
-			const version =
-				(await $`gltfpack -v`.text()).trim().split(/\s/, 2)[1] || 'unknown';
-			if (version === 'unknown')
-				console.warn('Could not determine gltfpack version');
+			const version = (await $`gltfpack -v`.text()).trim().split(/\s/, 2)[1] || 'unknown';
+			if (version === 'unknown') console.warn('Could not determine gltfpack version');
 			else console.log('gltfpack:', version);
 			hasGltfpack = true;
 		}
 	} catch (err) {
-		console.warn(
-			'gltfpack detection failed:',
-			err instanceof Error ? err.message : err,
-		);
+		console.warn('gltfpack detection failed:', err instanceof Error ? err.message : err);
 		console.warn('Will use meshopt fallback');
 	}
 }
@@ -270,10 +256,7 @@ async function doInit(): Promise<void> {
  * extensions are metadata-only. Stripping them avoids conflicts when
  * re-compressing with a different backend.
  */
-function stripCompressionExtensions(
-	document: Document,
-	log: (msg: string) => void,
-): void {
+function stripCompressionExtensions(document: Document, log: (msg: string) => void): void {
 	for (const ext of document.getRoot().listExtensionsUsed()) {
 		if (COMPRESSION_EXTENSIONS.includes(ext.extensionName)) {
 			log(`  Removing extension: ${ext.extensionName}`);
@@ -301,10 +284,7 @@ function stripCompressionExtensions(
  * @returns Compressed GLB buffer, compression method used, and original size.
  * @throws {Error} If the input cannot be parsed as valid GLB/glTF.
  */
-export async function compress(
-	input: Uint8Array,
-	options: CompressOptions = {},
-): Promise<CompressResult> {
+export async function compress(input: Uint8Array, options: CompressOptions = {}): Promise<CompressResult> {
 	function log(msg: string): void {
 		if (!options.quiet) console.log(msg);
 		options.onLog?.(msg);
@@ -316,18 +296,14 @@ export async function compress(
 	try {
 		document = await io.readBinary(input);
 	} catch (err) {
-		throw new Error(
-			`Failed to parse GLB/glTF: ${err instanceof Error ? err.message : String(err)}`,
-		);
+		throw new Error(`Failed to parse GLB/glTF: ${err instanceof Error ? err.message : String(err)}`);
 	}
 
 	// Debug: save immediately after read (before any transforms)
 	if (process.env.DEBUG_RAW) {
 		const rawBuffer = await io.writeBinary(document);
 		await Bun.write('/tmp/debug-raw.glb', rawBuffer);
-		log(
-			`  Debug: saved /tmp/debug-raw.glb (${formatBytes(rawBuffer.byteLength)})`,
-		);
+		log(`  Debug: saved /tmp/debug-raw.glb (${formatBytes(rawBuffer.byteLength)})`);
 	}
 
 	// Strip existing compression (already decoded by NodeIO), then clean up geometry
@@ -351,11 +327,7 @@ export async function compress(
 	// - weld: merges vertices across mesh boundaries (leg/shoe clipping)
 	// - mergeByDistance: breaks vertex weights
 	if (!hasSkins) {
-		cleanupTransforms.push(
-			transform.flatten(),
-			transform.join(),
-			transform.weld(),
-		);
+		cleanupTransforms.push(transform.flatten(), transform.join(), transform.weld());
 	} else {
 		log('  Skinned model detected - using conservative transforms');
 	}
@@ -383,10 +355,7 @@ export async function compress(
 	await document.transform(...gpuTransforms);
 
 	// Phase 4: Animation + weights (batched)
-	const animTransforms: Transform[] = [
-		transform.resample(),
-		removeStaticTracksWithBake(),
-	];
+	const animTransforms: Transform[] = [transform.resample(), removeStaticTracksWithBake()];
 	if (hasSkins) {
 		animTransforms.push(normalizeWeights());
 	}
@@ -430,12 +399,7 @@ export async function compress(
 	const preset = options.preset ?? 'default';
 	if (hasGltfpack) {
 		log(`  Running gltfpack (preset: ${preset})...`);
-		const result = await compressWithGltfpack(
-			cleanBuffer,
-			hasSkins,
-			preset,
-			log,
-		);
+		const result = await compressWithGltfpack(cleanBuffer, hasSkins, preset, log);
 		if (result) {
 			log(`  gltfpack: ${formatBytes(result.buffer.byteLength)}`);
 			return { ...result, originalSize: input.byteLength };
@@ -470,9 +434,7 @@ async function compressWithGltfpack(
 			const config = PRESETS[preset];
 			const presetFlags = hasSkins ? config.skinned : config.static;
 			// -cc is the base compression flag (overridden by -cz in some presets)
-			const hasCompressFlag = presetFlags.some(
-				(f) => f === '-cz' || f === '-c',
-			);
+			const hasCompressFlag = presetFlags.some((f) => f === '-cz' || f === '-c');
 			// biome-ignore format: align cli flags with the values
 			const args = [
 				'gltfpack',
@@ -522,10 +484,7 @@ async function compressWithMeshopt(
 		// Skip quantize for skinned models to avoid deformation
 		await document.transform(transform.meshopt({ encoder: MeshoptEncoder }));
 	} else {
-		await document.transform(
-			transform.quantize(),
-			transform.meshopt({ encoder: MeshoptEncoder }),
-		);
+		await document.transform(transform.quantize(), transform.meshopt({ encoder: MeshoptEncoder }));
 	}
 	const buffer = await io.writeBinary(document);
 	log(`meshopt fallback: ${formatBytes(buffer.byteLength)}`);

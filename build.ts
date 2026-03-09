@@ -9,11 +9,7 @@
 
 import { bunPolyfillPlugin } from './build/bun-polyfill-plugin';
 
-const entrypoints: string[] = [
-	'./lib/mod.ts',
-	'./cli/main.ts',
-	'./server/main.ts',
-];
+const entrypoints: string[] = ['./lib/mod.ts', './cli/main.ts', './server/main.ts'];
 
 // Native addons & WASM packages must stay external
 const external: string[] = ['sharp', 'draco3dgltf', 'meshoptimizer'];
@@ -104,13 +100,10 @@ async function build() {
 	// ── 4. TypeScript declarations ───────────────────────────
 	console.log('Generating TypeScript declarations...');
 	// tsgo is provided by @typescript/native-preview in devDependencies
-	const tscProc = Bun.spawn(
-		['bun', 'run', 'tsgo', '-p', 'tsconfig.build.json'],
-		{
-			stdout: 'pipe',
-			stderr: 'pipe',
-		},
-	);
+	const tscProc = Bun.spawn(['bun', 'run', 'tsgo', '-p', 'tsconfig.build.json'], {
+		stdout: 'pipe',
+		stderr: 'pipe',
+	});
 	const tscExit = await tscProc.exited;
 	if (tscExit !== 0) {
 		const tscStderr = await new Response(tscProc.stderr).text();
@@ -123,15 +116,9 @@ async function build() {
 	// ── Summary ─────────────────────────────────────────────
 	const elapsed = ((performance.now() - start) / 1000).toFixed(2);
 	console.log(`\nDone in ${elapsed}s`);
-	console.log(
-		`  dist/node/          ${nodeResult.outputs.length} files (Node.js ESM)`,
-	);
-	console.log(
-		`  dist/bun/           ${bunResult.outputs.length} files (Bun ESM)`,
-	);
-	console.log(
-		`  dist/bun-bytecode/  ${bytecodeResult.outputs.length} files (Bun CJS + bytecode)`,
-	);
+	console.log(`  dist/node/          ${nodeResult.outputs.length} files (Node.js ESM)`);
+	console.log(`  dist/bun/           ${bunResult.outputs.length} files (Bun ESM)`);
+	console.log(`  dist/bun-bytecode/  ${bytecodeResult.outputs.length} files (Bun CJS + bytecode)`);
 	console.log(`  dist/types/         TypeScript declarations`);
 }
 
