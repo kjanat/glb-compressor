@@ -16,11 +16,11 @@
 				".yml",
 				".yaml",
 				".toml",
-				".svg"
-			]
-		}
+				".svg",
+			],
+		},
 	},
 	"mcp": {
-		"bun": { "type": "remote", "url": "https://bun.sh/docs/mcp" }
-	}
+		"bun": { "type": "remote", "url": "https://bun.sh/docs/mcp" },
+	},
 }
