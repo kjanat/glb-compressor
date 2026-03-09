@@ -304,14 +304,18 @@
 			}
 
 			/* --- Server Health --- */
-			async function checkServer() {
+			async function checkServer({ reportError = false } = {}) {
 				try {
 					const res = await fetch(`${BASE}/healthz`, {
 						signal: AbortSignal.timeout(3000),
 					});
 					serverOnline = res.ok;
-				} catch {
+				} catch (err) {
 					serverOnline = false;
+					if (reportError) {
+						addLog('Server health check failed. Is glb-server running?', 'error');
+						console.warn('Initial server health check failed:', err);
+					}
 				}
 				serverStatus.className = `server-status ${serverOnline ? 'online' : 'offline'}`;
 				serverText.textContent = serverOnline ? 'Connected' : 'Offline';
@@ -567,8 +571,8 @@
 									handlers.onResult(parsed);
 								else if (evtType === 'error' && handlers.onError)
 									handlers.onError(parsed);
-							} catch {
-								/* skip malformed JSON */
+							} catch (err) {
+								console.warn('Malformed JSON in SSE message:', err, evtData);
 							}
 						}
 					}
@@ -604,10 +608,7 @@
 				const done = files.filter((f) => f.status === 'done').length;
 				const errored = files.filter((f) => f.status === 'error').length;
 				if (errored > 0) {
-					addLog(
-						`Finished: ${done} compressed, ${errored} failed`,
-						errored > 0 ? 'error' : 'success',
-					);
+					addLog(`Finished: ${done} compressed, ${errored} failed`, 'error');
 				} else {
 					addLog(
 						`All ${done} file${done !== 1 ? 's' : ''} compressed successfully`,
@@ -696,8 +697,15 @@
 			}
 
 			/* --- Init --- */
-			checkServer();
-			setInterval(checkServer, 5000);
+			checkServer({ reportError: true }).catch((err) => {
+				addLog('Server health check failed during startup.', 'error');
+				console.warn('Startup health check rejected:', err);
+			});
+			setInterval(() => {
+				checkServer().catch((err) => {
+					console.warn('Periodic server health check rejected:', err);
+				});
+			}, 5000);
 		</script>
 	</body>
 </html>

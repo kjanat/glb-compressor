@@ -63,6 +63,11 @@
 		"CHANGELOG.md",
 		"skills"
 	],
+	"workspaces": [
+		".",
+		"./compressor-frontend",
+		"./shitty-frontend"
+	],
 	"scripts": {
 		"bd": "bun run build",
 		"build": "bun build.ts",
