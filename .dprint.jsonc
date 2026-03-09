@@ -20,7 +20,7 @@
 				"fileNames": ["package.json"],
 			},
 			{
-				"command": "bunx svgo --final-newline --pretty -q --input - --output -",
+				"command": "bunx svgo --final-newline --pretty --indent -1 -q --input - --output -",
 				"exts": ["svg"],
 			},
 		],
