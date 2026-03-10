@@ -180,7 +180,6 @@ describe('jobs queue error handling', () => {
 	beforeAll(async () => {
 		const port = await getFreePort();
 		process.env.PORT = String(port);
-		process.env.NO_TLS = 'true';
 		const { startServer } = await import('../src/main.ts');
 		const server = await startServer();
 

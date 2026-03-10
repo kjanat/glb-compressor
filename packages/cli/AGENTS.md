@@ -30,6 +30,14 @@ src/
 - `-f, --force` overwrite output
 - `-h, --help`, `-v, --version`
 
+## Notes
+
+- Imports version from `'pkg'` -- tsconfig path alias resolved at build time by
+  bun-polyfill plugin. Will break if polyfill plugin is removed.
+- Side-effects-only entry: calls `main()` at module level, no named exports.
+- 3 `as Type` casts exist for `Object.keys(PRESETS)` and preset validation
+  narrowing -- tolerated at type-system boundaries.
+
 ## Anti-patterns
 
 - Don't bypass `validateGlbMagic()` for input validation.

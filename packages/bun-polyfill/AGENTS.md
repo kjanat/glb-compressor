@@ -1,6 +1,6 @@
 # @glb-compressor/bun-polyfill
 
-Node.js compatibility layer. Build-time only (`private: true`) — never imported
+Node.js compatibility layer. Build-time only (`private: true`) -- never imported
 at runtime. Used exclusively by `build.ts` for the Node.js target.
 
 ## Files
@@ -9,10 +9,10 @@ at runtime. Used exclusively by `build.ts` for the Node.js target.
 
 Three hooks applied only to the Node.js ESM build target:
 
-1. **onResolve** — redirects `import from 'bun'` to `polyfills.ts`
-2. **onLoad** — injects `import { Bun } from "bun"` when files use `Bun.*`
+1. **onResolve** -- redirects `import from 'bun'` to `polyfills.ts`
+2. **onLoad** -- injects `import { Bun } from "bun"` when files use `Bun.*`
    globals; replaces `import.meta.main` with Node-compatible check
-3. **onResolve** — resolves `pkg` tsconfig alias to `package.json`
+3. **onResolve** -- resolves `pkg` tsconfig alias to `package.json`
 
 ### polyfills.ts (~360 lines, highest-risk maintenance surface)
 
@@ -40,9 +40,9 @@ Reimplements Bun APIs using Node.js stdlib:
 
 ## Anti-patterns (this package)
 
-- Don't import from `core/`, `cli/`, or `server/` — build infra is
+- Don't import from `core/`, `cli/`, or `server/` -- build infra is
   self-contained.
-- Don't use polyfills at runtime — they exist only for the Node.js build target.
-- `as Type` casts exist here for Node->Web API bridging — tolerated
+- Don't use polyfills at runtime -- they exist only for the Node.js build target.
+- `as Type` casts exist here for Node->Web API bridging -- tolerated
   but minimize additions.
 - Don't add Bun API polyfills without verifying both Node 18 and 20 compat.

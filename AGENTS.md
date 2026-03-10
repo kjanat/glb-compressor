@@ -9,12 +9,20 @@ dual-runtime (Bun + Node.js) build. CLI (`glb-compressor`), HTTP server
 ```text
 packages/
   core/src/           Compression library (barrel: mod.ts)
-    compress.ts       6-phase pipeline orchestrator (~500 lines)
-    transforms.ts     Custom glTF-Transform transforms (~670 lines)
+    compress.ts       6-phase pipeline orchestrator (~600 lines)
+    transforms.ts     Custom glTF-Transform transforms (~780 lines)
     constants.ts      Shared constants + error codes
     utils.ts          Utility functions
   cli/src/main.ts     CLI entry (bin: glb-compressor)
-  server/src/main.ts  HTTP server entry (bin: glb-server)
+  server/src/         HTTP server + job queue + TLS (8 source files)
+    main.ts           Server entrypoint + route handlers
+    http.ts           Request parsing, CORS, error responses
+    job-queue.ts      Serial compression queue with Worker dispatch
+    job-types.ts      Domain types + factory
+    job-protocol.ts   Worker message wire types
+    worker-runtime.ts Worker message parser + specifier resolver
+    worker.ts         Worker thread entry
+    tls.ts            Auto-generated TLS certs
   shared-types/src/   Wire protocol types (SSE events)
   bun-polyfill/src/   Node.js polyfill plugin (build-time only)
 src/index.ts          Meta-package barrel (re-exports @glb-compressor/core)
@@ -29,18 +37,20 @@ skills/               Agent skill documentation (read-only)
 
 ## Where to look
 
-| Task                   | Location                                    |
-| ---------------------- | ------------------------------------------- |
-| Add/change compression | `packages/core/src/compress.ts`             |
-| Add glTF transform     | `packages/core/src/transforms.ts`           |
-| Change presets         | `packages/core/src/compress.ts` → `PRESETS` |
-| Add CLI flag           | `packages/cli/src/main.ts`                  |
-| Add server endpoint    | `packages/server/src/main.ts`               |
-| Fix Node.js compat     | `packages/bun-polyfill/src/polyfills.ts`    |
-| Change build targets   | `build.ts`                                  |
-| Public API surface     | `packages/core/src/mod.ts` (barrel)         |
-| Wire protocol types    | `packages/shared-types/src/index.ts`        |
-| Frontend UI            | `compressor-frontend/src/`                  |
+| Task                   | Location                                     |
+| ---------------------- | -------------------------------------------- |
+| Add/change compression | `packages/core/src/compress.ts`              |
+| Add glTF transform     | `packages/core/src/transforms.ts`            |
+| Change presets         | `packages/core/src/compress.ts` -> `PRESETS` |
+| Add CLI flag           | `packages/cli/src/main.ts`                   |
+| Add server endpoint    | `packages/server/src/main.ts`                |
+| Add/change job queue   | `packages/server/src/job-queue.ts`           |
+| Fix request parsing    | `packages/server/src/http.ts`                |
+| Fix Node.js compat     | `packages/bun-polyfill/src/polyfills.ts`     |
+| Change build targets   | `build.ts`                                   |
+| Public API surface     | `packages/core/src/mod.ts` (barrel)          |
+| Wire protocol types    | `packages/shared-types/src/index.ts`         |
+| Frontend UI            | `compressor-frontend/src/`                   |
 
 ## Architecture
 
@@ -55,7 +65,7 @@ skills/               Agent skill documentation (read-only)
   WASM if unavailable.
 - **WASM pre-warm**: Draco + Meshopt WASM initialized eagerly at module load.
   Importing `@glb-compressor/core` triggers WASM loading as a side effect.
-- **Dependency graph**: `core` is the root — `cli` and `server` depend on it.
+- **Dependency graph**: `core` is the root -- `cli` and `server` depend on it.
   `shared-types` is a leaf. `bun-polyfill` is build-time only (`private: true`).
 
 ## Workspace packages
@@ -64,15 +74,15 @@ skills/               Agent skill documentation (read-only)
 | ------------------------------ | --------------- | ----------------------- | ------------------------------------------------- |
 | `@glb-compressor/core`         | `src/mod.ts`    | Compression library     | gltf-transform, sharp, draco3dgltf, meshoptimizer |
 | `@glb-compressor/cli`          | `src/main.ts`   | CLI binary              | core                                              |
-| `@glb-compressor/server`       | `src/main.ts`   | HTTP server             | core, shared-types                                |
+| `@glb-compressor/server`       | `src/main.ts`   | HTTP server             | core, shared-types, @peculiar/x509                |
 | `@glb-compressor/shared-types` | `src/index.ts`  | Wire protocol types     | (none)                                            |
 | `@glb-compressor/bun-polyfill` | `src/plugin.ts` | Node.js build polyfills | (none, private)                                   |
 
 ## Conventions
 
-- **Bun-first** — always prefer Bun APIs over Node.js equivalents.
+- **Bun-first** -- always prefer Bun APIs over Node.js equivalents.
 - **Tabs**, single quotes, 120-char line width (TS/JS).
-- **Strict TypeScript** — `strict: true`, `noUncheckedIndexedAccess`,
+- **Strict TypeScript** -- `strict: true`, `noUncheckedIndexedAccess`,
   `verbatimModuleSyntax` (use `import type` for type-only imports).
 - **Biome** for linting (formatter disabled), **dprint** for formatting
   (`bun run fmt`). Prettier explicitly disabled.
@@ -84,18 +94,18 @@ skills/               Agent skill documentation (read-only)
 
 ## Anti-patterns
 
-- Don't use npm/yarn/pnpm — use `bun`.
-- Don't use express — use `Bun.serve()`.
-- Don't use dotenv — Bun auto-loads `.env`.
-- Don't use `node:fs` readFile/writeFile — use `Bun.file` / `Bun.write`.
-- Don't use execa — use `Bun.$`.
+- Don't use npm/yarn/pnpm -- use `bun`.
+- Don't use express -- use `Bun.serve()`.
+- Don't use dotenv -- Bun auto-loads `.env`.
+- Don't use `node:fs` readFile/writeFile -- use `Bun.file` / `Bun.write`.
+- Don't use execa -- use `Bun.$`.
 - No `any`, no `!` non-null assertions, no `as Type` casts.
 - Don't flatten/join/weld/quantize skinned models.
 
 ## Commands
 
 ```sh
-bun run dev         # Hot-reload server
+bun run dev         # Hot-reload server + frontend
 bun run cli         # Run CLI from source
 bun run check       # Biome lint + format check
 bun run lint        # Biome lint only
@@ -143,32 +153,30 @@ Bin stubs in `bin/` use `#!/usr/bin/env node` for npm global installs.
 ## Skills
 
 Agent skills in `skills/` following the [Agent Skills](https://agentskills.io/)
-format. Read-only documentation — no scripts, no build step.
+format. Read-only documentation -- no scripts, no build step.
 
 | Skill                    | Purpose                               | References                |
 | ------------------------ | ------------------------------------- | ------------------------- |
-| `glb-compressor-cli`     | CLI usage, flags, presets, examples   | —                         |
+| `glb-compressor-cli`     | CLI usage, flags, presets, examples   | --                        |
 | `glb-compressor-library` | Programmatic API, types, pipeline     | `api.md`, `transforms.md` |
-| `glb-compressor-server`  | HTTP endpoints, SSE streaming, errors | —                         |
+| `glb-compressor-server`  | HTTP endpoints, SSE streaming, errors | --                        |
 
 ### When to update skills
 
-- **Add/change CLI flag** → update `glb-compressor-cli/SKILL.md`
-- **Add/change API export** → update `glb-compressor-library/SKILL.md` +
+- **Add/change CLI flag** -> update `glb-compressor-cli/SKILL.md`
+- **Add/change API export** -> update `glb-compressor-library/SKILL.md` +
   `references/api.md`
-- **Add/change transform** → update `references/transforms.md` (safety matrix)
-- **Add/change endpoint** → update `glb-compressor-server/SKILL.md`
-- **Add/change preset** → update all three skills (CLI, library, server)
-- **Add/change constant** → update `references/api.md`
+- **Add/change transform** -> update `references/transforms.md` (safety matrix)
+- **Add/change endpoint** -> update `glb-compressor-server/SKILL.md`
+- **Add/change preset** -> update all three skills (CLI, library, server)
+- **Add/change constant** -> update `references/api.md`
 
 ## Notes
 
-- `packages/server/src/main.ts` guards startup with `import.meta.main` — safe to import as
-  library.
-- Dockerfile is **stale**: references pre-monorepo flat paths (`lib/`,
-  `server/`, `cli/`) and CMD references `./dist/index.js` but build output is
-  `./dist/bun-bytecode/main.cjs`. Needs update before Docker builds will work.
-- No tests exist in core packages yet. Intended framework: `bun:test`.
+- `packages/server/src/main.ts` guards startup with `import.meta.main` -- safe
+  to import as library.
+- No tests exist in core packages yet. Intended framework: `bun:test`. Server
+  has one integration test (`test/jobs-queue.test.ts`).
 - `models/` dir (gitignored) contains `.glb` fixtures for benchmarking.
 - `prepublishOnly` uses Prettier for README only (dprint's markdown plugin
   differs).

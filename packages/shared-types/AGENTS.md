@@ -20,7 +20,8 @@ src/
 ## Consumers
 
 - Producer: `packages/server/src/main.ts` (`handleCompressStream`)
-- Consumer: `compressor-frontend/src/lib/sse.ts`
+- Consumer: `compressor-frontend/src/lib/sse.ts` (currently dead code --
+  frontend switched to queue-based polling)
 
 ## Anti-patterns
 

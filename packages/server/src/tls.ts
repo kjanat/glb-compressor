@@ -73,10 +73,10 @@ async function cacheCerts(pair: TlsCertPair): Promise<void> {
 
 /**
  * Resolve TLS certs: custom env paths → cached auto-generated → fresh generation.
- * Returns `undefined` when `NO_TLS=true`.
+ * Returns `undefined` unless `TLS=true` or `TLS_CERT`/`TLS_KEY` are set.
  */
 export async function resolveTls(): Promise<TlsCertPair | undefined> {
-	if (process.env.NO_TLS === 'true') return undefined;
+	if (process.env.TLS !== 'true' && !process.env.TLS_CERT) return undefined;
 
 	const custom = await loadCustomCerts();
 	if (custom) return custom;

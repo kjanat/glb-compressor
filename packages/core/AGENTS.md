@@ -14,16 +14,20 @@ mod.ts        <- barrel re-export of all above
 
 ## Key files
 
-### compress.ts (pipeline orchestrator, ~500 lines)
+### compress.ts (pipeline orchestrator, ~600 lines)
 
-- `compress(input, options?)` — main entry point, runs 6 phases
-- `init()` — eager WASM warm-up (Draco + Meshopt), called automatically at
+- `compress(input, options?)` -- main entry point, runs 6 phases
+- `init()` -- eager WASM warm-up (Draco + Meshopt), called automatically at
   import time
-- `PRESETS` — `Record<CompressPreset, GltfpackPresetConfig>` with 4 levels:
+- `PRESETS` -- `Record<CompressPreset, GltfpackPresetConfig>` with 4 levels:
   `default`, `balanced`, `aggressive`, `max`
-- `getHasGltfpack()` — checks for external binary availability
-- `compressWithGltfpack()` — (private) subprocess with 60s timeout, temp file I/O
-- `compressWithMeshopt()` — (private) pure WASM fallback when gltfpack unavailable
+- `getHasGltfpack()` -- checks for external binary availability
+- `compressWithGltfpack()` -- (private) subprocess with 60s timeout, temp file
+  I/O
+- `compressWithMeshopt()` -- (private) pure WASM fallback when gltfpack
+  unavailable
+- `readInputDocument()` -- (private) parses GLB binary or glTF JSON with
+  multi-strategy resource resolution
 
 #### Pipeline phases
 
@@ -38,11 +42,11 @@ mod.ts        <- barrel re-export of all above
 | 5: Textures  | `textureCompress` (WebP via sharp, max 1024x1024)                   | both        |
 | 6: Backend   | gltfpack subprocess or meshopt WASM fallback                        | both        |
 
-The `hasSkins` boolean (detected via `document.getRoot().listSkins()`) gates every
-phase. Phases marked `static+` add transforms only for non-skinned models.
+The `hasSkins` boolean (detected via `document.getRoot().listSkins()`) gates
+every phase. Phases marked `static+` add transforms only for non-skinned models.
 `skinned+` adds transforms only for skinned models.
 
-### transforms.ts (custom glTF-Transform transforms, ~670 lines)
+### transforms.ts (custom glTF-Transform transforms, ~780 lines)
 
 All return `Transform` functions for use with `document.transform()`:
 
@@ -56,9 +60,6 @@ All return `Transform` functions for use with `document.transform()`:
 | `removeStaticTracksWithBake()` | safe   | safe     | Remove animation tracks that don't move  |
 | `analyzeMeshComplexity(...)`   | safe   | safe     | Log-only analysis (read-only)            |
 | `analyzeAnimations()`          | safe   | safe     | Log-only animation stats (read-only)     |
-
-`analyzeAnimations()` is exported for a-la-carte use, but not applied by
-default in `compress.ts`.
 
 ### constants.ts
 
@@ -78,18 +79,30 @@ texture/mesh thresholds, `DEFAULT_PORT`.
 
 ## Complexity hotspots
 
-- `compress()` (~130 lines) — 7 branch points on `hasSkins`
+- `compress()` (~130 lines) -- 7 branch points on `hasSkins`; transform ordering
+  is load-bearing (e.g. `prune` after geometry cleanup removes orphans)
 - Module-level eager init fires at import time; `.catch()` re-throws
-- `compressWithGltfpack()` — manual timeout + temp file management
-- `transforms.ts` logs to `console.log` unconditionally (bypasses `quiet`/`onLog`)
-- `at()` helper in transforms.ts throws `RangeError` on out-of-bounds — compensates
-  for `noUncheckedIndexedAccess`
+- `compressWithGltfpack()` -- manual timeout + temp file management; swallows
+  errors and returns `null` to trigger meshopt fallback silently
+- `readInputDocument()` -- multi-strategy URI resolution cascade (4 fallbacks);
+  `toArrayBufferBacked()` copies all resources into fresh ArrayBuffers (memory
+  doubling)
+- `removeStaticTracksWithBake()` (~180 lines) -- 3-pass algorithm with fragile
+  composite string keys (`"${nodeIdx}::${targetPath}"`) that must stay in sync
+  across all passes; 6 levels of nesting at peak
+- `normalizeWeights()` -- integer vs float paths share no code; `continue` on
+  line 387 skips float logic silently
+- `at()` helper throws `RangeError` on out-of-bounds -- compensates for
+  `noUncheckedIndexedAccess`; used pervasively across all transforms
+- `transforms.ts` logs to `console.log` unconditionally (bypasses
+  `quiet`/`onLog`)
+- `PRESETS` uses `// biome-ignore format:` to preserve flag alignment
 
 ## Anti-patterns (this package)
 
 - Don't add transforms modifying skinned meshes without `hasSkins` guard in
   `compress.ts`.
-- Don't import from `cli/` or `server/` — core is the dependency root.
+- Don't import from `cli/` or `server/` -- core is the dependency root.
 - Don't bypass `mod.ts` barrel for public API additions.
-- Adding exports to `constants.ts`/`transforms.ts` auto-exposes them publicly via
-  `export *` in the barrel — be intentional.
+- Adding exports to `constants.ts`/`transforms.ts` auto-exposes them publicly
+  via `export *` in the barrel -- be intentional.

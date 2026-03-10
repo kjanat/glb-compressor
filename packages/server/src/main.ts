@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { join, resolve } from 'node:path';
 import { DEFAULT_PORT, ErrorCode, formatBytes } from '@glb-compressor/core';
 import type { CompressionStreamEventMap } from '@glb-compressor/shared-types';
 import { CompressionJobQueue } from './job-queue';
@@ -8,6 +9,10 @@ import { CORS_HEADERS, jsonError, parseCompressRequest } from './http';
 import { resolveTls } from './tls';
 
 const PORT = parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
+
+// Static frontend serving — resolved once at startup
+const FRONTEND_DIR = resolve(process.env.FRONTEND_DIR ?? join(process.cwd(), 'dist', 'frontend'));
+const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable' as const;
 
 const jobQueue = new CompressionJobQueue();
 
@@ -340,6 +345,26 @@ export async function startServer() {
 				}
 				if (req.method === 'OPTIONS') {
 					return handleOptions();
+				}
+			}
+
+			// Static file serving
+			const filePath = resolve(join(FRONTEND_DIR, url.pathname));
+			if (filePath.startsWith(FRONTEND_DIR)) {
+				const file = Bun.file(filePath);
+				if (await file.exists()) {
+					const cacheControl = url.pathname.startsWith('/_app/immutable/') ? IMMUTABLE_CACHE : 'no-cache';
+					return new Response(file, {
+						headers: { ...CORS_HEADERS, 'Cache-Control': cacheControl },
+					});
+				}
+
+				// SPA fallback — serve index.html for client-side routing
+				const indexFile = Bun.file(join(FRONTEND_DIR, 'index.html'));
+				if (await indexFile.exists()) {
+					return new Response(indexFile, {
+						headers: { ...CORS_HEADERS, 'Content-Type': 'text/html;charset=utf-8' },
+					});
 				}
 			}
 
