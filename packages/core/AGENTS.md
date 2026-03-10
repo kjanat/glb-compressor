@@ -38,7 +38,7 @@ mod.ts        <- barrel re-export of all above
 | 5: Textures  | `textureCompress` (WebP via sharp, max 1024x1024)                   | both        |
 | 6: Backend   | gltfpack subprocess or meshopt WASM fallback                        | both        |
 
-The `hasSkins` boolean (detected via `doc.getRoot().listSkins()`) gates every
+The `hasSkins` boolean (detected via `document.getRoot().listSkins()`) gates every
 phase. Phases marked `static+` add transforms only for non-skinned models.
 `skinned+` adds transforms only for skinned models.
 
@@ -49,13 +49,16 @@ All return `Transform` functions for use with `document.transform()`:
 | Function                       | Static | Skinned  | Purpose                                  |
 | ------------------------------ | ------ | -------- | ---------------------------------------- |
 | `mergeByDistance(tolerance?)`  | safe   | **SKIP** | Merge vertices within tolerance          |
-| `decimateBloatedMeshes()`      | safe   | **SKIP** | Auto-simplify meshes exceeding threshold |
+| `decimateBloatedMeshes(...)`   | safe   | **SKIP** | Auto-simplify meshes exceeding threshold |
 | `removeDegenerateFaces()`      | safe   | safe     | Remove zero-area triangles               |
 | `removeUnusedUVs()`            | safe   | safe     | Strip UV sets with no material reference |
 | `normalizeWeights()`           | n/a    | safe     | Renormalize bone weights                 |
 | `removeStaticTracksWithBake()` | safe   | safe     | Remove animation tracks that don't move  |
-| `analyzeMeshComplexity()`      | safe   | safe     | Log-only analysis (read-only)            |
+| `analyzeMeshComplexity(...)`   | safe   | safe     | Log-only analysis (read-only)            |
 | `analyzeAnimations()`          | safe   | safe     | Log-only animation stats (read-only)     |
+
+`analyzeAnimations()` is exported for a-la-carte use, but not applied by
+default in `compress.ts`.
 
 ### constants.ts
 

@@ -9,7 +9,7 @@ dual-runtime (Bun + Node.js) build. CLI (`glb-compressor`), HTTP server
 ```text
 packages/
   core/src/           Compression library (barrel: mod.ts)
-    compress.ts       5-phase pipeline orchestrator (~500 lines)
+    compress.ts       6-phase pipeline orchestrator (~500 lines)
     transforms.ts     Custom glTF-Transform transforms (~670 lines)
     constants.ts      Shared constants + error codes
     utils.ts          Utility functions
@@ -21,6 +21,7 @@ src/index.ts          Meta-package barrel (re-exports @glb-compressor/core)
 bin/                  npm bin shims (#!/usr/bin/env node wrappers)
 build.ts              4-target build script
 bench.ts              Compression benchmark runner (dev-only)
+scripts/              Dev utilities (e.g. social preview generator)
 compressor-frontend/  SvelteKit 2 + Svelte 5 + Tailwind v4 web UI
 shitty-frontend/      React 19 prototype (throwaway)
 skills/               Agent skill documentation (read-only)
@@ -59,13 +60,13 @@ skills/               Agent skill documentation (read-only)
 
 ## Workspace packages
 
-| Package                        | Entry           | Role                    | Deps                  |
-| ------------------------------ | --------------- | ----------------------- | --------------------- |
-| `@glb-compressor/core`         | `src/mod.ts`    | Compression library     | gltf-transform, sharp |
-| `@glb-compressor/cli`          | `src/main.ts`   | CLI binary              | core                  |
-| `@glb-compressor/server`       | `src/main.ts`   | HTTP server             | core, shared-types    |
-| `@glb-compressor/shared-types` | `src/index.ts`  | Wire protocol types     | (none)                |
-| `@glb-compressor/bun-polyfill` | `src/plugin.ts` | Node.js build polyfills | (none, private)       |
+| Package                        | Entry           | Role                    | Deps                                              |
+| ------------------------------ | --------------- | ----------------------- | ------------------------------------------------- |
+| `@glb-compressor/core`         | `src/mod.ts`    | Compression library     | gltf-transform, sharp, draco3dgltf, meshoptimizer |
+| `@glb-compressor/cli`          | `src/main.ts`   | CLI binary              | core                                              |
+| `@glb-compressor/server`       | `src/main.ts`   | HTTP server             | core, shared-types                                |
+| `@glb-compressor/shared-types` | `src/index.ts`  | Wire protocol types     | (none)                                            |
+| `@glb-compressor/bun-polyfill` | `src/plugin.ts` | Node.js build polyfills | (none, private)                                   |
 
 ## Conventions
 
@@ -118,6 +119,7 @@ Externals (never bundled): `sharp`, `draco3dgltf`, `meshoptimizer`.
 `build.ts` contains a `workspaceResolverPlugin()` that redirects
 `@glb-compressor/*` imports to source `.ts` files at build time because the
 `"node"` export condition points to `dist/` which doesn't exist during build.
+The bun-polyfill plugin also resolves the `pkg` alias to root `package.json`.
 
 ## Conditional exports (dual-runtime)
 
@@ -131,12 +133,12 @@ Bin stubs in `bin/` use `#!/usr/bin/env node` for npm global installs.
 
 ## CI/CD
 
-| Workflow      | Trigger           | Purpose                                        |
-| ------------- | ----------------- | ---------------------------------------------- |
-| `autofix.yml` | push, PRs         | Biome lint-fix + dprint format, auto-committed |
-| `publish.yml` | Release           | Build + `npm publish --provenance`             |
-| `pages.yml`   | push to master    | Build + deploy SvelteKit frontend to GH Pages  |
-| `claude.yml`  | `@claude` mention | AI-assisted code review and PR work            |
+| Workflow      | Trigger                            | Purpose                                        |
+| ------------- | ---------------------------------- | ---------------------------------------------- |
+| `autofix.yml` | push(`master`), PRs, workflow_call | Biome lint-fix + dprint format, auto-committed |
+| `publish.yml` | release, workflow_dispatch         | Build + `npm publish --provenance`             |
+| `pages.yml`   | push(`master`), workflow_dispatch  | Build + deploy SvelteKit frontend to GH Pages  |
+| `claude.yml`  | mentions, PR/issue events, manual  | AI-assisted code review and PR work            |
 
 ## Skills
 
@@ -161,11 +163,11 @@ format. Read-only documentation — no scripts, no build step.
 
 ## Notes
 
-- `server/main.ts` guards startup with `import.meta.main` — safe to import as
+- `packages/server/src/main.ts` guards startup with `import.meta.main` — safe to import as
   library.
 - Dockerfile is **stale**: references pre-monorepo flat paths (`lib/`,
-  `server/`, `cli/`) and CMD references `./dist/index.js` but build produces
-  `./dist/main.cjs`. Needs update before Docker builds will work.
+  `server/`, `cli/`) and CMD references `./dist/index.js` but build output is
+  `./dist/bun-bytecode/main.cjs`. Needs update before Docker builds will work.
 - No tests exist in core packages yet. Intended framework: `bun:test`.
 - `models/` dir (gitignored) contains `.glb` fixtures for benchmarking.
 - `prepublishOnly` uses Prettier for README only (dprint's markdown plugin

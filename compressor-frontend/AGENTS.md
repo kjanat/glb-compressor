@@ -41,6 +41,7 @@ bun run test:unit   # vitest (watch)
 src/
   app.html            SvelteKit shell
   app.d.ts            Global type augmentation
+  demo.spec.ts        Node test project smoke test
   lib/
     index.ts           $lib barrel (empty placeholder)
     compression-session.svelte.ts  Reactive compression state manager
@@ -63,7 +64,10 @@ src/
     +layout.svelte     Root layout (Svelte 5 $props())
     +layout.ts         Layout load function
     +page.svelte       Main page
+    page.svelte.spec.ts Browser test for +page
     layout.css         Tailwind v4 entry + plugins
+static/
+  robots.txt          Static robots policy
 ```
 
 ## Test conventions

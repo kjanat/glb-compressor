@@ -43,6 +43,6 @@ Reimplements Bun APIs using Node.js stdlib:
 - Don't import from `core/`, `cli/`, or `server/` — build infra is
   self-contained.
 - Don't use polyfills at runtime — they exist only for the Node.js build target.
-- `as Type` casts exist here (6 total) for Node->Web API bridging — tolerated
+- `as Type` casts exist here for Node->Web API bridging — tolerated
   but minimize additions.
 - Don't add Bun API polyfills without verifying both Node 18 and 20 compat.
