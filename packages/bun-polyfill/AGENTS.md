@@ -1,19 +1,18 @@
-# build/
+# @glb-compressor/bun-polyfill
 
-Node.js compatibility layer. Build infrastructure only -- never imported at
-runtime by lib/cli/server. Used exclusively by `build.ts` for the Node.js
-target.
+Node.js compatibility layer. Build-time only (`private: true`) — never imported
+at runtime. Used exclusively by `build.ts` for the Node.js target.
 
 ## Files
 
-### bun-polyfill-plugin.ts (Bun bundler plugin)
+### plugin.ts (Bun bundler plugin)
 
 Three hooks applied only to the Node.js ESM build target:
 
-1. **onResolve** -- redirects `import from 'bun'` to `build/polyfills.ts`
-2. **onLoad** -- injects `import { Bun } from "bun"` when files use `Bun.*`
+1. **onResolve** — redirects `import from 'bun'` to `polyfills.ts`
+2. **onLoad** — injects `import { Bun } from "bun"` when files use `Bun.*`
    globals; replaces `import.meta.main` with Node-compatible check
-3. **onResolve** -- resolves `pkg` tsconfig alias to `package.json`
+3. **onResolve** — resolves `pkg` tsconfig alias to `package.json`
 
 ### polyfills.ts (~360 lines, highest-risk maintenance surface)
 
@@ -35,14 +34,15 @@ Reimplements Bun APIs using Node.js stdlib:
   Must handle URL construction, header conversion, body streaming, three-way
   route matching, and Web Response -> Node ServerResponse with backpressure.
 - `Glob.scan()` has two code paths: globstar vs simple patterns. Handles
-  Node 18 vs 20 `readdir` API differences.
+  Node 18 vs 20 `readdir` API differences (`entry.parentPath` vs `entry.path`).
 - `file().arrayBuffer()` uses `buf.buffer.slice(buf.byteOffset, ...)` because
   Node's Buffer can share the underlying ArrayBuffer with other views.
 
-## Anti-patterns (this directory)
+## Anti-patterns (this package)
 
-- Don't import from `lib/`, `cli/`, or `server/` -- build is self-contained.
-- Don't use polyfills at runtime -- they exist only for the Node.js build target.
-- `as Type` casts exist here (6 total) for Node->Web API bridging -- tolerated
+- Don't import from `core/`, `cli/`, or `server/` — build infra is
+  self-contained.
+- Don't use polyfills at runtime — they exist only for the Node.js build target.
+- `as Type` casts exist here (6 total) for Node->Web API bridging — tolerated
   but minimize additions.
 - Don't add Bun API polyfills without verifying both Node 18 and 20 compat.

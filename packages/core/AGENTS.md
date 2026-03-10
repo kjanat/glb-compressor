@@ -1,4 +1,4 @@
-# lib/
+# @glb-compressor/core
 
 Core compression library. Public API exported via `mod.ts` barrel.
 
@@ -16,14 +16,14 @@ mod.ts        <- barrel re-export of all above
 
 ### compress.ts (pipeline orchestrator, ~500 lines)
 
-- `compress(input, options?)` -- main entry point, runs 6 phases
-- `init()` -- eager WASM warm-up (Draco + Meshopt), called automatically at
+- `compress(input, options?)` — main entry point, runs 6 phases
+- `init()` — eager WASM warm-up (Draco + Meshopt), called automatically at
   import time
-- `PRESETS` -- `Record<CompressPreset, PresetConfig>` with 4 levels: `default`,
-  `balanced`, `aggressive`, `max`
-- `getHasGltfpack()` -- checks for external binary availability
-- `compressWithGltfpack()` -- subprocess with timeout, temp file I/O
-- `compressWithMeshopt()` -- pure WASM fallback when gltfpack unavailable
+- `PRESETS` — `Record<CompressPreset, GltfpackPresetConfig>` with 4 levels:
+  `default`, `balanced`, `aggressive`, `max`
+- `getHasGltfpack()` — checks for external binary availability
+- `compressWithGltfpack()` — (private) subprocess with 60s timeout, temp file I/O
+- `compressWithMeshopt()` — (private) pure WASM fallback when gltfpack unavailable
 
 #### Pipeline phases
 
@@ -75,16 +75,18 @@ texture/mesh thresholds, `DEFAULT_PORT`.
 
 ## Complexity hotspots
 
-- `compress()` (~130 lines) -- 7 branch points on `hasSkins`
+- `compress()` (~130 lines) — 7 branch points on `hasSkins`
 - Module-level eager init fires at import time; `.catch()` re-throws
-- `compressWithGltfpack()` -- manual timeout + temp file management
+- `compressWithGltfpack()` — manual timeout + temp file management
 - `transforms.ts` logs to `console.log` unconditionally (bypasses `quiet`/`onLog`)
+- `at()` helper in transforms.ts throws `RangeError` on out-of-bounds — compensates
+  for `noUncheckedIndexedAccess`
 
-## Anti-patterns (this directory)
+## Anti-patterns (this package)
 
-- Don't add transforms that modify skinned meshes without checking `hasSkinning`
-  in `compress.ts` first.
-- Don't import from `cli/` or `server/` -- lib is the dependency root.
+- Don't add transforms modifying skinned meshes without `hasSkins` guard in
+  `compress.ts`.
+- Don't import from `cli/` or `server/` — core is the dependency root.
 - Don't bypass `mod.ts` barrel for public API additions.
 - Adding exports to `constants.ts`/`transforms.ts` auto-exposes them publicly via
-  `export *` in the barrel -- be intentional.
+  `export *` in the barrel — be intentional.

@@ -1,38 +1,50 @@
 # glb-compressor
 
-Multi-phase GLB/glTF 3D model compression toolkit. CLI (`glb-compressor`), HTTP
-server (`glb-server`), and library API.
+Multi-phase GLB/glTF 3D model compression toolkit. Bun-first monorepo with
+dual-runtime (Bun + Node.js) build. CLI (`glb-compressor`), HTTP server
+(`glb-server`), library API, and SvelteKit web UI.
 
 ## Structure
 
 ```text
-lib/            Core library (public API barrel: mod.ts)
-  compress.ts   5-phase compression pipeline orchestrator
-  transforms.ts Custom glTF-Transform transforms (geometry, animation, weights)
-  constants.ts  Shared constants and error codes
-  utils.ts      Utility functions
-cli/main.ts     CLI entry point (bin: glb-compressor)
-server/main.ts  HTTP server entry point (bin: glb-server)
-build/          Build infra (NOT output) — Bun polyfill plugin + Node.js shims
-build.ts        3-target build script (Node ESM, Bun ESM, Bun bytecode)
-bench.ts        Compression benchmark runner (dev-only)
+packages/
+  core/src/           Compression library (barrel: mod.ts)
+    compress.ts       5-phase pipeline orchestrator (~500 lines)
+    transforms.ts     Custom glTF-Transform transforms (~670 lines)
+    constants.ts      Shared constants + error codes
+    utils.ts          Utility functions
+  cli/src/main.ts     CLI entry (bin: glb-compressor)
+  server/src/main.ts  HTTP server entry (bin: glb-server)
+  shared-types/src/   Wire protocol types (SSE events)
+  bun-polyfill/src/   Node.js polyfill plugin (build-time only)
+src/index.ts          Meta-package barrel (re-exports @glb-compressor/core)
+bin/                  npm bin shims (#!/usr/bin/env node wrappers)
+build.ts              4-target build script
+bench.ts              Compression benchmark runner (dev-only)
+compressor-frontend/  SvelteKit 2 + Svelte 5 + Tailwind v4 web UI
+shitty-frontend/      React 19 prototype (throwaway)
+skills/               Agent skill documentation (read-only)
 ```
 
 ## Where to look
 
-| Task                   | Location                      |
-| ---------------------- | ----------------------------- |
-| Add/change compression | `lib/compress.ts`             |
-| Add glTF transform     | `lib/transforms.ts`           |
-| Change presets         | `lib/compress.ts` → `PRESETS` |
-| Add CLI flag           | `cli/main.ts`                 |
-| Add server endpoint    | `server/main.ts`              |
-| Fix Node.js compat     | `build/polyfills.ts`          |
-| Change build targets   | `build.ts`                    |
-| Public API surface     | `lib/mod.ts` (barrel)         |
+| Task                   | Location                                    |
+| ---------------------- | ------------------------------------------- |
+| Add/change compression | `packages/core/src/compress.ts`             |
+| Add glTF transform     | `packages/core/src/transforms.ts`           |
+| Change presets         | `packages/core/src/compress.ts` → `PRESETS` |
+| Add CLI flag           | `packages/cli/src/main.ts`                  |
+| Add server endpoint    | `packages/server/src/main.ts`               |
+| Fix Node.js compat     | `packages/bun-polyfill/src/polyfills.ts`    |
+| Change build targets   | `build.ts`                                  |
+| Public API surface     | `packages/core/src/mod.ts` (barrel)         |
+| Wire protocol types    | `packages/shared-types/src/index.ts`        |
+| Frontend UI            | `compressor-frontend/src/`                  |
 
 ## Architecture
 
+- **Bun workspace monorepo**: 5 packages under `packages/`, 2 frontend
+  workspaces. All `@glb-compressor/*` packages use `workspace:*` deps.
 - **Dual-runtime**: written against Bun APIs, compiled to Node.js via polyfill
   layer. `package.json` exports use conditional `"bun"` vs `"node"` fields.
 - **Skinned-model-aware**: pipeline detects skinned meshes and skips transforms
@@ -41,20 +53,33 @@ bench.ts        Compression benchmark runner (dev-only)
 - **gltfpack-first**: prefers external `gltfpack` binary; falls back to meshopt
   WASM if unavailable.
 - **WASM pre-warm**: Draco + Meshopt WASM initialized eagerly at module load.
-- Path aliases: `$lib/*`, `$cli/*`, `$server/*`, `$models`, `pkg`
-  (package.json).
+  Importing `@glb-compressor/core` triggers WASM loading as a side effect.
+- **Dependency graph**: `core` is the root — `cli` and `server` depend on it.
+  `shared-types` is a leaf. `bun-polyfill` is build-time only (`private: true`).
+
+## Workspace packages
+
+| Package                        | Entry           | Role                    | Deps                  |
+| ------------------------------ | --------------- | ----------------------- | --------------------- |
+| `@glb-compressor/core`         | `src/mod.ts`    | Compression library     | gltf-transform, sharp |
+| `@glb-compressor/cli`          | `src/main.ts`   | CLI binary              | core                  |
+| `@glb-compressor/server`       | `src/main.ts`   | HTTP server             | core, shared-types    |
+| `@glb-compressor/shared-types` | `src/index.ts`  | Wire protocol types     | (none)                |
+| `@glb-compressor/bun-polyfill` | `src/plugin.ts` | Node.js build polyfills | (none, private)       |
 
 ## Conventions
 
 - **Bun-first** — always prefer Bun APIs over Node.js equivalents.
-- **Tabs**, single quotes, 80-char line width.
+- **Tabs**, single quotes, 120-char line width (TS/JS).
 - **Strict TypeScript** — `strict: true`, `noUncheckedIndexedAccess`,
   `verbatimModuleSyntax` (use `import type` for type-only imports).
-- **Biome** for linting, **dprint** for formatting (`bun run fmt`).
+- **Biome** for linting (formatter disabled), **dprint** for formatting
+  (`bun run fmt`). Prettier explicitly disabled.
 - **Type checker**: `tsgo` (`bun run typecheck`), not `tsc`.
 - Import organization automated by Biome except in barrel/entry files (`mod.ts`,
   `index.ts`, `main.ts`).
 - Exact dependency versions (`bunfig.toml`: `install.exact = true`).
+- Default branch: `master`.
 
 ## Anti-patterns
 
@@ -76,7 +101,7 @@ bun run lint        # Biome lint only
 bun run fmt         # dprint format
 bun run typecheck   # tsgo type check
 bun build.ts        # Multi-target build
-bun test            # Run tests (bun:test)
+bun bench.ts        # Run compression benchmarks
 ```
 
 ## Build targets
@@ -90,80 +115,39 @@ bun test            # Run tests (bun:test)
 
 Externals (never bundled): `sharp`, `draco3dgltf`, `meshoptimizer`.
 
+`build.ts` contains a `workspaceResolverPlugin()` that redirects
+`@glb-compressor/*` imports to source `.ts` files at build time because the
+`"node"` export condition points to `dist/` which doesn't exist during build.
+
+## Conditional exports (dual-runtime)
+
+Root `package.json` maps each subpath to the appropriate build:
+
+- Library (`.`): Bun ESM, Node ESM
+- Server (`./server`): Bun **bytecode**, Node ESM
+- CLI (`./cli`): Bun **bytecode**, Node ESM
+
+Bin stubs in `bin/` use `#!/usr/bin/env node` for npm global installs.
+
+## CI/CD
+
+| Workflow      | Trigger           | Purpose                                        |
+| ------------- | ----------------- | ---------------------------------------------- |
+| `autofix.yml` | push, PRs         | Biome lint-fix + dprint format, auto-committed |
+| `publish.yml` | Release           | Build + `npm publish --provenance`             |
+| `pages.yml`   | push to master    | Build + deploy SvelteKit frontend to GH Pages  |
+| `claude.yml`  | `@claude` mention | AI-assisted code review and PR work            |
+
 ## Skills
 
 Agent skills in `skills/` following the [Agent Skills](https://agentskills.io/)
-format. Each skill is a self-contained package with a `SKILL.md` frontmatter
-definition and optional reference files.
+format. Read-only documentation — no scripts, no build step.
 
 | Skill                    | Purpose                               | References                |
 | ------------------------ | ------------------------------------- | ------------------------- |
 | `glb-compressor-cli`     | CLI usage, flags, presets, examples   | —                         |
 | `glb-compressor-library` | Programmatic API, types, pipeline     | `api.md`, `transforms.md` |
 | `glb-compressor-server`  | HTTP endpoints, SSE streaming, errors | —                         |
-
-### Structure
-
-```text
-skills/
-  glb-compressor-cli/
-    SKILL.md              # CLI binary, options, presets, pipeline phases
-  glb-compressor-library/
-    SKILL.md              # compress(), init(), types, presets, anti-patterns
-    references/
-      api.md              # Full type surface: CompressOptions, CompressResult,
-                          # constants, ErrorCode, utility functions, PRESETS
-      transforms.md       # Custom Transform functions for a-la-carte use,
-                          # safety matrix (static vs skinned)
-  glb-compressor-server/
-    SKILL.md              # Endpoints, SSE events, error codes, CORS, limits
-```
-
-### Installing skills (for users)
-
-Install via the [`skills` CLI](https://github.com/vercel-labs/skills) (works
-with 35+ agents including Claude Code, Cursor, Codex, OpenCode, Copilot):
-
-```sh
-# Install all glb-compressor skills
-npx skills add kjanat/glb-compressor
-
-# Install a specific skill only
-npx skills add kjanat/glb-compressor --skill glb-compressor-cli
-
-# Install globally (available across all projects)
-npx skills add kjanat/glb-compressor -g
-
-# Install to specific agents
-npx skills add kjanat/glb-compressor -a claude-code -a cursor
-
-# List available skills without installing
-npx skills add kjanat/glb-compressor --list
-```
-
-Manual installation (any agent):
-
-```sh
-# Claude Code
-cp -r skills/glb-compressor-cli ~/.claude/skills/
-
-# Cursor
-cp -r skills/glb-compressor-cli ~/.cursor/skills/
-
-# OpenCode
-cp -r skills/glb-compressor-cli ~/.config/opencode/skills/
-
-# Project-local (committed with repo, shared with team)
-cp -r skills/glb-compressor-cli .claude/skills/
-```
-
-### Skill conventions
-
-- `SKILL.md` frontmatter: `name`, `description` (with trigger phrases),
-  `license`, `compatibility`, optional `references` list.
-- Reference files linked from SKILL.md via `references:` frontmatter field.
-- Skills are read-only documentation — no scripts, no build step.
-- Keep SKILL.md < 500 lines; put detailed reference in separate files.
 
 ### When to update skills
 
@@ -179,7 +163,10 @@ cp -r skills/glb-compressor-cli .claude/skills/
 
 - `server/main.ts` guards startup with `import.meta.main` — safe to import as
   library.
-- Dockerfile builds gltfpack from source with BasisU support; CMD references
-  `./dist/index.js` but build produces `./dist/main.cjs` — potential mismatch.
-- No tests exist yet. Intended framework: `bun:test`.
+- Dockerfile is **stale**: references pre-monorepo flat paths (`lib/`,
+  `server/`, `cli/`) and CMD references `./dist/index.js` but build produces
+  `./dist/main.cjs`. Needs update before Docker builds will work.
+- No tests exist in core packages yet. Intended framework: `bun:test`.
 - `models/` dir (gitignored) contains `.glb` fixtures for benchmarking.
+- `prepublishOnly` uses Prettier for README only (dprint's markdown plugin
+  differs).

@@ -1,17 +1,16 @@
 # compressor-frontend/
 
 SvelteKit 2 + Svelte 5 + Tailwind CSS v4 web UI for the glb-compressor server.
-Workspace member of the root monorepo. Currently scaffold state -- minimal
-custom code.
+Workspace member of the root monorepo.
 
 ## Stack
 
 - **Svelte 5** (runes: `$props`, `$state`, `$derived`, `{@render}`)
-- **SvelteKit 2** with `adapter-auto`
+- **SvelteKit 2** with `adapter-static` (output to `../dist/frontend`)
 - **Tailwind CSS v4** (`@import "tailwindcss"`, `@plugin` syntax, NOT v3
   `@tailwind`/`@config`)
 - **Vite 7** (build + dev server)
-- **Vitest** with Playwright browser testing for component specs
+- **Vitest 4** with Playwright browser testing for component specs
 
 ## Tooling (differs from root)
 
@@ -40,16 +39,31 @@ bun run test:unit   # vitest (watch)
 
 ```text
 src/
-  app.html          # SvelteKit shell
-  app.d.ts          # Global type augmentation (empty)
+  app.html            SvelteKit shell
+  app.d.ts            Global type augmentation
   lib/
-    index.ts        # $lib barrel (empty placeholder)
+    index.ts           $lib barrel (empty placeholder)
+    compression-session.svelte.ts  Reactive compression state manager
+    sse.ts             SSE client for /compress-stream endpoint
+    types.ts           Frontend-specific types
+    utils.ts           UI utility functions
     assets/
-      favicon.svg   # Custom GLB-themed favicon
+      favicon.svg      Custom GLB-themed favicon
+    components/
+      Dropzone.svelte       File upload drop zone
+      FileList.svelte       Uploaded file list display
+      Header.svelte         App header/branding
+      LogConsole.svelte     Compression log output
+      PresetPicker.svelte   Compression preset selector
+      SetupAccordion.svelte Setup instructions accordion
+      SetupCommand.svelte   CLI command display
+      SetupGuide.svelte     Getting started guide
+      SetupServerUrl.svelte Server URL configuration
   routes/
-    +layout.svelte  # Root layout (Svelte 5 $props())
-    +page.svelte    # Main page (scaffold)
-    layout.css      # Tailwind v4 entry + plugins
+    +layout.svelte     Root layout (Svelte 5 $props())
+    +layout.ts         Layout load function
+    +page.svelte       Main page
+    layout.css         Tailwind v4 entry + plugins
 ```
 
 ## Test conventions
@@ -57,20 +71,21 @@ src/
 - Specs co-located with source files
 - Component tests: `*.svelte.spec.ts` (browser/Playwright project)
 - Other tests: `*.spec.ts` (node project)
-- `requireAssertions: true` -- every test must assert something
+- `requireAssertions: true` — every test must assert something
 - Test filenames drop the `+` prefix (`page.svelte.spec.ts`, not
   `+page.svelte.spec.ts`)
 
-## Integration (future)
+## Integration
 
-Will call glb-compressor server at `/compress` (binary response) and
-`/compress-stream` (SSE progress). See `skills/glb-compressor-server/SKILL.md`
-for endpoint documentation.
+Calls glb-compressor server at `/compress` (binary response) and
+`/compress-stream` (SSE progress). Wire types from
+`@glb-compressor/shared-types`. See `skills/glb-compressor-server/SKILL.md`
+for endpoint docs.
 
 ## Anti-patterns (this workspace)
 
 - Don't use Svelte 4 patterns: no `export let`, no `$$props`, no `on:event`
-  directive -- use Svelte 5 runes only.
-- Don't use Tailwind v3 syntax: no `@tailwind base`, no `@config` -- use v4
+  directive — use Svelte 5 runes only.
+- Don't use Tailwind v3 syntax: no `@tailwind base`, no `@config` — use v4
   `@import "tailwindcss"`.
 - Same type safety rules as root: no `any`, no `!`, no `as Type`.
