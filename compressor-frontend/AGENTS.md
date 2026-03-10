@@ -1,31 +1,76 @@
-## Project Configuration
+# compressor-frontend/
 
-- **Language**: TypeScript
-- **Package Manager**: bun
-- **Add-ons**: eslint, vitest, tailwindcss, sveltekit-adapter, devtools-json, mcp
+SvelteKit 2 + Svelte 5 + Tailwind CSS v4 web UI for the glb-compressor server.
+Workspace member of the root monorepo. Currently scaffold state -- minimal
+custom code.
 
----
+## Stack
 
-You are able to use the Svelte MCP server, where you have access to comprehensive Svelte 5 and SvelteKit documentation. Here's how to use the available tools effectively:
+- **Svelte 5** (runes: `$props`, `$state`, `$derived`, `{@render}`)
+- **SvelteKit 2** with `adapter-auto`
+- **Tailwind CSS v4** (`@import "tailwindcss"`, `@plugin` syntax, NOT v3
+  `@tailwind`/`@config`)
+- **Vite 7** (build + dev server)
+- **Vitest** with Playwright browser testing for component specs
 
-## Available MCP Tools:
+## Tooling (differs from root)
 
-### 1. list-sections
+| Aspect       | Root project | This workspace                   |
+| ------------ | ------------ | -------------------------------- |
+| Linter       | Biome        | ESLint 9 + eslint-plugin-svelte  |
+| Formatter    | dprint       | None configured                  |
+| Type checker | tsgo         | svelte-check (wraps tsc)         |
+| Tests        | bun:test     | Vitest (browser + node projects) |
+| Build        | Custom Bun   | Vite                             |
 
-Use this FIRST to discover all available documentation sections. Returns a structured list with titles, use_cases, and paths.
-When asked about Svelte or SvelteKit topics, ALWAYS use this tool at the start of the chat to find relevant sections.
+## Commands
 
-### 2. get-documentation
+```sh
+bun run dev         # Vite dev server
+bun run build       # Vite production build
+bun run bd          # Build via Bun runtime (faster)
+bun run preview     # Build + preview
+bun run check       # svelte-kit sync + svelte-check
+bun run lint        # ESLint
+bun run test        # vitest run (single)
+bun run test:unit   # vitest (watch)
+```
 
-Retrieves full documentation content for specific sections. Accepts single or multiple sections.
-After calling the list-sections tool, you MUST analyze the returned documentation sections (especially the use_cases field) and then use the get-documentation tool to fetch ALL documentation sections that are relevant for the user's task.
+## Structure
 
-### 3. svelte-autofixer
+```text
+src/
+  app.html          # SvelteKit shell
+  app.d.ts          # Global type augmentation (empty)
+  lib/
+    index.ts        # $lib barrel (empty placeholder)
+    assets/
+      favicon.svg   # Custom GLB-themed favicon
+  routes/
+    +layout.svelte  # Root layout (Svelte 5 $props())
+    +page.svelte    # Main page (scaffold)
+    layout.css      # Tailwind v4 entry + plugins
+```
 
-Analyzes Svelte code and returns issues and suggestions.
-You MUST use this tool whenever writing Svelte code before sending it to the user. Keep calling it until no issues or suggestions are returned.
+## Test conventions
 
-### 4. playground-link
+- Specs co-located with source files
+- Component tests: `*.svelte.spec.ts` (browser/Playwright project)
+- Other tests: `*.spec.ts` (node project)
+- `requireAssertions: true` -- every test must assert something
+- Test filenames drop the `+` prefix (`page.svelte.spec.ts`, not
+  `+page.svelte.spec.ts`)
 
-Generates a Svelte Playground link with the provided code.
-After completing the code, ask the user if they want a playground link. Only call this tool after user confirmation and NEVER if code was written to files in their project.
+## Integration (future)
+
+Will call glb-compressor server at `/compress` (binary response) and
+`/compress-stream` (SSE progress). See `skills/glb-compressor-server/SKILL.md`
+for endpoint documentation.
+
+## Anti-patterns (this workspace)
+
+- Don't use Svelte 4 patterns: no `export let`, no `$$props`, no `on:event`
+  directive -- use Svelte 5 runes only.
+- Don't use Tailwind v3 syntax: no `@tailwind base`, no `@config` -- use v4
+  `@import "tailwindcss"`.
+- Same type safety rules as root: no `any`, no `!`, no `as Type`.
