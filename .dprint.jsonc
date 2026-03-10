@@ -1,34 +1,21 @@
 {
 	"$schema": "https://dprint.dev/schemas/v0.json",
 	"extends": "https://raw.githubusercontent.com/kjanat/kjanat/refs/heads/master/configs/dprint.biome.json",
-	"useTabs": true,
-	"yaml": { "printWidth": 140 },
-	"markdown": {
-		"textWrap": "always",
-		"emphasisKind": "asterisks",
-		"associations": [".rules", "*.md", "CLAUDE.md", "AGENTS.md"],
-	},
 	"exec": {
 		"cwd": "${configDir}",
-		"commands": [
-			{
-				"command": "bunx tombi format --stdin-filename {{file_path}} -",
-				"exts": ["toml"],
-			},
-			{
-				"command": "bunx sort-package-json --stdin",
-				"fileNames": ["package.json"],
-			},
-			{
-				"command": "bunx svgo --final-newline --pretty --indent -1 -q --input - --output -",
-				"exts": ["svg"],
-			},
-		],
+		"commands": [{
+			"command": "bunx tombi format --stdin-filename {{file_path}} -",
+			"exts": ["toml"],
+		}, {
+			"command": "bunx sort-package-json --stdin",
+			"fileNames": ["package.json"],
+		}, {
+			"command": "bunx svgo --final-newline --pretty --indent -1 -q --input - --output -",
+			"exts": ["svg"],
+		}],
 	},
 	"excludes": ["**/node_modules", "**/bun.lock"],
 	"plugins": [
-		"https://plugins.dprint.dev/markdown-0.21.1.wasm",
-		"https://plugins.dprint.dev/g-plane/pretty_yaml-v0.6.0.wasm",
 		"https://plugins.dprint.dev/exec-0.6.0.json@a054130d458f124f9b5c91484833828950723a5af3f8ff2bd1523bd47b83b364",
 	],
 }
