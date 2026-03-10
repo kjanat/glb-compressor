@@ -2,13 +2,21 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { playwright } from '@vitest/browser-playwright';
 import devtoolsJson from 'vite-plugin-devtools-json';
+import robotsTxt from 'vite-robots-txt';
+import svgToIco from 'vite-svg-to-ico';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	define: {
 		__GITHUB_PAGES__: JSON.stringify(process.env.GITHUB_ACTIONS === 'true'),
 	},
-	plugins: [tailwindcss(), sveltekit(), devtoolsJson()],
+	plugins: [
+		tailwindcss(),
+		sveltekit(),
+		devtoolsJson(),
+		svgToIco({ input: './src/lib/assets/favicon.svg' }),
+		robotsTxt({ preset: 'allowAll' }),
+	],
 	test: {
 		expect: { requireAssertions: true },
 		projects: [
