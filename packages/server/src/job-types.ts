@@ -101,6 +101,10 @@ export function createJobRecord(submission: JobSubmission): JobRecord {
 		rejectCompletion = reject;
 	});
 
+	// Jobs created via polling endpoints may never await completion directly.
+	// Attach a noop rejection handler to avoid unhandled rejection crashes.
+	void completion.catch(() => {});
+
 	if (resolveCompletion === undefined || rejectCompletion === undefined) {
 		throw new Error('Failed to initialize job completion handlers');
 	}
