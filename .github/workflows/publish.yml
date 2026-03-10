@@ -35,4 +35,3 @@ jobs:
 
       # bun publish lacks --provenance; use npm for signed provenance
       - run: npm i -g npm && npm publish --provenance --access public
-        env: { NODE_AUTH_TOKEN: "${{ secrets.NPM_TOKEN }}" }
