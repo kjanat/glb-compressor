@@ -337,7 +337,7 @@ function handleOptions(): Response {
 export function startServer() {
 	const server = Bun.serve({
 		port: PORT,
-    hostname: "localhost",
+		hostname: 'localhost',
 
 		routes: {
 			'/healthz': new Response('ok', { headers: CORS_HEADERS }),

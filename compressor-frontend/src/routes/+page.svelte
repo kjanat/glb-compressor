@@ -6,49 +6,41 @@
 	import LogConsole from '$lib/components/LogConsole.svelte';
 	import PresetPicker from '$lib/components/PresetPicker.svelte';
 	import SetupAccordion from '$lib/components/SetupAccordion.svelte';
-	import { extractErrorMessage, parseSSE } from '$lib/sse';
-	import type { LogEntry, LogType, PresetId, QueuedFile } from '$lib/types';
-	import { downloadBase64, formatBytes, timestamp } from '$lib/utils';
+	import { createCompressionSession } from '$lib/compression-session.svelte';
+	import { downloadBase64 } from '$lib/utils';
 
-	const STORAGE_KEY = 'glb-compressor:server-url';
-	const DEFAULT_URL: string =
-		import.meta.env.VITE_SERVER_URL || 'http://localhost:8080';
-
-	let serverUrl = $state(DEFAULT_URL);
-
-	let serverOnline = $state(false);
-	let files = $state<QueuedFile[]>([]);
-	let selectedPreset = $state<PresetId>('balanced');
-	let simplifyEnabled = $state(false);
-	let simplifyRatio = $state(0.5);
-	let isCompressing = $state(false);
-	let logOpen = $state(false);
-	let logs = $state<LogEntry[]>([]);
-
-	let fileIdCounter = 0;
-	let logIdCounter = 0;
+	const session = createCompressionSession();
+	const state = session.state;
 
 	const pendingCount = $derived(
-		files.filter((f) => f.status === 'pending').length,
+		state.files.filter((file) => file.status === 'pending').length,
 	);
 
 	const buttonState = $derived.by(() => {
-		if (!serverOnline) {
+		if (!state.serverOnline) {
 			return { text: 'Server offline \u2013 see setup above', disabled: true };
 		}
-		if (isCompressing) {
-			const p = files.filter((f) => f.status === 'pending').length;
-			const total = p + files.filter((f) => f.status === 'compressing').length;
+		if (state.isCompressing) {
+			const pending = state.files.filter(
+				(file) => file.status === 'pending',
+			).length;
+			const total =
+				pending +
+				state.files.filter((file) => file.status === 'compressing').length;
 			return {
 				text:
-					total > 0 ? `Compressing ${total - p}/${total}...` : 'Compressing...',
+					total > 0
+						? `Compressing ${total - pending}/${total}...`
+						: 'Compressing...',
 				disabled: true,
 			};
 		}
 		if (pendingCount === 0) {
 			return {
 				text:
-					files.length > 0 ? 'All files processed' : 'Select files to compress',
+					state.files.length > 0
+						? 'All files processed'
+						: 'Select files to compress',
 				disabled: true,
 			};
 		}
@@ -61,183 +53,9 @@
 		};
 	});
 
-	function addLog(message: string, type: LogType = 'info') {
-		logOpen = true;
-		logs.push({ id: ++logIdCounter, time: timestamp(), message, type });
-	}
-
-	function updateFile(id: number, patch: Partial<QueuedFile>) {
-		const file = files.find((f) => f.id === id);
-		if (file) Object.assign(file, patch);
-	}
-
-	async function checkServer(reportError: boolean) {
-		try {
-			const res = await fetch(`${serverUrl}/healthz`, {
-				signal: AbortSignal.timeout(3000),
-			});
-			serverOnline = res.ok;
-		} catch {
-			serverOnline = false;
-			if (reportError)
-				addLog('Server health check failed. Is glb-server running?', 'error');
-		}
-	}
-
-	function addFiles(input: File[]) {
-		const next = Array.from(input)
-			.filter((f) => /\.(glb|gltf)$/i.test(f.name))
-			.map((f) => ({
-				id: ++fileIdCounter,
-				file: f,
-				status: 'pending' as const,
-				result: null,
-				error: null,
-			}));
-		if (next.length > 0) files.push(...next);
-	}
-
-	function removeFile(id: number) {
-		files = files.filter((f) => f.id !== id);
-	}
-
-	function clearFiles() {
-		files = files.filter((f) => f.status === 'compressing');
-	}
-
-	async function compressFile(queued: QueuedFile) {
-		updateFile(queued.id, { status: 'compressing' });
-		addLog(
-			`\u2192 ${queued.file.name} (${formatBytes(queued.file.size)})`,
-			'phase',
-		);
-
-		const form = new FormData();
-		form.append('file', queued.file);
-
-		let url = `${serverUrl}/compress-stream?preset=${selectedPreset}`;
-		if (simplifyEnabled) url += `&simplify=${simplifyRatio}`;
-
-		try {
-			const response = await fetch(url, { method: 'POST', body: form });
-			const ct = response.headers.get('content-type') ?? '';
-
-			if (!ct.includes('text/event-stream')) {
-				let message = `Server error ${response.status}`;
-				try {
-					const body: unknown = await response.json();
-					const extracted = extractErrorMessage(body);
-					if (extracted) message = extracted;
-				} catch {
-					/* keep default */
-				}
-				throw new Error(message);
-			}
-
-			await parseSSE(response, {
-				onLog: (event) => addLog(event.message),
-				onResult: (event) => {
-					updateFile(queued.id, { status: 'done', result: event, error: null });
-					addLog(
-						`OK ${queued.file.name}: ${formatBytes(event.originalSize)} \u2192 ${formatBytes(event.compressedSize)} (-${event.ratio}%, ${event.method})`,
-						'success',
-					);
-				},
-				onError: (event) => {
-					const msg = event.message ?? 'Compression failed';
-					updateFile(queued.id, { status: 'error', error: msg });
-					addLog(`\u2717 ${queued.file.name}: ${msg}`, 'error');
-				},
-			});
-
-			const latest = files.find((f) => f.id === queued.id);
-			if (latest?.status === 'compressing') {
-				throw new Error('Stream ended without result');
-			}
-		} catch (error) {
-			const latest = files.find((f) => f.id === queued.id);
-			if (latest?.status !== 'compressing') return;
-
-			const message =
-				error instanceof Error && error.message.includes('Failed to fetch')
-					? 'Cannot reach server. Is glb-server running?'
-					: error instanceof Error
-						? error.message
-						: 'Compression failed';
-
-			updateFile(queued.id, { status: 'error', error: message });
-			addLog(`\u2717 ${queued.file.name}: ${message}`, 'error');
-		}
-	}
-
-	async function compressAll() {
-		const pending = files.filter((f) => f.status === 'pending');
-		if (pending.length === 0 || isCompressing) return;
-
-		isCompressing = true;
-		logs.length = 0;
-		logOpen = true;
-
-		addLog(
-			`Starting batch: ${pending.length} file${pending.length === 1 ? '' : 's'}, preset=${selectedPreset}`,
-			'phase',
-		);
-
-		for (const queued of pending) {
-			await compressFile(queued);
-		}
-
-		isCompressing = false;
-
-		const doneCount = files.filter((f) => f.status === 'done').length;
-		const errorCount = files.filter((f) => f.status === 'error').length;
-
-		if (errorCount > 0) {
-			addLog(`Finished: ${doneCount} compressed, ${errorCount} failed`, 'error');
-		} else {
-			addLog(
-				`All ${doneCount} file${doneCount === 1 ? '' : 's'} compressed successfully`,
-				'success',
-			);
-		}
-	}
-
-	/** Normalize URL: strip trailing slash, validate shape. */
-	function normalizeUrl(raw: string): string {
-		const trimmed = raw.trim().replace(/\/+$/, '');
-		try {
-			new URL(trimmed);
-			return trimmed;
-		} catch {
-			return DEFAULT_URL;
-		}
-	}
-
-	function handleServerUrlChange(url: string) {
-		const normalized = normalizeUrl(url);
-		serverUrl = normalized;
-		try {
-			localStorage.setItem(STORAGE_KEY, normalized);
-		} catch {
-			/* localStorage unavailable */
-		}
-		// Reset status and re-check immediately
-		serverOnline = false;
-		checkServer(true);
-	}
-
 	onMount(() => {
-		// Restore saved URL from localStorage
-		try {
-			const saved = localStorage.getItem(STORAGE_KEY);
-			if (saved) serverUrl = normalizeUrl(saved);
-		} catch {
-			/* localStorage unavailable */
-		}
-
-		checkServer(true);
-		const interval = setInterval(() => checkServer(false), 5000);
-		return () => clearInterval(interval);
+		session.restoreServerUrl();
+		return session.startHealthPolling();
 	});
 </script>
 
@@ -250,53 +68,56 @@
 </svelte:head>
 
 <div class="wrapper">
-	<Header {serverOnline} />
+	<Header serverOnline={state.serverOnline} />
 	<SetupAccordion
-		{serverUrl}
-		{serverOnline}
-		onurlchange={handleServerUrlChange}
+		serverUrl={state.serverUrl}
+		serverOnline={state.serverOnline}
+		onurlchange={session.handleServerUrlChange}
 	/>
-	<Dropzone onfiles={addFiles} />
+	<Dropzone onfiles={session.addFiles} />
 	<FileList
-		{files}
-		onremove={removeFile}
-		onclear={clearFiles}
+		files={state.files}
+		onremove={session.removeFile}
+		onclear={session.clearFiles}
 		ondownload={downloadBase64}
 	/>
 
 	<p class="section-label">Compression preset</p>
-	<PresetPicker bind:selected={selectedPreset} disabled={isCompressing} />
+	<PresetPicker
+		bind:selected={state.selectedPreset}
+		disabled={state.isCompressing}
+	/>
 
 	<div class="options-row">
 		<label class="option-label">
-			<input type="checkbox" bind:checked={simplifyEnabled}>
+			<input type="checkbox" bind:checked={state.simplifyEnabled}>
 			<span>Mesh simplification</span>
 		</label>
-		<div class="simplify-slider" class:active={simplifyEnabled}>
+		<div class="simplify-slider" class:active={state.simplifyEnabled}>
 			<input
 				type="range"
 				min={10}
 				max={90}
 				step={10}
-				value={simplifyRatio * 100}
-				oninput={(e) => {
-					simplifyRatio = Number(e.currentTarget.value) / 100;
+				value={state.simplifyRatio * 100}
+				oninput={(event) => {
+					state.simplifyRatio = Number(event.currentTarget.value) / 100;
 				}}
 			>
-			<span class="simplify-value">{simplifyRatio.toFixed(1)}</span>
+			<span class="simplify-value">{state.simplifyRatio.toFixed(1)}</span>
 		</div>
 	</div>
 
 	<button
 		type="button"
 		class="btn"
-		onclick={() => compressAll()}
+		onclick={session.compressAll}
 		disabled={buttonState.disabled}
 	>
 		{buttonState.text}
 	</button>
 
-	<LogConsole bind:open={logOpen} {logs} />
+	<LogConsole bind:open={state.logOpen} logs={state.logs} />
 
 	<footer>
 		runs locally via glb-server &middot; configure the server URL above<br>
