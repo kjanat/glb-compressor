@@ -49,7 +49,7 @@
         "vitest-browser-svelte": "^2.0.2",
       },
     },
-    "shitty-frontend/shitty-frontend": {
+    "shitty-frontend": {
       "name": "shitty-frontend",
       "version": "0.0.0",
       "dependencies": {
@@ -61,6 +61,7 @@
         "@types/node": "^25.4.0",
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
+        "@typescript/native-preview": "^7.0.0-dev.20260309.1",
         "@vitejs/plugin-react": "^5.1.4",
         "babel-plugin-react-compiler": "^1.0.0",
         "eslint": "^10.0.3",
@@ -860,7 +861,7 @@
 
     "shebang-regex": ["shebang-regex@3.0.0", "", {}, "sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A=="],
 
-    "shitty-frontend": ["shitty-frontend@workspace:shitty-frontend/shitty-frontend"],
+    "shitty-frontend": ["shitty-frontend@workspace:shitty-frontend"],
 
     "siginfo": ["siginfo@2.0.0", "", {}, "sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g=="],
 
