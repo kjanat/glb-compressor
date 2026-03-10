@@ -141,15 +141,18 @@ import {
 
 ## Presets
 
-Empirically benchmarked against a 30 MB skinned avatar (77 animations, 89k
+Benchmarked on one 30 MB skinned avatar (`bench.ts`, 77 animations, 89k
 vertices):
 
-| Preset       | Result  | Reduction | Description                                            |
-| ------------ | ------- | --------- | ------------------------------------------------------ |
-| `default`    | 5.95 MB | -80.4%    | Conservative, preserves all detail                     |
-| `balanced`   | 5.37 MB | -82.3%    | Moderate animation quantization, 24 Hz resample        |
-| `aggressive` | 4.83 MB | -84.1%    | Strong animation quantization, 15 Hz resample          |
-| `max`        | 4.77 MB | -84.3%    | Aggressive + supercompression + lower vertex precision |
+| Preset       | Owen benchmark output | Owen benchmark reduction* | Description                                            |
+| ------------ | --------------------- | ------------------------- | ------------------------------------------------------ |
+| `default`    | 5.95 MB               | -80.4%                    | Conservative, preserves all detail                     |
+| `balanced`   | 5.37 MB               | -82.3%                    | Moderate animation quantization, 24 Hz resample        |
+| `aggressive` | 4.83 MB               | -84.1%                    | Strong animation quantization, 15 Hz resample          |
+| `max`        | 4.77 MB               | -84.3%                    | Aggressive + supercompression + lower vertex precision |
+
+\* Benchmark numbers are directional only, not guaranteed. Real reductions vary
+by mesh topology, texture payloads, animation density, and source quality.
 
 ## Compression Pipeline
 

@@ -48,8 +48,8 @@ export interface Preset {
 }
 
 export const PRESETS: readonly Preset[] = [
-	{ id: 'default', name: 'Default', reduction: '-80%', desc: 'Safe, keeps all detail' },
-	{ id: 'balanced', name: 'Balanced', reduction: '-82%', desc: 'Good for avatars & animations' },
-	{ id: 'aggressive', name: 'Aggressive', reduction: '-84%', desc: 'Strong, still looks good' },
-	{ id: 'max', name: 'Max', reduction: '-84%+', desc: 'Smallest possible file' },
+	{ id: 'default', name: 'Default', reduction: 'Detail-first', desc: 'Safe, keeps all detail' },
+	{ id: 'balanced', name: 'Balanced', reduction: 'General-use', desc: 'Good for avatars & animations' },
+	{ id: 'aggressive', name: 'Aggressive', reduction: 'Size-first', desc: 'Strong, still looks good' },
+	{ id: 'max', name: 'Max', reduction: 'Min-size', desc: 'Smallest possible file' },
 ];

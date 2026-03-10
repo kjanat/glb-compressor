@@ -92,6 +92,10 @@
 		bind:selected={state.selectedPreset}
 		disabled={state.isCompressing}
 	/>
+	<p class="preset-note">
+		Reductions vary by model; benchmark percentages are directional, not
+		guaranteed.
+	</p>
 
 	<div class="options-row">
 		<label class="option-label">
@@ -184,6 +188,13 @@
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		margin-bottom: 12px;
+	}
+	.preset-note {
+		margin: -4px 0 14px;
+		font-family: var(--mono);
+		font-size: 10px;
+		line-height: 1.5;
+		color: #6a6a6a;
 	}
 	.options-row {
 		display: flex;

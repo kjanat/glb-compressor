@@ -1,12 +1,9 @@
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
-import { extractErrorMessage, parseSSE } from './sse';
 import type { CompressResult, LogEntry, LogType, PresetId, QueuedFile } from './types';
 import { formatBytes, timestamp } from './utils';
 
 const STORAGE_KEY = 'glb-compressor:server-url';
 const DEFAULT_URL: string = import.meta.env.VITE_SERVER_URL || 'http://localhost:8080';
-const STREAM_UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
-
 function parseFiniteNumber(value: string | null): number | undefined {
 	if (value === null) {
 		return undefined;
@@ -171,6 +168,176 @@ function toRatioPercent(originalSize: number, compressedSize: number): number {
 	return Number(((1 - compressedSize / originalSize) * 100).toFixed(1));
 }
 
+type QueueJobStatus = 'queued' | 'running' | 'done' | 'error';
+
+interface QueueCreateJobResponse {
+	requestId: string;
+	status: 'queued';
+	statusUrl: string;
+	resultUrl: string;
+}
+
+interface QueueJobSnapshot {
+	requestId: string;
+	status: QueueJobStatus;
+	queuePosition: number | undefined;
+	logs: string[];
+	result:
+		| {
+				filename: string;
+				originalSize: number;
+				compressedSize: number;
+				ratio: number;
+				method: string;
+		  }
+		| undefined;
+	error:
+		| {
+				code: string;
+				message: string;
+		  }
+		| undefined;
+}
+
+function parseQueueJobStatus(value: unknown): QueueJobStatus | undefined {
+	if (value === 'queued' || value === 'running' || value === 'done' || value === 'error') {
+		return value;
+	}
+	return undefined;
+}
+
+function parseQueueCreateJobResponse(value: unknown): QueueCreateJobResponse | undefined {
+	if (!isObjectRecord(value)) {
+		return undefined;
+	}
+
+	const { requestId, status, statusUrl, resultUrl } = value;
+	if (
+		typeof requestId !== 'string' ||
+		status !== 'queued' ||
+		typeof statusUrl !== 'string' ||
+		typeof resultUrl !== 'string'
+	) {
+		return undefined;
+	}
+
+	return {
+		requestId,
+		status,
+		statusUrl,
+		resultUrl,
+	};
+}
+
+function parseQueueJobSnapshot(value: unknown): QueueJobSnapshot | undefined {
+	if (!isObjectRecord(value)) {
+		return undefined;
+	}
+
+	const requestId = value.requestId;
+	const status = parseQueueJobStatus(value.status);
+	if (typeof requestId !== 'string' || status === undefined) {
+		return undefined;
+	}
+
+	let queuePosition: number | undefined;
+	if (value.queuePosition !== undefined) {
+		if (typeof value.queuePosition !== 'number' || !Number.isFinite(value.queuePosition)) {
+			return undefined;
+		}
+		queuePosition = value.queuePosition;
+	}
+
+	const logsValue = value.logs;
+	if (!Array.isArray(logsValue) || logsValue.some((entry) => typeof entry !== 'string')) {
+		return undefined;
+	}
+
+	let result: QueueJobSnapshot['result'];
+	if (value.result !== undefined) {
+		if (!isObjectRecord(value.result)) {
+			return undefined;
+		}
+
+		const filename = value.result.filename;
+		const originalSize = value.result.originalSize;
+		const compressedSize = value.result.compressedSize;
+		const ratio = value.result.ratio;
+		const method = value.result.method;
+
+		if (
+			typeof filename !== 'string' ||
+			typeof originalSize !== 'number' ||
+			typeof compressedSize !== 'number' ||
+			typeof ratio !== 'number' ||
+			typeof method !== 'string'
+		) {
+			return undefined;
+		}
+
+		result = {
+			filename,
+			originalSize,
+			compressedSize,
+			ratio,
+			method,
+		};
+	}
+
+	let error: QueueJobSnapshot['error'];
+	if (value.error !== undefined) {
+		if (!isObjectRecord(value.error)) {
+			return undefined;
+		}
+
+		const code = value.error.code;
+		const message = value.error.message;
+		if (typeof code !== 'string' || typeof message !== 'string') {
+			return undefined;
+		}
+
+		error = { code, message };
+	}
+
+	return {
+		requestId,
+		status,
+		queuePosition,
+		logs: logsValue,
+		result,
+		error,
+	};
+}
+
+function extractErrorMessage(body: unknown): string | undefined {
+	if (!isObjectRecord(body)) {
+		return undefined;
+	}
+
+	const errorValue = body.error;
+	if (!isObjectRecord(errorValue)) {
+		return undefined;
+	}
+
+	const message = errorValue.message;
+	return typeof message === 'string' ? message : undefined;
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+}
+
+function resolveQueueUrl(urlOrPath: string, baseUrl: string): string {
+	try {
+		return new URL(urlOrPath, baseUrl).toString();
+	} catch {
+		const normalizedPath = urlOrPath.startsWith('/') ? urlOrPath : `/${urlOrPath}`;
+		return `${baseUrl}${normalizedPath}`;
+	}
+}
+
 async function readErrorMessage(response: Response): Promise<string> {
 	let message = `Server error ${response.status}`;
 
@@ -297,14 +464,11 @@ export function createCompressionSession(): CompressionSession {
 	}
 
 	async function compressFile(queued: QueuedFile) {
-		updateFile(queued.id, { status: 'compressing' });
+		updateFile(queued.id, { status: 'pending' });
 		addLog(`-> ${queued.file.name} (${formatBytes(queued.file.size)})`, 'phase');
 
 		try {
-			const result =
-				queued.file.size > STREAM_UPLOAD_MAX_BYTES
-					? await compressWithBinaryEndpoint(queued)
-					: await compressWithStreamEndpoint(queued);
+			const result = await compressWithQueueEndpoint(queued);
 
 			updateFile(queued.id, {
 				status: 'done',
@@ -317,7 +481,7 @@ export function createCompressionSession(): CompressionSession {
 			);
 		} catch (error) {
 			const latest = state.files.find((file) => file.id === queued.id);
-			if (latest?.status !== 'compressing') {
+			if (!latest || latest.status === 'done') {
 				return;
 			}
 
@@ -392,50 +556,10 @@ export function createCompressionSession(): CompressionSession {
 		return form;
 	}
 
-	async function compressWithStreamEndpoint(queued: QueuedFile): Promise<CompressResult> {
+	async function createQueuedJob(queued: QueuedFile): Promise<QueueCreateJobResponse> {
 		const form = await buildUploadForm(queued);
 
-		let url = `${state.serverUrl}/compress-stream?preset=${state.selectedPreset}`;
-		if (state.simplifyEnabled) {
-			url += `&simplify=${state.simplifyRatio}`;
-		}
-
-		const response = await fetch(url, { method: 'POST', body: form });
-		const contentType = response.headers.get('content-type') ?? '';
-
-		if (!contentType.includes('text/event-stream')) {
-			throw new Error(await readErrorMessage(response));
-		}
-
-		let streamResult: CompressResult | null = null;
-
-		await parseSSE(response, {
-			onLog: (event) => addLog(event.message),
-			onResult: (event) => {
-				streamResult = {
-					...event,
-					payloadType: 'base64',
-				};
-			},
-			onError: (event) => {
-				const message = event.message ?? 'Compression failed';
-				throw new Error(message);
-			},
-		});
-
-		if (!streamResult) {
-			throw new Error('Stream ended without result');
-		}
-
-		return streamResult;
-	}
-
-	async function compressWithBinaryEndpoint(queued: QueuedFile): Promise<CompressResult> {
-		addLog(`Large file detected (${formatBytes(queued.file.size)}), using binary endpoint`, 'info');
-
-		const form = await buildUploadForm(queued);
-
-		let url = `${state.serverUrl}/compress?preset=${state.selectedPreset}`;
+		let url = `${state.serverUrl}/jobs?preset=${state.selectedPreset}`;
 		if (state.simplifyEnabled) {
 			url += `&simplify=${state.simplifyRatio}`;
 		}
@@ -445,28 +569,130 @@ export function createCompressionSession(): CompressionSession {
 			throw new Error(await readErrorMessage(response));
 		}
 
+		let parsedBody: unknown;
+		try {
+			parsedBody = await response.json();
+		} catch {
+			throw new Error('Invalid queue response');
+		}
+
+		const job = parseQueueCreateJobResponse(parsedBody);
+		if (!job) {
+			throw new Error('Invalid queue response');
+		}
+
+		return job;
+	}
+
+	async function pollJob(statusUrl: string, queued: QueuedFile): Promise<QueueJobSnapshot> {
+		let previousQueuePosition: number | undefined;
+		let seenRunning = false;
+		let processedLogCount = 0;
+
+		for (;;) {
+			const response = await fetch(statusUrl);
+			if (!response.ok) {
+				throw new Error(await readErrorMessage(response));
+			}
+
+			let parsedBody: unknown;
+			try {
+				parsedBody = await response.json();
+			} catch {
+				throw new Error('Invalid job status response');
+			}
+
+			const snapshot = parseQueueJobSnapshot(parsedBody);
+			if (!snapshot) {
+				throw new Error('Invalid job status response');
+			}
+
+			if (snapshot.logs.length > processedLogCount) {
+				for (const logLine of snapshot.logs.slice(processedLogCount)) {
+					addLog(logLine);
+				}
+				processedLogCount = snapshot.logs.length;
+			}
+
+			if (snapshot.status === 'queued') {
+				updateFile(queued.id, { status: 'pending' });
+				if (snapshot.queuePosition !== previousQueuePosition) {
+					addLog(
+						snapshot.queuePosition !== undefined
+							? `Queue: ${queued.file.name} is waiting (position ${snapshot.queuePosition})`
+							: `Queue: ${queued.file.name} is waiting`,
+						'info',
+					);
+					previousQueuePosition = snapshot.queuePosition;
+				}
+			} else if (snapshot.status === 'running') {
+				updateFile(queued.id, { status: 'compressing' });
+				if (!seenRunning) {
+					addLog(`Running: ${queued.file.name}`, 'phase');
+					seenRunning = true;
+				}
+			} else if (snapshot.status === 'done') {
+				addLog(`Completed queue job: ${queued.file.name}`, 'info');
+				return snapshot;
+			} else {
+				const message = snapshot.error?.message ?? 'Compression failed';
+				addLog(`Queue job failed: ${queued.file.name} (${message})`, 'error');
+				throw new Error(message);
+			}
+
+			await sleep(500);
+		}
+	}
+
+	async function downloadJobResult(
+		requestId: string,
+		resultUrl: string,
+		queued: QueuedFile,
+		snapshot: QueueJobSnapshot,
+	): Promise<CompressResult> {
+		const response = await fetch(resultUrl);
+		if (!response.ok) {
+			throw new Error(await readErrorMessage(response));
+		}
+
 		const blob = await response.blob();
 
-		const requestId = response.headers.get('X-Request-ID') ?? crypto.randomUUID();
-		const originalSize = parseFiniteNumber(response.headers.get('X-Original-Size')) ?? queued.file.size;
-		const compressedSize = parseFiniteNumber(response.headers.get('X-Compressed-Size')) ?? blob.size;
-		const method = response.headers.get('X-Compression-Method') ?? 'unknown';
+		const headerRequestId = response.headers.get('X-Request-ID');
+		const originalSize =
+			parseFiniteNumber(response.headers.get('X-Original-Size')) ?? snapshot.result?.originalSize ?? queued.file.size;
+		const compressedSize =
+			parseFiniteNumber(response.headers.get('X-Compressed-Size')) ?? snapshot.result?.compressedSize ?? blob.size;
+		const method = response.headers.get('X-Compression-Method') ?? snapshot.result?.method ?? 'unknown';
 		const ratio =
-			parseFiniteNumber(response.headers.get('X-Compression-Ratio')) ?? toRatioPercent(originalSize, compressedSize);
+			parseFiniteNumber(response.headers.get('X-Compression-Ratio')) ??
+			snapshot.result?.ratio ??
+			toRatioPercent(originalSize, compressedSize);
 		const filename =
 			parseContentDispositionFilename(response.headers.get('content-disposition')) ??
+			snapshot.result?.filename ??
 			fallbackOutputFilename(queued.file.name);
 
 		return {
 			payloadType: 'blob',
 			blob,
-			requestId,
+			requestId: headerRequestId ?? requestId,
 			filename,
 			originalSize,
 			compressedSize,
 			method,
 			ratio,
 		};
+	}
+
+	async function compressWithQueueEndpoint(queued: QueuedFile): Promise<CompressResult> {
+		const createdJob = await createQueuedJob(queued);
+		addLog(`Queued ${queued.file.name} (job ${createdJob.requestId})`, 'info');
+
+		const statusUrl = resolveQueueUrl(createdJob.statusUrl, state.serverUrl);
+		const resultUrl = resolveQueueUrl(createdJob.resultUrl, state.serverUrl);
+
+		const snapshot = await pollJob(statusUrl, queued);
+		return downloadJobResult(createdJob.requestId, resultUrl, queued, snapshot);
 	}
 
 	async function compressAll() {
@@ -484,9 +710,7 @@ export function createCompressionSession(): CompressionSession {
 			'phase',
 		);
 
-		for (const queued of pending) {
-			await compressFile(queued);
-		}
+		await Promise.all(pending.map((queued) => compressFile(queued)));
 
 		state.isCompressing = false;
 
