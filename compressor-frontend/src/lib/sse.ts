@@ -1,16 +1,11 @@
-import type { CompressResult } from './types';
+import type { CompressionErrorEvent, CompressionLogEvent, CompressionResultEvent } from '@glb-compressor/shared-types';
 
-export interface StreamLogEvent {
-	message: string;
-}
-
-export interface StreamErrorEvent {
-	message?: string;
-}
+export type StreamLogEvent = CompressionLogEvent;
+export type StreamErrorEvent = CompressionErrorEvent;
 
 export interface ParseHandlers {
 	onLog?: (event: StreamLogEvent) => void;
-	onResult?: (event: CompressResult) => void;
+	onResult?: (event: CompressionResultEvent) => void;
 	onError?: (event: StreamErrorEvent) => void;
 }
 
@@ -31,10 +26,12 @@ function parseRatio(value: unknown): number | undefined {
 	return undefined;
 }
 
-function toCompressResult(value: unknown): CompressResult | undefined {
+function toCompressResult(value: unknown): CompressionResultEvent | undefined {
 	if (typeof value !== 'object' || value === null) return undefined;
 
 	if (
+		!('requestId' in value) ||
+		typeof value.requestId !== 'string' ||
 		!('filename' in value) ||
 		typeof value.filename !== 'string' ||
 		!('data' in value) ||
@@ -58,11 +55,12 @@ function toCompressResult(value: unknown): CompressResult | undefined {
 	return {
 		filename: value.filename,
 		data: value.data,
+		requestId: value.requestId,
 		originalSize: value.originalSize,
 		compressedSize: value.compressedSize,
 		ratio,
 		method: value.method,
-	} satisfies CompressResult;
+	} satisfies CompressionResultEvent;
 }
 
 function isErrorEvent(value: unknown): value is StreamErrorEvent {

@@ -16,6 +16,7 @@ const entrypoints: string[] = [
 	'./packages/core/src/mod.ts',
 	'./packages/cli/src/main.ts',
 	'./packages/server/src/main.ts',
+	'./packages/shared-types/src/index.ts',
 ];
 
 // Native addons & WASM packages must stay external.
@@ -31,6 +32,7 @@ function workspaceResolverPlugin(): BunPlugin {
 		'@glb-compressor/core': resolve('./packages/core/src/mod.ts'),
 		'@glb-compressor/cli': resolve('./packages/cli/src/main.ts'),
 		'@glb-compressor/server': resolve('./packages/server/src/main.ts'),
+		'@glb-compressor/shared-types': resolve('./packages/shared-types/src/index.ts'),
 	};
 
 	return {

@@ -27,6 +27,7 @@
  */
 
 import type { CompressPreset } from '@glb-compressor/core';
+import type { CompressionStreamEventMap } from '@glb-compressor/shared-types';
 import {
 	compress,
 	DEFAULT_PORT,
@@ -262,7 +263,10 @@ async function handleCompressStream(req: globalThis.Request): Promise<Response> 
 	const encoder = new TextEncoder();
 	const stream = new ReadableStream({
 		async start(controller) {
-			const send = (event: string, data: unknown) => {
+			const send = <EventName extends keyof CompressionStreamEventMap>(
+				event: EventName,
+				data: CompressionStreamEventMap[EventName],
+			) => {
 				controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
 			};
 

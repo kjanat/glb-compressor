@@ -29,7 +29,8 @@
 		"dist/types"
 	],
 	"dependencies": {
-		"@glb-compressor/core": "workspace:*"
+		"@glb-compressor/core": "workspace:*",
+		"@glb-compressor/shared-types": "workspace:*"
 	},
 	"devDependencies": {
 		"@glb-compressor/bun-polyfill": "workspace:*"

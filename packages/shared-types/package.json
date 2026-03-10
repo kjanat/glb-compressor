@@ -1,0 +1,28 @@
+{
+	"name": "@glb-compressor/shared-types",
+	"version": "1.0.2",
+	"description": "Shared wire protocol types for glb-compressor clients and server",
+	"license": "MIT",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kjanat/glb-compressor.git",
+		"directory": "packages/shared-types"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/types/index.d.ts",
+			"bun": "./src/index.ts",
+			"node": "./dist/node/index.js",
+			"default": "./dist/node/index.js"
+		}
+	},
+	"main": "./dist/node/index.js",
+	"types": "./dist/types/index.d.ts",
+	"files": [
+		"dist/node/**/*.*js",
+		"dist/bun/**/*.*js",
+		"dist/bun-bytecode/**/*.{cjs,cjs.jsc}",
+		"dist/types"
+	]
+}

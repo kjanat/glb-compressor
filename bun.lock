@@ -8,6 +8,7 @@
         "@glb-compressor/cli": "workspace:*",
         "@glb-compressor/core": "workspace:*",
         "@glb-compressor/server": "workspace:*",
+        "@glb-compressor/shared-types": "workspace:*",
         "@gltf-transform/core": "4.3.0",
         "@gltf-transform/extensions": "4.3.0",
         "@gltf-transform/functions": "4.3.0",
@@ -30,6 +31,7 @@
       "devDependencies": {
         "@eslint/compat": "^2.0.2",
         "@eslint/js": "^9.39.2",
+        "@glb-compressor/shared-types": "workspace:*",
         "@sveltejs/adapter-auto": "^7.0.0",
         "@sveltejs/adapter-static": "3.0.10",
         "@sveltejs/kit": "^2.50.2",
@@ -94,10 +96,15 @@
       },
       "dependencies": {
         "@glb-compressor/core": "workspace:*",
+        "@glb-compressor/shared-types": "workspace:*",
       },
       "devDependencies": {
         "@glb-compressor/bun-polyfill": "workspace:*",
       },
+    },
+    "packages/shared-types": {
+      "name": "@glb-compressor/shared-types",
+      "version": "1.0.2",
     },
     "shitty-frontend": {
       "name": "shitty-frontend",
@@ -290,6 +297,8 @@
     "@glb-compressor/core": ["@glb-compressor/core@workspace:packages/core"],
 
     "@glb-compressor/server": ["@glb-compressor/server@workspace:packages/server"],
+
+    "@glb-compressor/shared-types": ["@glb-compressor/shared-types@workspace:packages/shared-types"],
 
     "@gltf-transform/core": ["@gltf-transform/core@4.3.0", "", { "dependencies": { "property-graph": "^4.0.0" } }, "sha512-ZeaQfszGJ9LYwELszu45CuDQCsE26lJNNe36FVmN8xclaT6WDdCj7fwGpQXo0/l/YgAVAHX+uO7YNBW75/SRYw=="],
 

@@ -35,6 +35,7 @@
 			"@glb-compressor/core": ["./packages/core/src/mod.ts"],
 			"@glb-compressor/cli": ["./packages/cli/src/main.ts"],
 			"@glb-compressor/server": ["./packages/server/src/main.ts"],
+			"@glb-compressor/shared-types": ["./packages/shared-types/src/index.ts"],
 			"$models": ["./models/*"],
 			"pkg": ["./package.json"]
 		}

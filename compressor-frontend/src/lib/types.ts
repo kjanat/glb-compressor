@@ -1,15 +1,10 @@
+import type { CompressionResultEvent } from '@glb-compressor/shared-types';
+
 export type FileStatus = 'pending' | 'compressing' | 'done' | 'error';
 export type LogType = 'info' | 'phase' | 'success' | 'error';
 export type PresetId = 'default' | 'balanced' | 'aggressive' | 'max';
 
-export interface CompressResult {
-	filename: string;
-	data: string;
-	originalSize: number;
-	compressedSize: number;
-	ratio: number;
-	method: string;
-}
+export type CompressResult = CompressionResultEvent;
 
 export interface QueuedFile {
 	id: number;
