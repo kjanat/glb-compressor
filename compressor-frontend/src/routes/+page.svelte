@@ -26,23 +26,19 @@
 	}
 
 	const buttonState = $derived.by(() => {
-		if (!state.serverOnline) {
-			return { text: 'Server offline \u2013 see setup above', disabled: true };
-		}
 		if (state.isCompressing) {
-			const pending = state.files.filter(
-				(file) => file.status === 'pending',
+			const done = state.files.filter(
+				(file) => file.status === 'done' || file.status === 'error',
 			).length;
-			const total =
-				pending +
-				state.files.filter((file) => file.status === 'compressing').length;
+			const total = state.files.length;
 			return {
 				text:
-					total > 0
-						? `Compressing ${total - pending}/${total}...`
-						: 'Compressing...',
+					total > 0 ? `Compressing ${done + 1}/${total}...` : 'Compressing...',
 				disabled: true,
 			};
+		}
+		if (!state.serverOnline) {
+			return { text: 'Server offline \u2013 see setup above', disabled: true };
 		}
 		if (pendingCount === 0) {
 			return {
