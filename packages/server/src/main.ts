@@ -5,6 +5,7 @@ import type { CompressionStreamEventMap } from '@glb-compressor/shared-types';
 import { CompressionJobQueue } from './job-queue';
 import type { JobResult } from './job-queue';
 import { CORS_HEADERS, jsonError, parseCompressRequest } from './http';
+import { resolveTls } from './tls';
 
 const PORT = parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
 
@@ -300,10 +301,13 @@ function handleGetJobResult(requestId: string): Response {
 	});
 }
 
-export function startServer() {
+export async function startServer() {
+	const tls = await resolveTls();
+
 	const server = Bun.serve({
 		port: PORT,
 		hostname: '0.0.0.0',
+		tls,
 
 		routes: {
 			'/healthz': new Response('ok', { headers: CORS_HEADERS }),

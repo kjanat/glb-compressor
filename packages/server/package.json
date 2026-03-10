@@ -33,7 +33,8 @@
 	},
 	"dependencies": {
 		"@glb-compressor/core": "workspace:*",
-		"@glb-compressor/shared-types": "workspace:*"
+		"@glb-compressor/shared-types": "workspace:*",
+		"@peculiar/x509": "1.14.3"
 	},
 	"devDependencies": {
 		"@glb-compressor/bun-polyfill": "workspace:*"
