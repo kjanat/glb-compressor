@@ -1,24 +1,27 @@
 {
 	"name": "shitty-frontend",
-	"private": true,
 	"version": "0.0.0",
-	"type": "module",
-	"scripts": {
-		"bd": "bun --bun run build",
-		"dev": "vite",
-		"build": "tsc -b && vite build",
-		"lint": "eslint .",
-		"preview": "vite preview",
-		"typecheck": "tsgo --noEmit"
-	},
-	"dependencies": {
-		"react": "^19.2.4",
-		"react-dom": "^19.2.4"
-	},
+	"private": true,
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/kjanat/glb-compressor.git",
 		"directory": "shitty-frontend"
+	},
+	"type": "module",
+	"scripts": {
+		"bd": "bun --bun run build",
+		"build": "tsc -b && vite build",
+		"dev": "vite",
+		"lint": "eslint .",
+		"preview": "vite preview",
+		"typecheck": "tsgo --noEmit"
+	},
+	"overrides": {
+		"vite": "^8.0.0-beta.13"
+	},
+	"dependencies": {
+		"react": "^19.2.4",
+		"react-dom": "^19.2.4"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
@@ -37,8 +40,5 @@
 		"vite": "^8.0.0-beta.13",
 		"vite-robots-txt": "^1.0.0",
 		"vite-svg-to-ico": "^2.0.1"
-	},
-	"overrides": {
-		"vite": "^8.0.0-beta.13"
 	}
 }

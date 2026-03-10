@@ -2,16 +2,13 @@
 	"name": "@glb-compressor/server",
 	"version": "1.0.2",
 	"description": "HTTP server for GLB/glTF 3D model compression with SSE streaming",
-	"license": "MIT",
-	"type": "module",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/kjanat/glb-compressor.git",
 		"directory": "packages/server"
 	},
-	"bin": {
-		"glb-server": "dist/node/main.js"
-	},
+	"license": "MIT",
+	"type": "module",
 	"exports": {
 		".": {
 			"types": "./dist/types/main.d.ts",
@@ -20,20 +17,28 @@
 			"default": "./dist/node/main.js"
 		}
 	},
-	"scripts": { "dev": "bun --bun src/main.ts" },
 	"main": "./dist/node/main.js",
 	"types": "./dist/types/main.d.ts",
+	"bin": {
+		"glb-server": "dist/node/main.js"
+	},
 	"files": [
 		"dist/node/**/*.*js",
 		"dist/bun/**/*.*js",
 		"dist/bun-bytecode/**/*.{cjs,cjs.jsc}",
 		"dist/types"
 	],
+	"scripts": {
+		"dev": "bun --bun src/main.ts"
+	},
 	"dependencies": {
 		"@glb-compressor/core": "workspace:*",
 		"@glb-compressor/shared-types": "workspace:*"
 	},
 	"devDependencies": {
 		"@glb-compressor/bun-polyfill": "workspace:*"
+	},
+	"engines": {
+		"bun": "^1.3"
 	}
 }

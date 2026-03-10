@@ -2,13 +2,13 @@
 	"name": "@glb-compressor/core",
 	"version": "1.0.2",
 	"description": "Multi-phase GLB/glTF 3D model compression library",
-	"license": "MIT",
-	"type": "module",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/kjanat/glb-compressor.git",
 		"directory": "packages/core"
 	},
+	"license": "MIT",
+	"type": "module",
 	"exports": {
 		".": {
 			"types": "./dist/types/mod.d.ts",

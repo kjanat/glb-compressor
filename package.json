@@ -22,11 +22,11 @@
 		"sse",
 		"gltf-transform"
 	],
+	"homepage": "https://glb-compressor.kjanat.com/",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/kjanat/glb-compressor.git"
 	},
-	"homepage": "https://glb-compressor.kjanat.com/",
 	"license": "MIT",
 	"type": "module",
 	"exports": {

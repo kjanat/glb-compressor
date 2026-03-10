@@ -1,336 +1,140 @@
 #!/usr/bin/env bun
-/**
- * HTTP compression server built on `Bun.serve()`.
- *
- * Exposes two compression endpoints:
- *
- * - **`POST /compress`** — synchronous compression returning the compressed GLB binary
- *   with metadata in response headers. Accepts `multipart/form-data` or raw binary body.
- *
- * - **`POST /compress-stream`** — SSE (Server-Sent Events) streaming endpoint that
- *   delivers real-time progress logs and the final compressed GLB as base64.
- *
- * Both endpoints accept `?preset=` and `?simplify=` query params (or form fields).
- * Full CORS support, GLB magic-byte validation, 100 MB file size limit, and
- * structured JSON error responses with request ID tracking.
- *
- * @example
- * ```sh
- * # Start the server
- * PORT=3000 bun server/main.ts
- *
- * # Upload a file
- * curl -X POST -F "file=@model.glb" "http://localhost:3000/compress?preset=aggressive" -o out.glb
- * ```
- *
- * @module server
- */
 
-import type { CompressPreset } from '@glb-compressor/core';
+import { DEFAULT_PORT, ErrorCode, formatBytes } from '@glb-compressor/core';
 import type { CompressionStreamEventMap } from '@glb-compressor/shared-types';
-import {
-	compress,
-	DEFAULT_PORT,
-	ErrorCode,
-	formatBytes,
-	MAX_FILE_SIZE,
-	PRESETS,
-	parseSimplifyRatio,
-	sanitizeFilename,
-	validateGlbMagic,
-} from '@glb-compressor/core';
+import { CompressionJobQueue } from './job-queue';
+import type { JobResult } from './job-queue';
+import { CORS_HEADERS, jsonError, parseCompressRequest } from './http';
 
-const isPreset = (value: string): value is CompressPreset => {
-	return value === 'default' || value === 'balanced' || value === 'aggressive' || value === 'max';
-};
-
-/** Resolved server port from `PORT` env var or {@link DEFAULT_PORT}. */
 const PORT = parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
 
-/** Shape of JSON error responses returned by all endpoints. */
-interface ApiError {
-	error: {
-		code: string;
-		message: string;
-	};
+const jobQueue = new CompressionJobQueue();
+
+interface JobRoute {
 	requestId: string;
+	kind: 'status' | 'result';
 }
 
-/** Standard CORS headers included in every response. */
-const CORS_HEADERS: Record<string, string> = {
-	'Access-Control-Allow-Origin': '*',
-	'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-	'Access-Control-Allow-Headers': 'Content-Type, X-Request-ID',
-	'Access-Control-Expose-Headers':
-		'X-Request-ID, X-Original-Size, X-Compressed-Size, X-Compression-Method, X-Compression-Ratio',
-};
+function parseJobRoute(pathname: string): JobRoute | undefined {
+	if (!pathname.startsWith('/jobs/')) {
+		return undefined;
+	}
 
-/**
- * Parsed and validated compression request data extracted from an incoming HTTP request.
- */
-interface ParsedRequest {
-	input: Uint8Array;
-	filename: string;
-	preset: CompressPreset;
-	simplifyRatio: number | undefined;
-	resources: Record<string, Uint8Array> | undefined;
+	const suffix = pathname.slice('/jobs/'.length);
+	if (suffix.length === 0) {
+		return undefined;
+	}
+
+	const parts = suffix.split('/');
+	const [rawRequestId] = parts;
+	if (rawRequestId === undefined || rawRequestId.length === 0) {
+		return undefined;
+	}
+
+	let requestId: string;
+	try {
+		requestId = decodeURIComponent(rawRequestId);
+	} catch {
+		return undefined;
+	}
+
+	if (parts.length === 1) {
+		return { requestId, kind: 'status' };
+	}
+
+	if (parts.length === 2 && parts[1] === 'result') {
+		return { requestId, kind: 'result' };
+	}
+
+	return undefined;
 }
 
-/**
- * Parse and validate a compression request from multipart form data or raw binary body.
- *
- * Extracts the file, validates size and GLB magic bytes, and resolves preset/simplify
- * options from query params and form fields (form fields take precedence).
- *
- * @param req            - Incoming HTTP request.
- * @param requestId      - UUID tracking this request.
- * @param requireMultipart - If `true`, reject non-multipart requests with 415.
- * @returns Parsed request data or an error Response.
- */
-async function parseCompressRequest(
-	req: globalThis.Request,
-	requestId: string,
-	requireMultipart: boolean,
-): Promise<ParsedRequest | Response> {
-	const url = new URL(req.url);
-	const contentType = req.headers.get('content-type') ?? '';
-
-	let input: Uint8Array;
-	let filename = 'model.glb';
-	let resources: Record<string, Uint8Array> | undefined;
-	let isGltfInput = false;
-
-	const queryPreset = url.searchParams.get('preset');
-	let preset: CompressPreset = 'default';
-	if (queryPreset !== null && queryPreset.length > 0) {
-		if (!isPreset(queryPreset)) {
-			return jsonError(
-				ErrorCode.INVALID_PRESET,
-				`Invalid preset: ${queryPreset} (must be one of: ${Object.keys(PRESETS).join(', ')})`,
-				400,
-				requestId,
-			);
-		}
-		preset = queryPreset;
-	}
-
-	const querySimplify = url.searchParams.get('simplify');
-	let simplifyRatio: number | undefined = parseSimplifyRatio(querySimplify);
-	if (querySimplify !== null && simplifyRatio === undefined) {
-		return jsonError(
-			ErrorCode.INVALID_SIMPLIFY_RATIO,
-			`Invalid simplify ratio: ${querySimplify} (must be between 0 and 1)`,
-			400,
-			requestId,
-		);
-	}
-
-	if (contentType.includes('multipart/form-data')) {
-		const formData = await req.formData();
-		const fileField = formData.get('file');
-		if (!fileField) {
-			return jsonError(ErrorCode.NO_FILE_PROVIDED, 'No file provided in form data', 400, requestId);
-		}
-		if (!(fileField instanceof File)) {
-			return jsonError(ErrorCode.INVALID_FILE, 'Invalid multipart file field', 400, requestId);
-		}
-		const file = fileField;
-		if (file.size > MAX_FILE_SIZE) {
-			return jsonError(
-				ErrorCode.FILE_TOO_LARGE,
-				`File too large: ${formatBytes(file.size)} exceeds ${formatBytes(MAX_FILE_SIZE)} limit`,
-				413,
-				requestId,
-			);
-		}
-		input = new Uint8Array(await file.arrayBuffer());
-		filename = file.name;
-		isGltfInput = /\.gltf$/i.test(filename);
-
-		if (isGltfInput) {
-			resources = {};
-			let totalBytes = input.byteLength;
-			for (const value of formData.values()) {
-				if (!(value instanceof File) || value === file) continue;
-				totalBytes += value.size;
-				if (totalBytes > MAX_FILE_SIZE) {
-					return jsonError(
-						ErrorCode.FILE_TOO_LARGE,
-						`File bundle too large: exceeds ${formatBytes(MAX_FILE_SIZE)} limit`,
-						413,
-						requestId,
-					);
-				}
-				resources[value.name] = new Uint8Array(await value.arrayBuffer());
-			}
-		}
-
-		// Form data overrides query params
-		const formSimplify = formData.get('simplify');
-		if (typeof formSimplify === 'string' && formSimplify.length > 0) {
-			simplifyRatio = parseSimplifyRatio(formSimplify);
-			if (simplifyRatio === undefined) {
-				return jsonError(
-					ErrorCode.INVALID_SIMPLIFY_RATIO,
-					`Invalid simplify ratio: ${formSimplify} (must be between 0 and 1)`,
-					400,
-					requestId,
-				);
-			}
-		} else if (formSimplify !== null) {
-			return jsonError(ErrorCode.INVALID_SIMPLIFY_RATIO, 'Invalid simplify ratio field type', 400, requestId);
-		}
-
-		const formPreset = formData.get('preset');
-		if (typeof formPreset === 'string' && formPreset.length > 0) {
-			if (!isPreset(formPreset)) {
-				return jsonError(
-					ErrorCode.INVALID_PRESET,
-					`Invalid preset: ${formPreset} (must be one of: ${Object.keys(PRESETS).join(', ')})`,
-					400,
-					requestId,
-				);
-			}
-			preset = formPreset;
-		} else if (formPreset !== null) {
-			return jsonError(ErrorCode.INVALID_PRESET, 'Invalid preset field type', 400, requestId);
-		}
-	} else if (requireMultipart) {
-		return jsonError(ErrorCode.INVALID_CONTENT_TYPE, 'Use multipart/form-data for streaming endpoint', 415, requestId);
-	} else {
-		isGltfInput = contentType.includes('application/json') || contentType.includes('model/gltf+json');
-
-		const contentLength = req.headers.get('content-length');
-		if (contentLength && parseInt(contentLength, 10) > MAX_FILE_SIZE) {
-			return jsonError(
-				ErrorCode.FILE_TOO_LARGE,
-				`File too large: exceeds ${formatBytes(MAX_FILE_SIZE)} limit`,
-				413,
-				requestId,
-			);
-		}
-		input = new Uint8Array(await req.arrayBuffer());
-		if (input.byteLength > MAX_FILE_SIZE) {
-			return jsonError(
-				ErrorCode.FILE_TOO_LARGE,
-				`File too large: ${formatBytes(input.byteLength)} exceeds ${formatBytes(MAX_FILE_SIZE)} limit`,
-				413,
-				requestId,
-			);
-		}
-	}
-
-	// GLB magic byte validation for binary uploads.
-	if (!isGltfInput) {
-		try {
-			validateGlbMagic(input);
-		} catch (err) {
-			return jsonError(ErrorCode.INVALID_GLB, err instanceof Error ? err.message : 'Invalid GLB file', 400, requestId);
-		}
-	}
-
-	return { input, filename: sanitizeFilename(filename), preset, simplifyRatio, resources };
-}
-
-/**
- * Create a structured JSON error response with CORS headers and request ID.
- *
- * @param code      - Machine-readable error code from {@link ErrorCode}.
- * @param message   - Human-readable error description.
- * @param status    - HTTP status code (e.g. 400, 413, 415, 500).
- * @param requestId - UUID tracking this request.
- */
-function jsonError(code: string, message: string, status: number, requestId: string): Response {
-	const body: ApiError = {
-		error: { code, message },
-		requestId,
-	};
-	return Response.json(body, {
-		status,
-		headers: { ...CORS_HEADERS, 'X-Request-ID': requestId },
+function handleOptions(): Response {
+	return new Response(null, {
+		status: 204,
+		headers: CORS_HEADERS,
 	});
 }
 
-/**
- * Handle `POST /compress` — synchronous GLB compression.
- *
- * Accepts `multipart/form-data` (field: `file`) or raw `application/octet-stream`.
- * Compression options can be passed as query params (`?preset=&simplify=`) or
- * form fields. Returns the compressed GLB binary with metadata headers:
- *
- * - `X-Original-Size` / `X-Compressed-Size` — byte counts
- * - `X-Compression-Method` — `"gltfpack"` or `"meshopt"`
- * - `X-Compression-Ratio` — percentage reduction (e.g. `"84.1"`)
- * - `Content-Disposition` — suggested download filename
- */
 async function handleCompress(req: globalThis.Request): Promise<Response> {
 	const requestId = crypto.randomUUID();
 
 	const parsed = await parseCompressRequest(req, requestId, false);
-	if (parsed instanceof Response) return parsed;
+	if (parsed instanceof Response) {
+		return parsed;
+	}
+
 	const { input, filename, preset, simplifyRatio, resources } = parsed;
 
-	console.log(`[${requestId}] Received ${filename}: ${formatBytes(input.byteLength)} (preset: ${preset})`);
+	console.log(`[${requestId}] Enqueue ${filename}: ${formatBytes(input.byteLength)} (preset: ${preset})`);
 
-	let buffer: Uint8Array;
-	let method: string;
+	jobQueue.submit({
+		requestId,
+		input,
+		filename,
+		preset,
+		simplifyRatio,
+		resources,
+	});
+
+	let result: JobResult;
 	try {
-		({ buffer, method } = await compress(input, { simplifyRatio, preset, resources }));
-	} catch (err) {
-		console.error(`[${requestId}] Compression failed:`, err);
+		result = await jobQueue.waitForCompletion(requestId);
+	} catch (error) {
+		console.error(`[${requestId}] Compression failed:`, error);
 		return jsonError(
 			ErrorCode.COMPRESSION_FAILED,
-			err instanceof Error ? err.message : 'Compression failed',
+			error instanceof Error ? error.message : 'Compression failed',
 			500,
 			requestId,
 		);
 	}
 
-	const ratio: string = ((1 - buffer.byteLength / input.byteLength) * 100).toFixed(1);
 	console.log(
-		`[${requestId}] ${formatBytes(input.byteLength)} -> ${formatBytes(
-			buffer.byteLength,
-		)} (${ratio}% reduction, ${method})`,
+		`[${requestId}] ${formatBytes(result.originalSize)} -> ${formatBytes(
+			result.compressedSize,
+		)} (${result.ratio}% reduction, ${result.method})`,
 	);
 
-	return new Response(buffer, {
+	return new Response(result.buffer, {
 		headers: {
 			...CORS_HEADERS,
 			'Content-Type': 'model/gltf-binary',
-			'Content-Disposition': `attachment; filename="${filename.replace(/\.(glb|gltf)$/i, '-compressed.glb')}"`,
-			'Content-Length': String(buffer.byteLength),
+			'Content-Disposition': `attachment; filename="${result.filename}"`,
+			'Content-Length': String(result.buffer.byteLength),
 			'X-Request-ID': requestId,
-			'X-Original-Size': String(input.byteLength),
-			'X-Compressed-Size': String(buffer.byteLength),
-			'X-Compression-Method': method,
-			'X-Compression-Ratio': ratio,
+			'X-Original-Size': String(result.originalSize),
+			'X-Compressed-Size': String(result.compressedSize),
+			'X-Compression-Method': result.method,
+			'X-Compression-Ratio': String(result.ratio),
 		},
 	});
 }
 
-/**
- * Handle `POST /compress-stream` — SSE streaming GLB compression.
- *
- * Only accepts `multipart/form-data`. Returns a `text/event-stream` response
- * with three event types:
- *
- * - `log`    — `{ message: string }` — real-time progress messages
- * - `result` — `{ requestId, filename, data (base64), originalSize, compressedSize, ratio, method }`
- * - `error`  — `{ message, requestId, code }` — if compression fails
- *
- * The stream closes after the `result` or `error` event.
- */
 async function handleCompressStream(req: globalThis.Request): Promise<Response> {
 	const requestId = crypto.randomUUID();
 
 	const parsed = await parseCompressRequest(req, requestId, true);
-	if (parsed instanceof Response) return parsed;
+	if (parsed instanceof Response) {
+		return parsed;
+	}
+
 	const { input, filename, preset, simplifyRatio, resources } = parsed;
 
-	// filename is already sanitized by parseCompressRequest
+	jobQueue.submit({
+		requestId,
+		input,
+		filename,
+		preset,
+		simplifyRatio,
+		resources,
+	});
+
 	const encoder = new TextEncoder();
+	let unsubscribe: (() => void) | undefined;
+
 	const stream = new ReadableStream({
-		async start(controller) {
+		start(controller) {
 			const send = <EventName extends keyof CompressionStreamEventMap>(
 				event: EventName,
 				data: CompressionStreamEventMap[EventName],
@@ -338,46 +142,63 @@ async function handleCompressStream(req: globalThis.Request): Promise<Response> 
 				controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
 			};
 
-			send('log', {
-				message: `[${requestId}] Received ${filename}: ${formatBytes(input.byteLength)} (preset: ${preset})`,
-			});
+			unsubscribe = jobQueue.subscribe(requestId, (event) => {
+				if (event.type === 'log') {
+					send('log', { message: event.message });
+					return;
+				}
 
-			try {
-				const { buffer, method } = await compress(input, {
-					simplifyRatio,
-					preset,
-					resources,
-					onLog: (msg) => send('log', { message: msg }),
-				});
+				if (event.type === 'error') {
+					send('error', {
+						message: event.error.message,
+						requestId,
+						code: event.error.code,
+					});
+					controller.close();
+					if (unsubscribe) {
+						unsubscribe();
+						unsubscribe = undefined;
+					}
+					return;
+				}
 
-				const ratio = Number(((1 - buffer.byteLength / input.byteLength) * 100).toFixed(1));
-				send('log', {
-					message: `Done: ${formatBytes(input.byteLength)} -> ${formatBytes(buffer.byteLength)} (${ratio}% reduction)`,
-				});
+				const result = jobQueue.getResult(requestId);
+				if (!result) {
+					send('error', {
+						message: 'Compression completed without result payload',
+						requestId,
+						code: ErrorCode.COMPRESSION_FAILED,
+					});
+					controller.close();
+					if (unsubscribe) {
+						unsubscribe();
+						unsubscribe = undefined;
+					}
+					return;
+				}
 
-				// Send result as base64.
-				// NOTE: For very large files this creates a string ~33% larger than
-				// the binary in memory. The SSE design inherently requires this; for
-				// files approaching MAX_FILE_SIZE, prefer the /compress endpoint.
-				const base64 = Buffer.from(buffer).toString('base64');
 				send('result', {
 					requestId,
-					filename: filename.replace(/\.(glb|gltf)$/i, '-compressed.glb'),
-					data: base64,
-					originalSize: input.byteLength,
-					compressedSize: buffer.byteLength,
-					ratio,
-					method,
+					filename: result.filename,
+					data: Buffer.from(result.buffer).toString('base64'),
+					originalSize: result.originalSize,
+					compressedSize: result.compressedSize,
+					ratio: result.ratio,
+					method: result.method,
 				});
-			} catch (err) {
-				send('error', {
-					message: String(err),
-					requestId,
-					code: ErrorCode.COMPRESSION_FAILED,
-				});
-			}
 
-			controller.close();
+				controller.close();
+				if (unsubscribe) {
+					unsubscribe();
+					unsubscribe = undefined;
+				}
+			});
+		},
+		cancel() {
+			if (unsubscribe) {
+				unsubscribe();
+				unsubscribe = undefined;
+			}
 		},
 	});
 
@@ -392,21 +213,93 @@ async function handleCompressStream(req: globalThis.Request): Promise<Response> 
 	});
 }
 
-/** Handle CORS preflight `OPTIONS` requests with a `204 No Content` response. */
-function handleOptions(): Response {
-	return new Response(null, {
-		status: 204,
-		headers: CORS_HEADERS,
+async function handleCreateJob(req: globalThis.Request): Promise<Response> {
+	const requestId = crypto.randomUUID();
+
+	const parsed = await parseCompressRequest(req, requestId, false);
+	if (parsed instanceof Response) {
+		return parsed;
+	}
+
+	jobQueue.submit({
+		requestId,
+		input: parsed.input,
+		filename: parsed.filename,
+		preset: parsed.preset,
+		simplifyRatio: parsed.simplifyRatio,
+		resources: parsed.resources,
+	});
+
+	return Response.json(
+		{
+			requestId,
+			status: 'queued',
+			statusUrl: `/jobs/${encodeURIComponent(requestId)}`,
+			resultUrl: `/jobs/${encodeURIComponent(requestId)}/result`,
+		},
+		{
+			status: 202,
+			headers: {
+				...CORS_HEADERS,
+				'X-Request-ID': requestId,
+			},
+		},
+	);
+}
+
+function handleGetJobStatus(requestId: string): Response {
+	const snapshot = jobQueue.getSnapshot(requestId);
+	if (!snapshot) {
+		return jsonError('JOB_NOT_FOUND', `Job not found: ${requestId}`, 404, requestId);
+	}
+
+	return Response.json(snapshot, {
+		headers: {
+			...CORS_HEADERS,
+			'X-Request-ID': requestId,
+		},
 	});
 }
 
-/**
- * Start the compression HTTP server on the configured port.
- *
- * Exported so that the root meta-package `bin/glb-server.js` wrapper can call
- * it without relying on `import.meta.main`. When this module is run directly
- * via `bun server/main.ts`, `import.meta.main` triggers the same function.
- */
+function handleGetJobResult(requestId: string): Response {
+	const snapshot = jobQueue.getSnapshot(requestId);
+	if (!snapshot) {
+		return jsonError('JOB_NOT_FOUND', `Job not found: ${requestId}`, 404, requestId);
+	}
+
+	if (snapshot.status === 'queued' || snapshot.status === 'running') {
+		return jsonError('JOB_NOT_READY', 'Job is not finished yet', 409, requestId);
+	}
+
+	if (snapshot.status === 'error') {
+		return jsonError(
+			snapshot.error?.code ?? ErrorCode.COMPRESSION_FAILED,
+			snapshot.error?.message ?? 'Compression failed',
+			500,
+			requestId,
+		);
+	}
+
+	const result = jobQueue.getResult(requestId);
+	if (!result) {
+		return jsonError('JOB_RESULT_MISSING', 'Job finished but no result is available', 500, requestId);
+	}
+
+	return new Response(result.buffer, {
+		headers: {
+			...CORS_HEADERS,
+			'Content-Type': 'model/gltf-binary',
+			'Content-Disposition': `attachment; filename="${result.filename}"`,
+			'Content-Length': String(result.buffer.byteLength),
+			'X-Request-ID': requestId,
+			'X-Original-Size': String(result.originalSize),
+			'X-Compressed-Size': String(result.compressedSize),
+			'X-Compression-Method': result.method,
+			'X-Compression-Ratio': String(result.ratio),
+		},
+	});
+}
+
 export function startServer() {
 	const server = Bun.serve({
 		port: PORT,
@@ -424,7 +317,30 @@ export function startServer() {
 			},
 		},
 
-		fetch: () => new Response('Not found', { status: 404, headers: CORS_HEADERS }),
+		fetch: async (req: globalThis.Request) => {
+			const url = new URL(req.url);
+
+			if (url.pathname === '/jobs') {
+				if (req.method === 'POST') {
+					return handleCreateJob(req);
+				}
+				if (req.method === 'OPTIONS') {
+					return handleOptions();
+				}
+			}
+
+			const route = parseJobRoute(url.pathname);
+			if (route) {
+				if (req.method === 'GET') {
+					return route.kind === 'status' ? handleGetJobStatus(route.requestId) : handleGetJobResult(route.requestId);
+				}
+				if (req.method === 'OPTIONS') {
+					return handleOptions();
+				}
+			}
+
+			return new Response('Not found', { status: 404, headers: CORS_HEADERS });
+		},
 
 		error(error: Error) {
 			console.error('Server error:', error);

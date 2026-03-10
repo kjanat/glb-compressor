@@ -2,12 +2,12 @@
 	"name": "compressor-frontend",
 	"version": "0.0.0",
 	"private": true,
-	"type": "module",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/kjanat/glb-compressor.git",
 		"directory": "compressor-frontend"
 	},
+	"type": "module",
 	"scripts": {
 		"bd": "bun --bun run build",
 		"build": "vite build",

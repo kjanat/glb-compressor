@@ -7,8 +7,8 @@ compatibility: Requires Bun >= 1.3 or Node.js >= 18.17. Optional gltfpack binary
 
 # glb-compressor Server
 
-HTTP compression server built on `Bun.serve()`. Provides synchronous and
-streaming (SSE) compression endpoints with full CORS support.
+HTTP compression server built on `Bun.serve()`. Provides synchronous,
+streaming (SSE), and async job-queue endpoints with full CORS support.
 
 ## Starting the Server
 
@@ -87,6 +87,43 @@ SSE streaming compression with real-time progress. **Multipart only.**
 
 Stream closes after `result` or `error` event.
 
+### `POST /jobs`
+
+Create an async compression job. Returns immediately with a job ID.
+
+**Accepts:** same payload/options as `POST /compress`.
+
+**Response (`202`):**
+
+```json
+{
+	"requestId": "uuid",
+	"status": "queued",
+	"statusUrl": "/jobs/<id>",
+	"resultUrl": "/jobs/<id>/result"
+}
+```
+
+### `GET /jobs/:id`
+
+Poll current job status.
+
+**Response:**
+
+- `status`: `queued | running | done | error`
+- timestamps (`createdAt`, `updatedAt`, `startedAt`, `finishedAt`)
+- `logs[]`
+- `result` metadata when done (`filename`, sizes, `ratio`, `method`)
+- `error` when failed
+
+### `GET /jobs/:id/result`
+
+Download compressed GLB when the job is done.
+
+- `200` + GLB binary if ready
+- `409 JOB_NOT_READY` if still queued/running
+- `404 JOB_NOT_FOUND` for unknown/expired jobs
+
 **Example (JavaScript):**
 
 ```js
@@ -148,6 +185,8 @@ Full CORS enabled on all endpoints. Exposed headers: `X-Request-ID`,
 - `import.meta.main` guard: safe to import `server/main.ts` as a library without
   starting the server.
 - Request ID (`X-Request-ID`) is generated per request and logged server-side.
+- Compression is executed by a worker-backed in-memory queue (FIFO, single
+  worker) so `/healthz` and status polling stay responsive during heavy jobs.
 - The `/compress-stream` endpoint sends the compressed GLB as base64 in the
   `result` SSE event (~33% larger than binary). For large files near the 100 MB
   limit, prefer `/compress`.

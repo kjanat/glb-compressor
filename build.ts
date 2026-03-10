@@ -16,6 +16,7 @@ const entrypoints: string[] = [
 	'./packages/core/src/mod.ts',
 	'./packages/cli/src/main.ts',
 	'./packages/server/src/main.ts',
+	'./packages/server/src/worker.ts',
 	'./packages/shared-types/src/index.ts',
 ];
 
