@@ -15,6 +15,11 @@
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4"
 	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kjanat/glb-compressor.git",
+		"directory": "shitty-frontend"
+	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
 		"@types/node": "^25.4.0",
