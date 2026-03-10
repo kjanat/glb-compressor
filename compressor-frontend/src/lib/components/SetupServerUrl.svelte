@@ -42,7 +42,13 @@
 				localEdit = event.currentTarget.value;
 			}}
 			onkeydown={(event) => {
-				if (event.key === 'Enter') applyUrl();
+				if (
+					event.key === 'Enter' ||
+					(event.key === 's' && (event.ctrlKey || event.metaKey))
+				) {
+					event.preventDefault();
+					applyUrl();
+				}
 			}}
 		>
 		{#if urlDirty}

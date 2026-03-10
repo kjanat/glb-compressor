@@ -133,6 +133,19 @@
 		runs locally via glb-server &middot; configure the server URL above<br>
 		your files never leave your machine &middot; streaming compression with live
 		progress
+		<div class="footer-links">
+			<a
+				href="https://github.com/kjanat/glb-compressor"
+				target="_blank"
+				rel="noopener noreferrer"
+			>GitHub</a>
+			<span>&middot;</span>
+			<a
+				href="https://www.npmjs.com/package/glb-compressor"
+				target="_blank"
+				rel="noopener noreferrer"
+			>npm</a>
+		</div>
 	</footer>
 </div>
 
@@ -323,6 +336,20 @@
 		color: #2a2a2a;
 		text-align: center;
 		line-height: 1.8;
+	}
+	.footer-links {
+		display: flex;
+		justify-content: center;
+		gap: 6px;
+		margin-top: 8px;
+	}
+	.footer-links a {
+		color: #2a2a2a;
+		text-decoration: none;
+		transition: color 0.15s;
+	}
+	.footer-links a:hover {
+		color: var(--accent-dim);
 	}
 	@media (max-width: 500px) {
 		.options-row {
