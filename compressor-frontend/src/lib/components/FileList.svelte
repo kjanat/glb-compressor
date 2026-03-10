@@ -11,7 +11,7 @@
 		files: QueuedFile[];
 		onremove: (id: number) => void;
 		onclear: () => void;
-		ondownload: (base64: string, filename: string) => void;
+		ondownload: (id: number) => void;
 	} = $props();
 
 	const doneCount = $derived(files.filter((f) => f.status === 'done').length);
@@ -51,12 +51,11 @@
 				</span>
 				<span class="file-actions">
 					{#if item.status === 'done' && item.result}
-						{@const result = item.result}
 						<button
 							type="button"
 							class="file-dl"
 							title="Download"
-							onclick={() => ondownload(result.data, result.filename)}
+							onclick={() => ondownload(item.id)}
 						>
 							&darr;
 						</button>

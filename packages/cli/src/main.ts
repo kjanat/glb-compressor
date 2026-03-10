@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * CLI entry point for `glb-compress`.
+ * CLI entry point for `glb-compressor`.
  *
  * Compresses one or more GLB files using the core library pipeline.
  * Supports glob patterns, configurable presets, optional mesh simplification,
@@ -8,15 +8,15 @@
  *
  * @example
  * ```sh
- * glb-compress model.glb -p aggressive -o ./out/
- * glb-compress *.glb -s 0.5 -f -q
+ * glb-compressor model.glb -p aggressive -o ./out/
+ * glb-compressor *.glb -s 0.5 -f -q
  * ```
  *
  * @module cli
  */
 
 import { mkdir } from 'node:fs/promises';
-import { basename, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { Glob } from 'bun';
 import {
@@ -63,14 +63,14 @@ const c = useColor
 /** Print the full help text with usage, options, presets, and examples. */
 function printHelp() {
 	console.log(`
-${c.bold}${c.cyan}glb-compress${c.reset} - Compress GLB/glTF files
+${c.bold}${c.cyan}glb-compressor${c.reset} - Compress GLB/glTF files
 
 ${c.bold}USAGE${c.reset}
-  glb-compress <files...> [options]
-  glb-compress ./models/*.glb -o ./compressed/
+  glb-compressor <files...> [options]
+  glb-compressor ./models/*.glb -o ./compressed/
 
 ${c.bold}ARGUMENTS${c.reset}
-  files         GLB files to compress (supports glob patterns)
+  files         GLB/glTF files to compress (supports glob patterns)
 
 ${c.bold}OPTIONS${c.reset}
   -o, --output <dir>    Output directory (default: same as input with -compressed suffix)
@@ -89,16 +89,16 @@ ${c.bold}PRESETS${c.reset}
 
 ${c.bold}EXAMPLES${c.reset}
   ${c.dim}# Compress single file${c.reset}
-  glb-compress model.glb
+  glb-compressor model.glb
 
   ${c.dim}# Compress with aggressive preset${c.reset}
-  glb-compress model.glb -p aggressive
+  glb-compressor model.glb -p aggressive
 
   ${c.dim}# Compress multiple files to output directory${c.reset}
-  glb-compress *.glb -o ./compressed/ -p balanced
+  glb-compressor *.glb -o ./compressed/ -p balanced
 
   ${c.dim}# Quiet mode for scripts${c.reset}
-  glb-compress model.glb -q -p max
+  glb-compressor model.glb -q -p max
 `);
 }
 
@@ -162,14 +162,16 @@ async function compressFile(inputPath: string, options: Options): Promise<{ succ
 
 	const input = await inputFile.bytes();
 
-	// Validate GLB
-	try {
-		validateGlbMagic(input);
-	} catch (err) {
-		return {
-			success: false,
-			error: err instanceof Error ? err.message : 'Invalid GLB file',
-		};
+	const isGlbInput = /\.glb$/i.test(inputPath);
+	if (isGlbInput) {
+		try {
+			validateGlbMagic(input);
+		} catch (err) {
+			return {
+				success: false,
+				error: err instanceof Error ? err.message : 'Invalid GLB file',
+			};
+		}
 	}
 
 	const startTime = performance.now();
@@ -181,10 +183,25 @@ async function compressFile(inputPath: string, options: Options): Promise<{ succ
 	}
 
 	try {
+		const isGltfInput = /\.gltf$/i.test(inputPath);
+		const resourceResolver = isGltfInput
+			? async (uri: string): Promise<Uint8Array | undefined> => {
+					if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(uri)) return undefined;
+
+					const uriPath = uri.split(/[?#]/, 1)[0];
+					const cleanUri = uriPath && uriPath.length > 0 ? uriPath : uri;
+					const resourcePath = resolve(dirname(inputPath), cleanUri);
+					const resourceFile = Bun.file(resourcePath);
+					if (!(await resourceFile.exists())) return undefined;
+					return await resourceFile.bytes();
+				}
+			: undefined;
+
 		const result = await compress(input, {
 			simplifyRatio: simplify,
 			preset: options.preset,
 			quiet,
+			resourceResolver,
 		});
 
 		// Write output (output directory already created by main())
@@ -242,7 +259,7 @@ async function main() {
 	}
 
 	if (values.version) {
-		console.log(`glb-compress v${version}`);
+		console.log(`glb-compressor v${version}`);
 		process.exit(0);
 	}
 
@@ -304,7 +321,7 @@ async function main() {
 	};
 
 	if (!options.quiet) {
-		console.log(`\n${c.bold}${c.cyan}glb-compress${c.reset} v${version}\n`);
+		console.log(`\n${c.bold}${c.cyan}glb-compressor${c.reset} v${version}\n`);
 		console.log(`Preset: ${c.bold}${preset}${c.reset}`);
 		console.log(`Processing ${c.bold}${files.length}${c.reset} file(s)...\n`);
 	}

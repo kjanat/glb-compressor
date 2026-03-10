@@ -9,6 +9,77 @@ export interface ParseHandlers {
 	onError?: (event: StreamErrorEvent) => void;
 }
 
+function readFieldValue(line: string): string {
+	const separator = line.indexOf(':');
+	if (separator < 0) {
+		return '';
+	}
+
+	const value = line.slice(separator + 1);
+	return value.startsWith(' ') ? value.slice(1) : value;
+}
+
+function findEventBoundary(buffer: string): { index: number; length: number } | undefined {
+	const match = /\r\n\r\n|\n\n|\r\r/.exec(buffer);
+	if (!match || match.index < 0) {
+		return undefined;
+	}
+
+	return { index: match.index, length: match[0].length };
+}
+
+function handleRawEvent(raw: string, handlers: ParseHandlers): void {
+	if (!raw.trim()) {
+		return;
+	}
+
+	let type = '';
+	const dataLines: string[] = [];
+
+	for (const line of raw.split(/\r\n|\n|\r/)) {
+		if (!line || line.startsWith(':')) {
+			continue;
+		}
+
+		if (line.startsWith('event:')) {
+			type = readFieldValue(line);
+			continue;
+		}
+
+		if (line.startsWith('data:')) {
+			dataLines.push(readFieldValue(line));
+		}
+	}
+
+	if (!type || dataLines.length === 0) {
+		return;
+	}
+
+	const data = dataLines.join('\n');
+	if (!data) {
+		return;
+	}
+
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(data);
+	} catch {
+		console.warn('Malformed SSE JSON');
+		return;
+	}
+
+	if (type === 'log' && isLogEvent(parsed)) {
+		handlers.onLog?.(parsed);
+	} else if (type === 'result') {
+		const result = toCompressResult(parsed);
+		if (result) {
+			handlers.onResult?.(result);
+		}
+	} else if (type === 'error' && isErrorEvent(parsed)) {
+		handlers.onError?.(parsed);
+	}
+}
+
 function isLogEvent(value: unknown): value is StreamLogEvent {
 	return typeof value === 'object' && value !== null && 'message' in value && typeof value.message === 'string';
 }
@@ -83,43 +154,38 @@ export async function parseSSE(response: Response, handlers: ParseHandlers): Pro
 	try {
 		for (;;) {
 			const { done, value } = await reader.read();
-			if (done) break;
+			if (done) {
+				break;
+			}
 
 			buffer += decoder.decode(value, { stream: true });
-			const parts = buffer.split('\n\n');
-			buffer = parts.pop() ?? '';
 
-			for (const raw of parts) {
-				if (!raw.trim()) continue;
-
-				let type = '';
-				let data = '';
-
-				for (const line of raw.split('\n')) {
-					if (line.startsWith('event: ')) type = line.slice(7);
-					if (line.startsWith('data: ')) data += line.slice(6);
+			for (;;) {
+				const boundary = findEventBoundary(buffer);
+				if (!boundary) {
+					break;
 				}
 
-				if (!type || !data) continue;
-
-				try {
-					const parsed: unknown = JSON.parse(data);
-
-					if (type === 'log' && isLogEvent(parsed)) {
-						handlers.onLog?.(parsed);
-					} else if (type === 'result') {
-						const result = toCompressResult(parsed);
-						if (result) {
-							handlers.onResult?.(result);
-						}
-					} else if (type === 'error' && isErrorEvent(parsed)) {
-						handlers.onError?.(parsed);
-					}
-				} catch {
-					console.warn('Malformed SSE JSON');
-				}
+				const raw = buffer.slice(0, boundary.index);
+				buffer = buffer.slice(boundary.index + boundary.length);
+				handleRawEvent(raw, handlers);
 			}
 		}
+
+		buffer += decoder.decode();
+
+		for (;;) {
+			const boundary = findEventBoundary(buffer);
+			if (!boundary) {
+				break;
+			}
+
+			const raw = buffer.slice(0, boundary.index);
+			buffer = buffer.slice(boundary.index + boundary.length);
+			handleRawEvent(raw, handlers);
+		}
+
+		handleRawEvent(buffer, handlers);
 	} finally {
 		reader.releaseLock();
 	}

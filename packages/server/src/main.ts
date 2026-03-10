@@ -40,16 +40,9 @@ import {
 	validateGlbMagic,
 } from '@glb-compressor/core';
 
-const VALID_PRESETS = new Set(Object.keys(PRESETS));
-
-/**
- * Parse and validate a compression preset string.
- * Returns `"default"` for null, empty, or unrecognized values.
- */
-function parsePreset(raw: string | null): CompressPreset {
-	if (!raw || !VALID_PRESETS.has(raw)) return 'default';
-	return raw as CompressPreset;
-}
+const isPreset = (value: string): value is CompressPreset => {
+	return value === 'default' || value === 'balanced' || value === 'aggressive' || value === 'max';
+};
 
 /** Resolved server port from `PORT` env var or {@link DEFAULT_PORT}. */
 const PORT = parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
@@ -80,6 +73,7 @@ interface ParsedRequest {
 	filename: string;
 	preset: CompressPreset;
 	simplifyRatio: number | undefined;
+	resources: Record<string, Uint8Array> | undefined;
 }
 
 /**
@@ -103,15 +97,44 @@ async function parseCompressRequest(
 
 	let input: Uint8Array;
 	let filename = 'model.glb';
-	let simplifyRatio: number | undefined = parseSimplifyRatio(url.searchParams.get('simplify'));
-	let preset = parsePreset(url.searchParams.get('preset'));
+	let resources: Record<string, Uint8Array> | undefined;
+	let isGltfInput = false;
+
+	const queryPreset = url.searchParams.get('preset');
+	let preset: CompressPreset = 'default';
+	if (queryPreset !== null && queryPreset.length > 0) {
+		if (!isPreset(queryPreset)) {
+			return jsonError(
+				ErrorCode.INVALID_PRESET,
+				`Invalid preset: ${queryPreset} (must be one of: ${Object.keys(PRESETS).join(', ')})`,
+				400,
+				requestId,
+			);
+		}
+		preset = queryPreset;
+	}
+
+	const querySimplify = url.searchParams.get('simplify');
+	let simplifyRatio: number | undefined = parseSimplifyRatio(querySimplify);
+	if (querySimplify !== null && simplifyRatio === undefined) {
+		return jsonError(
+			ErrorCode.INVALID_SIMPLIFY_RATIO,
+			`Invalid simplify ratio: ${querySimplify} (must be between 0 and 1)`,
+			400,
+			requestId,
+		);
+	}
 
 	if (contentType.includes('multipart/form-data')) {
 		const formData = await req.formData();
-		const file = formData.get('file') as File | null;
-		if (!file) {
+		const fileField = formData.get('file');
+		if (!fileField) {
 			return jsonError(ErrorCode.NO_FILE_PROVIDED, 'No file provided in form data', 400, requestId);
 		}
+		if (!(fileField instanceof File)) {
+			return jsonError(ErrorCode.INVALID_FILE, 'Invalid multipart file field', 400, requestId);
+		}
+		const file = fileField;
 		if (file.size > MAX_FILE_SIZE) {
 			return jsonError(
 				ErrorCode.FILE_TOO_LARGE,
@@ -122,18 +145,61 @@ async function parseCompressRequest(
 		}
 		input = new Uint8Array(await file.arrayBuffer());
 		filename = file.name;
+		isGltfInput = /\.gltf$/i.test(filename);
+
+		if (isGltfInput) {
+			resources = {};
+			let totalBytes = input.byteLength;
+			for (const value of formData.values()) {
+				if (!(value instanceof File) || value === file) continue;
+				totalBytes += value.size;
+				if (totalBytes > MAX_FILE_SIZE) {
+					return jsonError(
+						ErrorCode.FILE_TOO_LARGE,
+						`File bundle too large: exceeds ${formatBytes(MAX_FILE_SIZE)} limit`,
+						413,
+						requestId,
+					);
+				}
+				resources[value.name] = new Uint8Array(await value.arrayBuffer());
+			}
+		}
+
 		// Form data overrides query params
 		const formSimplify = formData.get('simplify');
-		if (formSimplify) {
-			simplifyRatio = parseSimplifyRatio(String(formSimplify));
+		if (typeof formSimplify === 'string' && formSimplify.length > 0) {
+			simplifyRatio = parseSimplifyRatio(formSimplify);
+			if (simplifyRatio === undefined) {
+				return jsonError(
+					ErrorCode.INVALID_SIMPLIFY_RATIO,
+					`Invalid simplify ratio: ${formSimplify} (must be between 0 and 1)`,
+					400,
+					requestId,
+				);
+			}
+		} else if (formSimplify !== null) {
+			return jsonError(ErrorCode.INVALID_SIMPLIFY_RATIO, 'Invalid simplify ratio field type', 400, requestId);
 		}
+
 		const formPreset = formData.get('preset');
-		if (formPreset) {
-			preset = parsePreset(String(formPreset));
+		if (typeof formPreset === 'string' && formPreset.length > 0) {
+			if (!isPreset(formPreset)) {
+				return jsonError(
+					ErrorCode.INVALID_PRESET,
+					`Invalid preset: ${formPreset} (must be one of: ${Object.keys(PRESETS).join(', ')})`,
+					400,
+					requestId,
+				);
+			}
+			preset = formPreset;
+		} else if (formPreset !== null) {
+			return jsonError(ErrorCode.INVALID_PRESET, 'Invalid preset field type', 400, requestId);
 		}
 	} else if (requireMultipart) {
 		return jsonError(ErrorCode.INVALID_CONTENT_TYPE, 'Use multipart/form-data for streaming endpoint', 415, requestId);
 	} else {
+		isGltfInput = contentType.includes('application/json') || contentType.includes('model/gltf+json');
+
 		const contentLength = req.headers.get('content-length');
 		if (contentLength && parseInt(contentLength, 10) > MAX_FILE_SIZE) {
 			return jsonError(
@@ -154,14 +220,16 @@ async function parseCompressRequest(
 		}
 	}
 
-	// GLB magic byte validation
-	try {
-		validateGlbMagic(input);
-	} catch (err) {
-		return jsonError(ErrorCode.INVALID_GLB, err instanceof Error ? err.message : 'Invalid GLB file', 400, requestId);
+	// GLB magic byte validation for binary uploads.
+	if (!isGltfInput) {
+		try {
+			validateGlbMagic(input);
+		} catch (err) {
+			return jsonError(ErrorCode.INVALID_GLB, err instanceof Error ? err.message : 'Invalid GLB file', 400, requestId);
+		}
 	}
 
-	return { input, filename: sanitizeFilename(filename), preset, simplifyRatio };
+	return { input, filename: sanitizeFilename(filename), preset, simplifyRatio, resources };
 }
 
 /**
@@ -200,14 +268,14 @@ async function handleCompress(req: globalThis.Request): Promise<Response> {
 
 	const parsed = await parseCompressRequest(req, requestId, false);
 	if (parsed instanceof Response) return parsed;
-	const { input, filename, preset, simplifyRatio } = parsed;
+	const { input, filename, preset, simplifyRatio, resources } = parsed;
 
 	console.log(`[${requestId}] Received ${filename}: ${formatBytes(input.byteLength)} (preset: ${preset})`);
 
 	let buffer: Uint8Array;
 	let method: string;
 	try {
-		({ buffer, method } = await compress(input, { simplifyRatio, preset }));
+		({ buffer, method } = await compress(input, { simplifyRatio, preset, resources }));
 	} catch (err) {
 		console.error(`[${requestId}] Compression failed:`, err);
 		return jsonError(
@@ -257,7 +325,7 @@ async function handleCompressStream(req: globalThis.Request): Promise<Response> 
 
 	const parsed = await parseCompressRequest(req, requestId, true);
 	if (parsed instanceof Response) return parsed;
-	const { input, filename, preset, simplifyRatio } = parsed;
+	const { input, filename, preset, simplifyRatio, resources } = parsed;
 
 	// filename is already sanitized by parseCompressRequest
 	const encoder = new TextEncoder();
@@ -278,6 +346,7 @@ async function handleCompressStream(req: globalThis.Request): Promise<Response> 
 				const { buffer, method } = await compress(input, {
 					simplifyRatio,
 					preset,
+					resources,
 					onLog: (msg) => send('log', { message: msg }),
 				});
 

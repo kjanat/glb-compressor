@@ -19,7 +19,7 @@
  */
 
 import { join } from 'node:path';
-import { type Document, NodeIO, type Transform } from '@gltf-transform/core';
+import { type Document, type GLTF, type JSONDocument, NodeIO, type Transform } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import * as transform from '@gltf-transform/functions';
 import { $ } from 'bun';
@@ -29,6 +29,7 @@ import sharp from 'sharp';
 
 import {
 	COMPRESSION_EXTENSIONS,
+	GLB_MAGIC,
 	GLTFPACK_TIMEOUT_MS,
 	INSTANCE_MIN,
 	MERGE_TOLERANCE,
@@ -169,6 +170,18 @@ export interface CompressOptions {
 	quiet?: boolean;
 
 	/**
+	 * Optional glTF external resource map, keyed by URI or basename.
+	 * Used when input is `.gltf` JSON referencing `.bin` or texture files.
+	 */
+	resources?: Record<string, Uint8Array>;
+
+	/**
+	 * Optional async callback to resolve missing `.gltf` external resources.
+	 * Called with each unresolved URI from the parsed glTF JSON.
+	 */
+	resourceResolver?: (uri: string) => Promise<Uint8Array | undefined>;
+
+	/**
 	 * Named compression preset controlling gltfpack flags.
 	 * @default "default"
 	 */
@@ -191,6 +204,117 @@ export interface CompressResult {
 
 let io: NodeIO;
 let hasGltfpack: boolean = false;
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function isGltfRoot(value: unknown): value is GLTF.IGLTF {
+	if (!isObjectRecord(value)) return false;
+	const asset = value.asset;
+	return isObjectRecord(asset);
+}
+
+function getGlbMagic(input: Uint8Array): number | undefined {
+	if (input.length < 4) return undefined;
+	return new DataView(input.buffer, input.byteOffset, 4).getUint32(0, true);
+}
+
+function isDataUri(uri: string): boolean {
+	return uri.startsWith('data:');
+}
+
+function isRemoteUri(uri: string): boolean {
+	return /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(uri);
+}
+
+function decodeUriComponentSafe(uri: string): string {
+	try {
+		return decodeURIComponent(uri);
+	} catch {
+		return uri;
+	}
+}
+
+function toArrayBufferBacked(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
+	const copy = new Uint8Array(bytes.byteLength);
+	copy.set(bytes);
+	return copy;
+}
+
+function getUriBasename(uri: string): string {
+	const normalized = uri.replace(/\\/g, '/');
+	const lastSegment = normalized.split('/').pop();
+	return lastSegment ?? normalized;
+}
+
+function collectExternalResourceUris(root: GLTF.IGLTF): string[] {
+	const uris = new Set<string>();
+
+	const maybeBuffers = root.buffers;
+	if (Array.isArray(maybeBuffers)) {
+		for (const item of maybeBuffers) {
+			if (!isObjectRecord(item)) continue;
+			const uri = item.uri;
+			if (typeof uri === 'string' && uri.length > 0) uris.add(uri);
+		}
+	}
+
+	const maybeImages = root.images;
+	if (Array.isArray(maybeImages)) {
+		for (const item of maybeImages) {
+			if (!isObjectRecord(item)) continue;
+			const uri = item.uri;
+			if (typeof uri === 'string' && uri.length > 0) uris.add(uri);
+		}
+	}
+
+	return Array.from(uris).filter((uri): boolean => !isDataUri(uri));
+}
+
+async function readInputDocument(input: Uint8Array, options: CompressOptions): Promise<Document> {
+	const magic = getGlbMagic(input);
+	if (magic === GLB_MAGIC) {
+		return io.readBinary(input);
+	}
+
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(new TextDecoder().decode(input));
+	} catch {
+		throw new Error('Input is neither valid GLB nor valid glTF JSON');
+	}
+
+	if (!isGltfRoot(parsed)) {
+		throw new Error('Invalid glTF JSON: missing or invalid asset block');
+	}
+
+	const resources: Record<string, Uint8Array<ArrayBuffer>> = {};
+	for (const uri of collectExternalResourceUris(parsed)) {
+		if (isRemoteUri(uri)) {
+			throw new Error(`Network resource URI not supported in glTF input: ${uri}`);
+		}
+
+		const decodedUri = decodeUriComponentSafe(uri);
+		const basename = getUriBasename(decodedUri);
+		const fromMap = options.resources?.[uri] ?? options.resources?.[decodedUri] ?? options.resources?.[basename];
+		if (fromMap) {
+			resources[uri] = toArrayBufferBacked(fromMap);
+			continue;
+		}
+
+		const resolved = await options.resourceResolver?.(decodedUri);
+		if (resolved) {
+			resources[uri] = toArrayBufferBacked(resolved);
+			continue;
+		}
+
+		throw new Error(`Missing external glTF resource: ${uri}`);
+	}
+
+	const jsonDoc: JSONDocument = { json: parsed, resources };
+	return io.readJSON(jsonDoc);
+}
 
 // Pre-warm init on module load (eliminates cold start latency).
 // The rejection propagates to callers of init()/compress() so CLI/server
@@ -230,22 +354,15 @@ async function doInit(): Promise<void> {
 		'meshopt.decoder': MeshoptDecoder,
 	});
 
-	console.log('Initialized glTF-Transform with Draco + Meshopt');
-
 	try {
 		// Bun.which is native on Bun, polyfilled via build/polyfills.ts for Node
 		const gltfpackBin = typeof Bun?.which === 'function' ? Bun.which('gltfpack') : null;
-		if (!gltfpackBin) {
-			console.warn('gltfpack not found in PATH, will use meshopt fallback');
-		} else {
-			const version = (await $`gltfpack -v`.text()).trim().split(/\s/, 2)[1] || 'unknown';
-			if (version === 'unknown') console.warn('Could not determine gltfpack version');
-			else console.log('gltfpack:', version);
-			hasGltfpack = true;
-		}
-	} catch (err) {
-		console.warn('gltfpack detection failed:', err instanceof Error ? err.message : err);
-		console.warn('Will use meshopt fallback');
+		if (!gltfpackBin) return;
+
+		await $`gltfpack -v`.text();
+		hasGltfpack = true;
+	} catch {
+		hasGltfpack = false;
 	}
 }
 
@@ -294,7 +411,7 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 
 	let document: Document;
 	try {
-		document = await io.readBinary(input);
+		document = await readInputDocument(input, options);
 	} catch (err) {
 		throw new Error(`Failed to parse GLB/glTF: ${err instanceof Error ? err.message : String(err)}`);
 	}
@@ -315,10 +432,10 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 	// BATCHED TRANSFORMS - reduces overhead by combining compatible transforms
 	// Phase 1: Analysis + cleanup (sync transforms batched together)
 	const cleanupTransforms: Transform[] = [
-		analyzeMeshComplexity(MESH_WARN_THRESHOLD, TOTAL_WARN_THRESHOLD),
+		analyzeMeshComplexity(MESH_WARN_THRESHOLD, TOTAL_WARN_THRESHOLD, log),
 		transform.dedup(),
 		transform.prune(),
-		removeUnusedUVs(),
+		removeUnusedUVs(log),
 	];
 
 	// For non-skinned models, add geometry optimization transforms
@@ -337,11 +454,11 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 	// Phase 2: Geometry processing (non-skinned only)
 	if (!hasSkins) {
 		await document.transform(
-			mergeByDistance(MERGE_TOLERANCE),
-			removeDegenerateFaces(),
+			mergeByDistance(MERGE_TOLERANCE, log),
+			removeDegenerateFaces(1e-10, log),
 			transform.prune(),
 			// Auto-decimate bloated meshes (>threshold verts)
-			decimateBloatedMeshes(MESH_WARN_THRESHOLD, 0.5, MeshoptSimplifier),
+			decimateBloatedMeshes(MESH_WARN_THRESHOLD, 0.5, MeshoptSimplifier, log),
 		);
 	}
 
@@ -355,9 +472,9 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 	await document.transform(...gpuTransforms);
 
 	// Phase 4: Animation + weights (batched)
-	const animTransforms: Transform[] = [transform.resample(), removeStaticTracksWithBake()];
+	const animTransforms: Transform[] = [transform.resample(), removeStaticTracksWithBake(1e-6, log)];
 	if (hasSkins) {
-		animTransforms.push(normalizeWeights());
+		animTransforms.push(normalizeWeights(log));
 	}
 	await document.transform(...animTransforms);
 

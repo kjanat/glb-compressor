@@ -21,6 +21,12 @@ jobs:
       - uses: actions/setup-node@v6
         with: { node-version: lts/*, registry-url: https://registry.npmjs.org }
       - run: bun install
+
+      # Stamp release version from the git tag into package.json
+      - name: Set package version from tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: bun pm version from-git --allow-same-version --no-git-tag-version
+
       - run: bun build.ts
       - id: version
         run: |
@@ -28,10 +34,13 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "npm_url=https://www.npmjs.com/package/glb-compressor/v/${VERSION}" >> $GITHUB_OUTPUT
 
-      # Stamp release version from the git tag into package.json
-      - name: Set package version from tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: bun pm version from-git --allow-same-version --no-git-tag-version
+      - name: Verify packed artifact installs
+        run: |
+          TARBALL=$(npm pack --silent)
+          TMP_DIR=$(mktemp -d)
+          npm install --prefix "$TMP_DIR" "./$TARBALL"
+          rm -rf "$TMP_DIR"
+          rm -f "$TARBALL"
 
       # bun publish lacks --provenance; use npm for signed provenance
       - run: npm i -g npm && npm publish --provenance --access public

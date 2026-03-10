@@ -89,7 +89,11 @@ export async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T
  */
 export function parseSimplifyRatio(raw: string | null): number | undefined {
 	if (!raw) return undefined;
-	const n: number = Number.parseFloat(raw);
+	const trimmed = raw.trim();
+	if (trimmed.length === 0) return undefined;
+	if (!/^(?:\d+\.\d+|\d+|\.\d+)(?:[eE][+-]?\d+)?$/.test(trimmed)) return undefined;
+
+	const n: number = Number(trimmed);
 	if (Number.isNaN(n) || n <= 0 || n >= 1) return undefined;
 	return n;
 }

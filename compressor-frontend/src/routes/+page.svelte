@@ -7,7 +7,7 @@
 	import PresetPicker from '$lib/components/PresetPicker.svelte';
 	import SetupAccordion from '$lib/components/SetupAccordion.svelte';
 	import { createCompressionSession } from '$lib/compression-session.svelte';
-	import { downloadBase64 } from '$lib/utils';
+	import { downloadCompressionResult } from '$lib/utils';
 
 	const session = createCompressionSession();
 	const state = session.state;
@@ -15,6 +15,15 @@
 	const pendingCount = $derived(
 		state.files.filter((file) => file.status === 'pending').length,
 	);
+
+	function handleDownload(id: number) {
+		const item = state.files.find((file) => file.id === id);
+		if (!item?.result) {
+			return;
+		}
+
+		downloadCompressionResult(item.result);
+	}
 
 	const buttonState = $derived.by(() => {
 		if (!state.serverOnline) {
@@ -79,7 +88,7 @@
 		files={state.files}
 		onremove={session.removeFile}
 		onclear={session.clearFiles}
-		ondownload={downloadBase64}
+		ondownload={handleDownload}
 	/>
 
 	<p class="section-label">Compression preset</p>

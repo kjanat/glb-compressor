@@ -20,7 +20,7 @@
 >
 	<input
 		type="file"
-		accept=".glb, .gltf"
+		accept=".glb, .gltf, .bin, .png, .jpg, .jpeg, .webp, .ktx2, .basis, .hdr, .tga, .bmp, .gif, .ktx, .dds, .avif"
 		multiple
 		onchange={(e) => {
 			const input = e.currentTarget;
@@ -29,9 +29,10 @@
 		}}
 	>
 	<span class="drop-icon">&#128230;</span>
-	<p class="drop-title">Drop your GLB files here</p>
+	<p class="drop-title">Drop your GLB/glTF files here</p>
 	<p class="drop-sub">
-		or click to browse &ndash; .glb / .gltf &ndash; multiple files OK
+		or click to browse &ndash; include .bin/textures with .gltf &ndash; multiple
+		files OK
 	</p>
 </label>
 

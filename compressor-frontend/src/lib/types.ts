@@ -4,7 +4,26 @@ export type FileStatus = 'pending' | 'compressing' | 'done' | 'error';
 export type LogType = 'info' | 'phase' | 'success' | 'error';
 export type PresetId = 'default' | 'balanced' | 'aggressive' | 'max';
 
-export type CompressResult = CompressionResultEvent;
+interface CompressionResultMeta {
+	requestId: string;
+	filename: string;
+	originalSize: number;
+	compressedSize: number;
+	ratio: number;
+	method: string;
+}
+
+export interface StreamCompressResult extends CompressionResultMeta {
+	payloadType: 'base64';
+	data: CompressionResultEvent['data'];
+}
+
+export interface BinaryCompressResult extends CompressionResultMeta {
+	payloadType: 'blob';
+	blob: Blob;
+}
+
+export type CompressResult = StreamCompressResult | BinaryCompressResult;
 
 export interface QueuedFile {
 	id: number;
