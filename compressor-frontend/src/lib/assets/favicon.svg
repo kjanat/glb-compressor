@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+	<defs>
+		<filter id="a" width="120%" height="120%" x="-10%" y="-10%">
+			<feDropShadow dx="0" dy="12" flood-color="#000" flood-opacity=".15" stdDeviation="8"/>
+		</filter>
+	</defs>
+	<g filter="url(#a)">
+		<path fill="#ae7a47" stroke="#ae7a47" stroke-linejoin="round" stroke-width="4" d="m40 130 160 90v160L40 290z"/>
+		<path fill="#955f2e" stroke="#955f2e" stroke-linejoin="round" stroke-width="4" d="m200 220 160-90v160l-160 90z"/>
+		<path fill="#d29f6c" stroke="#d29f6c" stroke-linejoin="round" stroke-width="4" d="m200 40 160 90-160 90-160-90z"/>
+		<path stroke="#c4915c" stroke-linecap="round" stroke-width="3" d="M200 40v180"/>
+		<path fill="#f1d6b4" stroke="#f1d6b4" stroke-linejoin="round" stroke-width="2" d="m160 62.5 160 90-80 45-160-90z"/>
+		<path fill="#cdb090" stroke="#cdb090" stroke-linejoin="round" stroke-width="1.5" d="m240 197.5 80-45v60l-16 2.5-16 23-16-5-16 22-16 2.5Z"/>
+		<g stroke="#5c3a21">
+			<path stroke-linecap="round" stroke-width="4.55" d="m60 283 35.75 20.15M66.5 284.3v-30.55"/>
+			<path fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.55" d="m58.7 263.5 7.8-9.75 7.8 13"/>
+			<path stroke-linecap="round" stroke-width="4.55" d="M82.75 293.4v-30.55"/>
+			<path fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="4.55" d="m74.95 272.6 7.8-9.75 7.8 13"/>
+			<path stroke-linecap="round" stroke-width="4.55" d="m108.75 310.3 19.5 11.05m-9.75-5.525V297.3"/>
+			<path fill="#5c3a21" stroke-linejoin="round" stroke-width="1.3" d="m107.45 279.75 11.05 17.55 11.05-7.15v-8.45l-4.55 4.55-4.55-7.15-6.5 5.2-3.25-9.1Z"/>
+		</g>
+	</g>
+</svg>
