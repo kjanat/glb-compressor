@@ -7,9 +7,6 @@ import svgToIco from 'vite-svg-to-ico';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-	define: {
-		__GITHUB_PAGES__: JSON.stringify(process.env.GITHUB_ACTIONS === 'true'),
-	},
 	plugins: [
 		tailwindcss(),
 		sveltekit(),
