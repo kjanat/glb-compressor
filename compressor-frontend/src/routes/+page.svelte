@@ -108,6 +108,7 @@
 				min={10}
 				max={90}
 				step={10}
+				style={`--slider-value: ${state.simplifyRatio * 100}%`}
 				value={state.simplifyRatio * 100}
 				oninput={(event) => {
 					state.simplifyRatio = Number(event.currentTarget.value) / 100;
@@ -153,17 +154,19 @@
 	.options-row {
 		display: flex;
 		align-items: center;
-		gap: 16px;
+		gap: 14px;
 		margin-bottom: 28px;
 		padding: 12px 14px;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: 6px;
+		flex-wrap: nowrap;
 	}
 	.option-label {
 		display: flex;
 		align-items: center;
 		gap: 8px;
+		flex-shrink: 0;
 		font-family: var(--mono);
 		font-size: 11px;
 		color: var(--muted);
@@ -172,18 +175,50 @@
 		user-select: none;
 	}
 	.option-label input[type="checkbox"] {
-		accent-color: var(--accent);
-		width: 14px;
-		height: 14px;
+		appearance: none;
+		-webkit-appearance: none;
+		width: 32px;
+		height: 18px;
+		border-radius: 999px;
+		border: 1px solid var(--border);
+		background: #090909;
+		position: relative;
+		cursor: pointer;
+		transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+	}
+	.option-label input[type="checkbox"]::before {
+		content: "";
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: #3d3d3d;
+		transition: transform 0.15s, background 0.15s;
+	}
+	.option-label input[type="checkbox"]:checked {
+		background: #182100;
+		border-color: var(--accent-dim);
+	}
+	.option-label input[type="checkbox"]:checked::before {
+		transform: translateX(14px);
+		background: var(--accent);
+	}
+	.option-label input[type="checkbox"]:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
 	}
 	.simplify-slider {
 		display: flex;
 		flex: 1;
+		min-width: 0;
 		align-items: center;
-		gap: 10px;
+		gap: 8px;
 		opacity: 0;
 		visibility: hidden;
 		pointer-events: none;
+		transition: opacity 0.15s;
 	}
 	.simplify-slider.active {
 		opacity: 1;
@@ -192,8 +227,60 @@
 	}
 	.simplify-slider input[type="range"] {
 		flex: 1;
-		accent-color: var(--accent);
+		min-width: 0;
+		appearance: none;
+		-webkit-appearance: none;
+		height: 16px;
+		background: transparent;
+		cursor: pointer;
+	}
+	.simplify-slider input[type="range"]::-webkit-slider-runnable-track {
 		height: 4px;
+		border-radius: 999px;
+		background: linear-gradient(
+			90deg,
+			var(--accent) 0,
+			var(--accent) var(--slider-value),
+			#262626 var(--slider-value),
+			#262626 100%
+		);
+	}
+	.simplify-slider input[type="range"]::-webkit-slider-thumb {
+		-webkit-appearance: none;
+		appearance: none;
+		width: 12px;
+		height: 12px;
+		margin-top: -4px;
+		border-radius: 50%;
+		border: 1px solid #0d0d0d;
+		background: #f4ffbc;
+		box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+	}
+	.simplify-slider input[type="range"]::-moz-range-track {
+		height: 4px;
+		border-radius: 999px;
+		background: #262626;
+	}
+	.simplify-slider input[type="range"]::-moz-range-progress {
+		height: 4px;
+		border-radius: 999px;
+		background: var(--accent);
+	}
+	.simplify-slider input[type="range"]::-moz-range-thumb {
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		border: 1px solid #0d0d0d;
+		background: #f4ffbc;
+	}
+	.simplify-slider input[type="range"]:focus-visible {
+		outline: none;
+	}
+	.simplify-slider input[type="range"]:focus-visible::-webkit-slider-thumb {
+		box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
+	}
+	.simplify-slider input[type="range"]:focus-visible::-moz-range-thumb {
+		box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
 	}
 	.simplify-value {
 		font-family: var(--mono);
@@ -201,6 +288,7 @@
 		color: var(--accent);
 		min-width: 28px;
 		text-align: right;
+		font-variant-numeric: tabular-nums;
 	}
 	.btn {
 		width: 100%;
@@ -238,8 +326,30 @@
 	}
 	@media (max-width: 500px) {
 		.options-row {
-			flex-direction: column;
-			align-items: stretch;
+			gap: 10px;
+			padding: 10px 11px;
+		}
+		.option-label {
+			font-size: 10px;
+			gap: 6px;
+		}
+		.option-label input[type="checkbox"] {
+			width: 28px;
+			height: 16px;
+		}
+		.option-label input[type="checkbox"]::before {
+			width: 10px;
+			height: 10px;
+		}
+		.option-label input[type="checkbox"]:checked::before {
+			transform: translateX(12px);
+		}
+		.simplify-slider {
+			gap: 6px;
+		}
+		.simplify-value {
+			font-size: 11px;
+			min-width: 24px;
 		}
 	}
 </style>
