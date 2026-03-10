@@ -25,7 +25,19 @@ const IMPORT_META_MAIN_TEST_RE = /\bimport\.meta\.main\b/;
 /** Global regex for .replace() to substitute all occurrences. */
 const IMPORT_META_MAIN_RE = /\bimport\.meta\.main\b/g;
 
-export function bunPolyfillPlugin(): BunPlugin {
+/** Options for the Bun polyfill plugin. */
+export interface BunPolyfillOptions {
+	/**
+	 * Root directory of the package being built.
+	 * Used to resolve the `pkg` alias to the correct `package.json`.
+	 * Defaults to `join(import.meta.dir, '..')` (parent of plugin source).
+	 */
+	packageRoot?: string;
+}
+
+export function bunPolyfillPlugin(options?: BunPolyfillOptions): BunPlugin {
+	const packageJsonPath = join(options?.packageRoot ?? join(import.meta.dir, '..'), 'package.json');
+
 	return {
 		name: 'bun-node-polyfill',
 		setup(build) {
@@ -80,7 +92,7 @@ export function bunPolyfillPlugin(): BunPlugin {
 
 			// ── Hook 3: Resolve `pkg` tsconfig alias ────────────────
 			build.onResolve({ filter: /^pkg$/ }, () => ({
-				path: join(import.meta.dir, '..', 'package.json'),
+				path: packageJsonPath,
 			}));
 		},
 	};

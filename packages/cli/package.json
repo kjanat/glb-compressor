@@ -1,0 +1,37 @@
+{
+	"name": "@glb-compressor/cli",
+	"version": "1.0.2",
+	"description": "CLI for GLB/glTF 3D model compression",
+	"license": "MIT",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kjanat/glb-compressor.git",
+		"directory": "packages/cli"
+	},
+	"bin": {
+		"glb-compressor": "dist/node/main.js"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/types/main.d.ts",
+			"bun": "./src/main.ts",
+			"node": "./dist/node/main.js",
+			"default": "./dist/node/main.js"
+		}
+	},
+	"main": "./dist/node/main.js",
+	"types": "./dist/types/main.d.ts",
+	"files": [
+		"dist/node/**/*.*js",
+		"dist/bun/**/*.*js",
+		"dist/bun-bytecode/**/*.{cjs,cjs.jsc}",
+		"dist/types"
+	],
+	"dependencies": {
+		"@glb-compressor/core": "workspace:*"
+	},
+	"devDependencies": {
+		"@glb-compressor/bun-polyfill": "workspace:*"
+	}
+}

@@ -7,24 +7,25 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-
+import {
+	analyzeMeshComplexity,
+	COMPRESSION_EXTENSIONS,
+	formatBytes,
+	GLTFPACK_TIMEOUT_MS,
+	INSTANCE_MIN,
+	MESH_WARN_THRESHOLD,
+	normalizeWeights,
+	removeStaticTracksWithBake,
+	removeUnusedUVs,
+	TEXTURE_MAX_SIZE,
+	TOTAL_WARN_THRESHOLD,
+} from '@glb-compressor/core';
 import { type Document, NodeIO, type Transform } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import * as transform from '@gltf-transform/functions';
 import draco3d from 'draco3dgltf';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
-
-import {
-	COMPRESSION_EXTENSIONS,
-	GLTFPACK_TIMEOUT_MS,
-	INSTANCE_MIN,
-	MESH_WARN_THRESHOLD,
-	TEXTURE_MAX_SIZE,
-	TOTAL_WARN_THRESHOLD,
-} from '$lib/constants';
-import { analyzeMeshComplexity, normalizeWeights, removeStaticTracksWithBake, removeUnusedUVs } from '$lib/transforms';
-import { formatBytes } from '$lib/utils';
 
 const INPUT = join(import.meta.dir, '$models/owen.glb');
 const OUT_DIR = join(import.meta.dir, '$models');

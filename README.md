@@ -1,6 +1,6 @@
 # glb-compressor
 
-[![NPM Version](https://img.shields.io/npm/v/glb-compressor?logo=npm&labelColor=CB3837&color=black)](https://www.npmjs.com/package/glb-compressor)
+[![NPM Version](https://img.shields.io/npm/v/glb-compressor?logo=npm&labelColor=CB3837&color=black)](https://npm.im/glb-compressor)
 
 Multi-phase GLB/glTF 3D model compression toolkit built on [Bun].
 

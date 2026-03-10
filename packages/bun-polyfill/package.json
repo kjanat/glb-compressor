@@ -1,0 +1,17 @@
+{
+	"name": "@glb-compressor/bun-polyfill",
+	"version": "1.0.2",
+	"description": "Node.js polyfills for Bun-specific APIs (internal build-time package)",
+	"license": "MIT",
+	"private": true,
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kjanat/glb-compressor.git",
+		"directory": "packages/bun-polyfill"
+	},
+	"exports": {
+		"./plugin": "./src/plugin.ts",
+		"./polyfills": "./src/polyfills.ts"
+	}
+}

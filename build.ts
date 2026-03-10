@@ -1,18 +1,49 @@
 #!/usr/bin/env bun
 /**
- * Build script — produces three targets:
+ * Build script — produces three targets from the monorepo packages:
  *
  *   dist/node/          Node.js ESM  (Bun APIs polyfilled)
  *   dist/bun/           Bun ESM      (minified, sourcemapped)
  *   dist/bun-bytecode/  Bun CJS + .jsc bytecode cache
+ *   dist/types/         TypeScript declarations
  */
 
-import { bunPolyfillPlugin } from './build/bun-polyfill-plugin';
+import { resolve } from 'node:path';
+import { bunPolyfillPlugin } from '@glb-compressor/bun-polyfill/plugin';
+import type { BunPlugin } from 'bun';
 
-const entrypoints: string[] = ['./lib/mod.ts', './cli/main.ts', './server/main.ts'];
+const entrypoints: string[] = [
+	'./packages/core/src/mod.ts',
+	'./packages/cli/src/main.ts',
+	'./packages/server/src/main.ts',
+];
 
-// Native addons & WASM packages must stay external
+// Native addons & WASM packages must stay external.
 const external: string[] = ['sharp', 'draco3dgltf', 'meshoptimizer'];
+
+/**
+ * Resolve `@glb-compressor/*` workspace package imports to their source `.ts`
+ * files. The bundler's `target: 'node'` uses the `"node"` export condition
+ * which points to `dist/` (doesn't exist at build time), so we redirect.
+ */
+function workspaceResolverPlugin(): BunPlugin {
+	const WORKSPACE_MAP: Record<string, string> = {
+		'@glb-compressor/core': resolve('./packages/core/src/mod.ts'),
+		'@glb-compressor/cli': resolve('./packages/cli/src/main.ts'),
+		'@glb-compressor/server': resolve('./packages/server/src/main.ts'),
+	};
+
+	return {
+		name: 'workspace-resolver',
+		setup(build) {
+			build.onResolve({ filter: /^@glb-compressor\// }, (args) => {
+				const resolved = WORKSPACE_MAP[args.path];
+				if (resolved) return { path: resolved };
+				return undefined;
+			});
+		},
+	};
+}
 
 async function build() {
 	// Clean previous build artifacts so stale files don't accumulate
@@ -32,7 +63,7 @@ async function build() {
 		minify: false,
 		banner: '#!/usr/bin/env node',
 		external,
-		plugins: [bunPolyfillPlugin()],
+		plugins: [workspaceResolverPlugin(), bunPolyfillPlugin({ packageRoot: resolve('.') })],
 		naming: {
 			entry: '[dir]/[name].js',
 			chunk: 'chunks/[name]-[hash].js',

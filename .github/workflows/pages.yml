@@ -16,7 +16,7 @@ jobs:
       - run: bun --cwd=compressor-frontend bd
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
-        with: { path: dist/frontend  }
+        with: { path: dist/frontend }
 
   deploy:
     needs: build

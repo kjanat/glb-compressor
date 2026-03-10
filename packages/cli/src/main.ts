@@ -19,7 +19,6 @@ import { mkdir } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { Glob } from 'bun';
-import { version } from 'pkg';
 import {
 	type CompressPreset,
 	compress,
@@ -28,7 +27,10 @@ import {
 	PRESETS,
 	parseSimplifyRatio,
 	validateGlbMagic,
-} from '$lib/mod';
+} from '@glb-compressor/core';
+// Bun resolves JSON imports natively; for Node builds the polyfill plugin's
+// Hook 3 resolves the `pkg` alias to the correct package.json.
+import { version } from 'pkg';
 
 const VALID_PRESETS = Object.keys(PRESETS) as CompressPreset[];
 

@@ -1,0 +1,11 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"rootDir": "src",
+		"resolveJsonModule": true,
+		"paths": {
+			"pkg": ["./package.json"]
+		}
+	},
+	"include": ["src/**/*.ts"]
+}

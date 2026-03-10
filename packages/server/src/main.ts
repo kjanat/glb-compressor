@@ -26,7 +26,7 @@
  * @module server
  */
 
-import type { CompressPreset } from '$lib/mod';
+import type { CompressPreset } from '@glb-compressor/core';
 import {
 	compress,
 	DEFAULT_PORT,
@@ -37,7 +37,7 @@ import {
 	parseSimplifyRatio,
 	sanitizeFilename,
 	validateGlbMagic,
-} from '$lib/mod';
+} from '@glb-compressor/core';
 
 const VALID_PRESETS = new Set(Object.keys(PRESETS));
 
@@ -327,9 +327,17 @@ function handleOptions(): Response {
 	});
 }
 
-if (import.meta.main) {
+/**
+ * Start the compression HTTP server on the configured port.
+ *
+ * Exported so that the root meta-package `bin/glb-server.js` wrapper can call
+ * it without relying on `import.meta.main`. When this module is run directly
+ * via `bun server/main.ts`, `import.meta.main` triggers the same function.
+ */
+export function startServer() {
 	const server = Bun.serve({
 		port: PORT,
+    hostname: "localhost",
 
 		routes: {
 			'/healthz': new Response('ok', { headers: CORS_HEADERS }),
@@ -345,11 +353,16 @@ if (import.meta.main) {
 
 		fetch: () => new Response('Not found', { status: 404, headers: CORS_HEADERS }),
 
-		error(error) {
+		error(error: Error) {
 			console.error('Server error:', error);
 			return Response.json({ error: String(error) }, { status: 500, headers: CORS_HEADERS });
 		},
 	});
 
 	console.log(`Compression server running at ${server.url}`);
+	return server;
+}
+
+if (import.meta.main) {
+	startServer();
 }

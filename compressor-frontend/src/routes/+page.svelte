@@ -10,7 +10,11 @@
 	import type { LogEntry, LogType, PresetId, QueuedFile } from '$lib/types';
 	import { downloadBase64, formatBytes, timestamp } from '$lib/utils';
 
-	const BASE: string = import.meta.env.VITE_SERVER_URL || 'http://localhost:8080';
+	const STORAGE_KEY = 'glb-compressor:server-url';
+	const DEFAULT_URL: string =
+		import.meta.env.VITE_SERVER_URL || 'http://localhost:8080';
+
+	let serverUrl = $state(DEFAULT_URL);
 
 	let serverOnline = $state(false);
 	let files = $state<QueuedFile[]>([]);
@@ -69,7 +73,7 @@
 
 	async function checkServer(reportError: boolean) {
 		try {
-			const res = await fetch(`${BASE}/healthz`, {
+			const res = await fetch(`${serverUrl}/healthz`, {
 				signal: AbortSignal.timeout(3000),
 			});
 			serverOnline = res.ok;
@@ -111,7 +115,7 @@
 		const form = new FormData();
 		form.append('file', queued.file);
 
-		let url = `${BASE}/compress-stream?preset=${selectedPreset}`;
+		let url = `${serverUrl}/compress-stream?preset=${selectedPreset}`;
 		if (simplifyEnabled) url += `&simplify=${simplifyRatio}`;
 
 		try {
@@ -198,7 +202,39 @@
 		}
 	}
 
+	/** Normalize URL: strip trailing slash, validate shape. */
+	function normalizeUrl(raw: string): string {
+		const trimmed = raw.trim().replace(/\/+$/, '');
+		try {
+			new URL(trimmed);
+			return trimmed;
+		} catch {
+			return DEFAULT_URL;
+		}
+	}
+
+	function handleServerUrlChange(url: string) {
+		const normalized = normalizeUrl(url);
+		serverUrl = normalized;
+		try {
+			localStorage.setItem(STORAGE_KEY, normalized);
+		} catch {
+			/* localStorage unavailable */
+		}
+		// Reset status and re-check immediately
+		serverOnline = false;
+		checkServer(true);
+	}
+
 	onMount(() => {
+		// Restore saved URL from localStorage
+		try {
+			const saved = localStorage.getItem(STORAGE_KEY);
+			if (saved) serverUrl = normalizeUrl(saved);
+		} catch {
+			/* localStorage unavailable */
+		}
+
 		checkServer(true);
 		const interval = setInterval(() => checkServer(false), 5000);
 		return () => clearInterval(interval);
@@ -215,7 +251,11 @@
 
 <div class="wrapper">
 	<Header {serverOnline} />
-	<SetupAccordion />
+	<SetupAccordion
+		{serverUrl}
+		{serverOnline}
+		onurlchange={handleServerUrlChange}
+	/>
 	<Dropzone onfiles={addFiles} />
 	<FileList
 		{files}
@@ -259,7 +299,7 @@
 	<LogConsole bind:open={logOpen} {logs} />
 
 	<footer>
-		runs locally via glb-server on port 8080<br>
+		runs locally via glb-server &middot; configure the server URL above<br>
 		your files never leave your machine &middot; streaming compression with live
 		progress
 	</footer>

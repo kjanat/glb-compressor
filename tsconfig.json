@@ -32,11 +32,18 @@
 
 		// Path aliases
 		"paths": {
-			"$cli/*": ["./cli/*"],
-			"$lib/*": ["./lib/*"],
-			"$server/*": ["./server/*"],
+			"@glb-compressor/core": ["./packages/core/src/mod.ts"],
+			"@glb-compressor/cli": ["./packages/cli/src/main.ts"],
+			"@glb-compressor/server": ["./packages/server/src/main.ts"],
 			"$models": ["./models/*"],
 			"pkg": ["./package.json"]
 		}
-	}
+	},
+	"exclude": [
+		"packages/*/src",
+		"compressor-frontend",
+		"shitty-frontend",
+		"dist",
+		"node_modules"
+	]
 }

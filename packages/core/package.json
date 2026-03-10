@@ -1,0 +1,39 @@
+{
+	"name": "@glb-compressor/core",
+	"version": "1.0.2",
+	"description": "Multi-phase GLB/glTF 3D model compression library",
+	"license": "MIT",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kjanat/glb-compressor.git",
+		"directory": "packages/core"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/types/mod.d.ts",
+			"bun": "./src/mod.ts",
+			"node": "./dist/node/mod.js",
+			"default": "./dist/node/mod.js"
+		}
+	},
+	"main": "./dist/node/mod.js",
+	"types": "./dist/types/mod.d.ts",
+	"files": [
+		"dist/node/**/*.*js",
+		"dist/bun/**/*.*js",
+		"dist/bun-bytecode/**/*.{cjs,cjs.jsc}",
+		"dist/types"
+	],
+	"dependencies": {
+		"@gltf-transform/core": "4.3.0",
+		"@gltf-transform/extensions": "4.3.0",
+		"@gltf-transform/functions": "4.3.0",
+		"draco3dgltf": "1.5.7",
+		"meshoptimizer": "1.0.1",
+		"sharp": "0.34.5"
+	},
+	"devDependencies": {
+		"@glb-compressor/bun-polyfill": "workspace:*"
+	}
+}

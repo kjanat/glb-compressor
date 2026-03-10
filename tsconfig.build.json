@@ -5,7 +5,18 @@
 		"declaration": true,
 		"emitDeclarationOnly": true,
 		"declarationDir": "./dist/types",
-		"allowImportingTsExtensions": false
+		"allowImportingTsExtensions": false,
+		"paths": {
+			"@glb-compressor/core": ["./packages/core/src/mod.ts"],
+			"@glb-compressor/cli": ["./packages/cli/src/main.ts"],
+			"@glb-compressor/server": ["./packages/server/src/main.ts"],
+			"pkg": ["./package.json"]
+		}
 	},
-	"include": ["lib/**/*.ts", "cli/**/*.ts", "server/**/*.ts"]
+	"include": [
+		"packages/core/src/**/*.ts",
+		"packages/cli/src/**/*.ts",
+		"packages/server/src/**/*.ts"
+	],
+	"exclude": []
 }
