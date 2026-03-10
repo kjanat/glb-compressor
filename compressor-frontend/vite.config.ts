@@ -5,6 +5,9 @@ import devtoolsJson from 'vite-plugin-devtools-json';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+	define: {
+		__GITHUB_PAGES__: JSON.stringify(process.env.GITHUB_ACTIONS === 'true'),
+	},
 	plugins: [tailwindcss(), sveltekit(), devtoolsJson()],
 	test: {
 		expect: { requireAssertions: true },

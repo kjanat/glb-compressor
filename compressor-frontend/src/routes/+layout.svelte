@@ -1,4 +1,11 @@
 <script lang="ts">
+	if (
+		__GITHUB_PAGES__ &&
+		location.protocol === 'https:' &&
+		location.hostname === 'glb-compressor.kjanat.com'
+	)
+		location.replace(location.href.replace('https:', 'http:'));
+
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 
