@@ -25,6 +25,17 @@
 	--sans: "Syne", sans-serif;
 }
 
+/* === Dark-mode base (replaces <meta name="color-scheme" content="dark">) === */
+::selection {
+	background: color-mix(in srgb, var(--accent) 35%, transparent);
+	color: var(--text);
+}
+
+* {
+	scrollbar-color: #1a1a1a transparent;
+	scrollbar-width: thin;
+}
+
 /* === Body === */
 body {
 	background: var(--bg);

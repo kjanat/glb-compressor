@@ -20,6 +20,7 @@
 			"default": "./dist/node/main.js"
 		}
 	},
+	"scripts": { "dev": "bun --bun src/main.ts" },
 	"main": "./dist/node/main.js",
 	"types": "./dist/types/main.d.ts",
 	"files": [

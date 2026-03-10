@@ -76,7 +76,7 @@
 		"build": "bun build.ts",
 		"check": "biome check",
 		"cli": "bun --bun packages/cli/src/main.ts",
-		"dev": "bun --hot run packages/server/src/main.ts",
+		"dev": "bun --filter 'compressor-frontend' --filter '@glb-compressor/server' dev",
 		"fmt": "dprint fmt",
 		"licences": "bunx license-checker --production --json --out licenses.json",
 		"lint": "biome lint",
