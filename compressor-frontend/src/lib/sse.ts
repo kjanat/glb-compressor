@@ -18,23 +18,51 @@ function isLogEvent(value: unknown): value is StreamLogEvent {
 	return typeof value === 'object' && value !== null && 'message' in value && typeof value.message === 'string';
 }
 
-function isCompressResult(value: unknown): value is CompressResult {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'filename' in value &&
-		typeof value.filename === 'string' &&
-		'data' in value &&
-		typeof value.data === 'string' &&
-		'originalSize' in value &&
-		typeof value.originalSize === 'number' &&
-		'compressedSize' in value &&
-		typeof value.compressedSize === 'number' &&
-		'ratio' in value &&
-		typeof value.ratio === 'number' &&
-		'method' in value &&
-		typeof value.method === 'string'
-	);
+function parseRatio(value: unknown): number | undefined {
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return value;
+	}
+	if (typeof value === 'string') {
+		const parsed = Number(value);
+		if (Number.isFinite(parsed)) {
+			return parsed;
+		}
+	}
+	return undefined;
+}
+
+function toCompressResult(value: unknown): CompressResult | undefined {
+	if (typeof value !== 'object' || value === null) return undefined;
+
+	if (
+		!('filename' in value) ||
+		typeof value.filename !== 'string' ||
+		!('data' in value) ||
+		typeof value.data !== 'string' ||
+		!('originalSize' in value) ||
+		typeof value.originalSize !== 'number' ||
+		!('compressedSize' in value) ||
+		typeof value.compressedSize !== 'number' ||
+		!('method' in value) ||
+		typeof value.method !== 'string' ||
+		!('ratio' in value)
+	) {
+		return undefined;
+	}
+
+	const ratio = parseRatio(value.ratio);
+	if (ratio === undefined) {
+		return undefined;
+	}
+
+	return {
+		filename: value.filename,
+		data: value.data,
+		originalSize: value.originalSize,
+		compressedSize: value.compressedSize,
+		ratio,
+		method: value.method,
+	} satisfies CompressResult;
 }
 
 function isErrorEvent(value: unknown): value is StreamErrorEvent {
@@ -81,8 +109,11 @@ export async function parseSSE(response: Response, handlers: ParseHandlers): Pro
 
 					if (type === 'log' && isLogEvent(parsed)) {
 						handlers.onLog?.(parsed);
-					} else if (type === 'result' && isCompressResult(parsed)) {
-						handlers.onResult?.(parsed);
+					} else if (type === 'result') {
+						const result = toCompressResult(parsed);
+						if (result) {
+							handlers.onResult?.(result);
+						}
 					} else if (type === 'error' && isErrorEvent(parsed)) {
 						handlers.onError?.(parsed);
 					}

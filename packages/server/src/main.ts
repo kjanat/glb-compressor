@@ -277,7 +277,7 @@ async function handleCompressStream(req: globalThis.Request): Promise<Response> 
 					onLog: (msg) => send('log', { message: msg }),
 				});
 
-				const ratio = ((1 - buffer.byteLength / input.byteLength) * 100).toFixed(1);
+				const ratio = Number(((1 - buffer.byteLength / input.byteLength) * 100).toFixed(1));
 				send('log', {
 					message: `Done: ${formatBytes(input.byteLength)} -> ${formatBytes(buffer.byteLength)} (${ratio}% reduction)`,
 				});
@@ -337,7 +337,7 @@ function handleOptions(): Response {
 export function startServer() {
 	const server = Bun.serve({
 		port: PORT,
-		hostname: 'localhost',
+		hostname: '0.0.0.0',
 
 		routes: {
 			'/healthz': new Response('ok', { headers: CORS_HEADERS }),
