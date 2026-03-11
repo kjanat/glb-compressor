@@ -10,19 +10,6 @@ export function timestamp(): string {
 	return new Date().toLocaleTimeString('en-GB', { hour12: false });
 }
 
-/**
- * Decode a base64 string and trigger a file download in the browser.
- */
-export function downloadBase64(base64: string, filename: string): void {
-	const binary = atob(base64);
-	const bytes = new Uint8Array(binary.length);
-	for (let i = 0; i < binary.length; i++) {
-		bytes[i] = binary.charCodeAt(i);
-	}
-	const blob = new Blob([bytes], { type: 'model/gltf-binary' });
-	downloadBlob(blob, filename);
-}
-
 export function downloadBlob(blob: Blob, filename: string): void {
 	const url = URL.createObjectURL(blob);
 	const anchor = document.createElement('a');
@@ -33,10 +20,5 @@ export function downloadBlob(blob: Blob, filename: string): void {
 }
 
 export function downloadCompressionResult(result: CompressResult): void {
-	if (result.payloadType === 'base64') {
-		downloadBase64(result.data, result.filename);
-		return;
-	}
-
 	downloadBlob(result.blob, result.filename);
 }

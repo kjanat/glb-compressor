@@ -87,8 +87,8 @@ Execute callback with auto-cleaned temp directory.
 
 ```ts
 const PRESETS: Record<CompressPreset, {
-  skinned: string[];  // gltfpack flags for skinned models
-  static: string[];   // gltfpack flags for static models
+	skinned: string[]; // gltfpack flags for skinned models
+	static: string[]; // gltfpack flags for static models
 }>;
 ```
 

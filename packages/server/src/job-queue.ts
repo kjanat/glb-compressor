@@ -1,6 +1,8 @@
 import { compress, ErrorCode } from '@glb-compressor/core';
 import type { WorkerCompressRequest } from './job-protocol';
 import {
+	COMPRESSED_FILENAME_PATTERN,
+	COMPRESSED_FILENAME_SUFFIX,
 	createJobRecord,
 	type JobEvent,
 	type JobRecord,
@@ -14,9 +16,10 @@ import { parseWorkerResponse, resolveWorkerSpecifier } from './worker-runtime';
 
 const JOB_RETENTION_MS = 10 * 60_000;
 const MAX_LOG_ENTRIES = 200;
+const MAX_PENDING_JOBS = 50;
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function getEventMessage(event: unknown): string | undefined {
@@ -53,6 +56,10 @@ export class CompressionJobQueue {
 
 		if (this.jobs.has(submission.requestId)) {
 			throw new Error(`Duplicate job id: ${submission.requestId}`);
+		}
+
+		if (this.pendingJobIds.length >= MAX_PENDING_JOBS) {
+			throw new Error(`Queue is full (max ${MAX_PENDING_JOBS} pending jobs)`);
 		}
 
 		const job = createJobRecord(submission);
@@ -168,7 +175,7 @@ export class CompressionJobQueue {
 		}
 
 		const job = this.jobs.get(nextId);
-		if (!job) {
+		if (!job || !job.input) {
 			this.dispatchNext();
 			return;
 		}
@@ -178,12 +185,14 @@ export class CompressionJobQueue {
 		job.startedAtMs = Date.now();
 		job.updatedAtMs = job.startedAtMs;
 
+		const input = job.input;
+
 		if (this.worker) {
 			const message: WorkerCompressRequest = {
 				type: 'compress',
 				requestId: job.requestId,
 				filename: job.filename,
-				input: job.input,
+				input,
 				preset: job.preset,
 				simplifyRatio: job.simplifyRatio,
 				resources: job.resources,
@@ -192,24 +201,24 @@ export class CompressionJobQueue {
 			return;
 		}
 
-		void this.runInline(job);
+		void this.runInline(job, input);
 	}
 
-	private async runInline(job: JobRecord) {
+	private async runInline(job: JobRecord, input: Uint8Array) {
 		try {
 			this.pushLog(job, `[${job.requestId}] Received ${job.filename} (preset: ${job.preset})`);
-			const { buffer, method } = await compress(job.input, {
+			const { buffer, method } = await compress(input, {
 				simplifyRatio: job.simplifyRatio,
 				preset: job.preset,
 				resources: job.resources,
 				onLog: (message) => this.pushLog(job, message),
 			});
 
-			const ratio = Number(((1 - buffer.byteLength / job.input.byteLength) * 100).toFixed(1));
+			const ratio = input.byteLength > 0 ? Number(((1 - buffer.byteLength / input.byteLength) * 100).toFixed(1)) : 0;
 			this.completeWithResult(job, {
-				filename: job.filename.replace(/\.(glb|gltf)$/i, '-compressed.glb'),
+				filename: job.filename.replace(COMPRESSED_FILENAME_PATTERN, COMPRESSED_FILENAME_SUFFIX),
 				buffer,
-				originalSize: job.input.byteLength,
+				originalSize: input.byteLength,
 				compressedSize: buffer.byteLength,
 				ratio,
 				method,
@@ -226,6 +235,7 @@ export class CompressionJobQueue {
 	private handleWorkerMessage(payload: unknown) {
 		const message = parseWorkerResponse(payload);
 		if (!message) {
+			console.warn('Dropped unrecognized worker message:', payload);
 			return;
 		}
 
@@ -269,6 +279,8 @@ export class CompressionJobQueue {
 		job.error = undefined;
 		job.finishedAtMs = Date.now();
 		job.updatedAtMs = job.finishedAtMs;
+		job.input = undefined;
+		job.resources = undefined;
 
 		this.notify(job, { type: 'result', result: summarizeResult(result) });
 		job.resolveCompletion(result);
@@ -281,6 +293,8 @@ export class CompressionJobQueue {
 		job.error = { code, message };
 		job.finishedAtMs = Date.now();
 		job.updatedAtMs = job.finishedAtMs;
+		job.input = undefined;
+		job.resources = undefined;
 
 		this.notify(job, { type: 'error', error: job.error });
 		job.rejectCompletion(new Error(message));

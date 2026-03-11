@@ -32,6 +32,8 @@ COPY package.json bun.lock* bunfig.toml build.ts tsconfig*.json ./
 COPY bin ./bin
 COPY src ./src
 COPY packages ./packages
+COPY compressor-frontend/package.json ./compressor-frontend/package.json
+COPY shitty-frontend/package.json ./shitty-frontend/package.json
 
 RUN bun install --frozen-lockfile
 RUN bun build.ts

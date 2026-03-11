@@ -1,5 +1,9 @@
 import type { CompressPreset } from '@glb-compressor/core';
 
+/** Shared regex + replacement for deriving compressed output filenames. */
+export const COMPRESSED_FILENAME_PATTERN = /\.(glb|gltf)$/i;
+export const COMPRESSED_FILENAME_SUFFIX = '-compressed.glb';
+
 export type CompressionJobStatus = 'queued' | 'running' | 'done' | 'error';
 
 export interface JobSubmission {
@@ -59,7 +63,7 @@ export interface JobRecord {
 	filename: string;
 	preset: CompressPreset;
 	simplifyRatio: number | undefined;
-	input: Uint8Array;
+	input: Uint8Array | undefined;
 	resources: Record<string, Uint8Array> | undefined;
 	status: CompressionJobStatus;
 	createdAtMs: number;

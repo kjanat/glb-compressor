@@ -15,19 +15,19 @@
  * @module cli
  */
 
+import {
+	compress,
+	type CompressPreset,
+	formatBytes,
+	init,
+	parseSimplifyRatio,
+	PRESETS,
+	validateGlbMagic,
+} from '@glb-compressor/core';
+import { Glob } from 'bun';
 import { mkdir } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { Glob } from 'bun';
-import {
-	type CompressPreset,
-	compress,
-	formatBytes,
-	init,
-	PRESETS,
-	parseSimplifyRatio,
-	validateGlbMagic,
-} from '@glb-compressor/core';
 // Bun resolves JSON imports natively; for Node builds the polyfill plugin's
 // Hook 3 resolves the `pkg` alias to the correct package.json.
 import { version } from 'pkg';

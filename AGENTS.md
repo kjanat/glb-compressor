@@ -101,6 +101,7 @@ skills/               Agent skill documentation (read-only)
 - Don't use execa -- use `Bun.$`.
 - No `any`, no `!` non-null assertions, no `as Type` casts.
 - Don't flatten/join/weld/quantize skinned models.
+- **Never modify `.github/workflows/`** -- CI/CD workflows are owner-managed.
 
 ## Commands
 

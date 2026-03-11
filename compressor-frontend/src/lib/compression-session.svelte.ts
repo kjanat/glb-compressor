@@ -1,9 +1,10 @@
-import { SvelteMap, SvelteSet } from 'svelte/reactivity';
+import { SvelteMap } from 'svelte/reactivity';
 import type { CompressResult, LogEntry, LogType, PresetId, QueuedFile } from './types';
 import { formatBytes, timestamp } from './utils';
 
 const STORAGE_KEY = 'glb-compressor:server-url';
 const DEFAULT_URL: string = import.meta.env.VITE_SERVER_URL || 'http://localhost:8080';
+const MAX_POLL_TIMEOUT_MS = 10 * 60_000; // 10 minutes
 function parseFiniteNumber(value: string | null): number | undefined {
 	if (value === null) {
 		return undefined;
@@ -63,7 +64,7 @@ function getResourceIdentity(file: File): string {
 }
 
 function collectResourceKeys(file: File): string[] {
-	const keys = new SvelteSet<string>();
+	const keys = new Set<string>();
 	const push = (value: string) => {
 		if (value.length === 0) {
 			return;
@@ -91,7 +92,7 @@ function collectResourceKeys(file: File): string[] {
 }
 
 function collectExternalResourceUris(root: Record<string, unknown>): string[] {
-	const uris = new SvelteSet<string>();
+	const uris = new Set<string>();
 
 	const collect = (value: unknown) => {
 		if (!Array.isArray(value)) {
@@ -323,9 +324,21 @@ function extractErrorMessage(body: unknown): string | undefined {
 	return typeof message === 'string' ? message : undefined;
 }
 
-function sleep(ms: number): Promise<void> {
-	return new Promise((resolve) => {
-		setTimeout(resolve, ms);
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+	return new Promise((resolve, reject) => {
+		if (signal?.aborted) {
+			reject(signal.reason);
+			return;
+		}
+		const timer = setTimeout(resolve, ms);
+		signal?.addEventListener(
+			'abort',
+			() => {
+				clearTimeout(timer);
+				reject(signal.reason);
+			},
+			{ once: true },
+		);
 	});
 }
 
@@ -372,6 +385,7 @@ export interface CompressionSession {
 	removeFile: (id: number) => void;
 	clearFiles: () => void;
 	compressAll: () => Promise<void>;
+	abort: () => void;
 	handleServerUrlChange: (url: string) => void;
 	restoreServerUrl: () => void;
 	startHealthPolling: () => () => void;
@@ -402,6 +416,7 @@ export function createCompressionSession(): CompressionSession {
 
 	let fileIdCounter = 0;
 	let logIdCounter = 0;
+	let abortController: AbortController | undefined;
 	const resourcePool = new SvelteMap<string, File>();
 
 	function addLog(message: string, type: LogType = 'info') {
@@ -461,14 +476,17 @@ export function createCompressionSession(): CompressionSession {
 
 	function clearFiles() {
 		state.files = state.files.filter((file) => file.status === 'compressing');
+		if (state.files.length === 0) {
+			resourcePool.clear();
+		}
 	}
 
-	async function compressFile(queued: QueuedFile) {
+	async function compressFile(queued: QueuedFile, signal?: AbortSignal) {
 		updateFile(queued.id, { status: 'pending' });
 		addLog(`-> ${queued.file.name} (${formatBytes(queued.file.size)})`, 'phase');
 
 		try {
-			const result = await compressWithQueueEndpoint(queued);
+			const result = await compressWithQueueEndpoint(queued, signal);
 
 			updateFile(queued.id, {
 				status: 'done',
@@ -476,7 +494,9 @@ export function createCompressionSession(): CompressionSession {
 				error: null,
 			});
 			addLog(
-				`OK ${queued.file.name}: ${formatBytes(result.originalSize)} -> ${formatBytes(result.compressedSize)} (-${result.ratio}%, ${result.method})`,
+				`OK ${queued.file.name}: ${formatBytes(result.originalSize)} -> ${formatBytes(
+					result.compressedSize,
+				)} (-${result.ratio}%, ${result.method})`,
 				'success',
 			);
 		} catch (error) {
@@ -510,7 +530,7 @@ export function createCompressionSession(): CompressionSession {
 			return form;
 		}
 
-		const resourceIndex = new SvelteMap<string, File>();
+		const resourceIndex = new Map<string, File>();
 		for (const resource of resourcePool.values()) {
 			for (const key of collectResourceKeys(resource)) {
 				if (!resourceIndex.has(key)) {
@@ -519,7 +539,7 @@ export function createCompressionSession(): CompressionSession {
 			}
 		}
 
-		const attachedResources = new SvelteSet<string>();
+		const attachedResources = new Set<string>();
 		const missingUris: string[] = [];
 
 		for (const uri of requiredUris) {
@@ -556,7 +576,7 @@ export function createCompressionSession(): CompressionSession {
 		return form;
 	}
 
-	async function createQueuedJob(queued: QueuedFile): Promise<QueueCreateJobResponse> {
+	async function createQueuedJob(queued: QueuedFile, signal?: AbortSignal): Promise<QueueCreateJobResponse> {
 		const form = await buildUploadForm(queued);
 
 		let url = `${state.serverUrl}/jobs?preset=${state.selectedPreset}`;
@@ -564,7 +584,7 @@ export function createCompressionSession(): CompressionSession {
 			url += `&simplify=${state.simplifyRatio}`;
 		}
 
-		const response = await fetch(url, { method: 'POST', body: form });
+		const response = await fetch(url, { method: 'POST', body: form, signal });
 		if (!response.ok) {
 			throw new Error(await readErrorMessage(response));
 		}
@@ -584,13 +604,18 @@ export function createCompressionSession(): CompressionSession {
 		return job;
 	}
 
-	async function pollJob(statusUrl: string, queued: QueuedFile): Promise<QueueJobSnapshot> {
+	async function pollJob(statusUrl: string, queued: QueuedFile, signal?: AbortSignal): Promise<QueueJobSnapshot> {
 		let previousQueuePosition: number | undefined;
 		let seenRunning = false;
 		let processedLogCount = 0;
+		const deadline = Date.now() + MAX_POLL_TIMEOUT_MS;
 
 		for (;;) {
-			const response = await fetch(statusUrl);
+			if (Date.now() > deadline) {
+				throw new Error(`Polling timed out after ${MAX_POLL_TIMEOUT_MS / 60_000} minutes`);
+			}
+
+			const response = await fetch(statusUrl, { signal });
 			if (!response.ok) {
 				throw new Error(await readErrorMessage(response));
 			}
@@ -640,7 +665,7 @@ export function createCompressionSession(): CompressionSession {
 				throw new Error(message);
 			}
 
-			await sleep(500);
+			await sleep(500, signal);
 		}
 	}
 
@@ -649,8 +674,9 @@ export function createCompressionSession(): CompressionSession {
 		resultUrl: string,
 		queued: QueuedFile,
 		snapshot: QueueJobSnapshot,
+		signal?: AbortSignal,
 	): Promise<CompressResult> {
-		const response = await fetch(resultUrl);
+		const response = await fetch(resultUrl, { signal });
 		if (!response.ok) {
 			throw new Error(await readErrorMessage(response));
 		}
@@ -673,7 +699,6 @@ export function createCompressionSession(): CompressionSession {
 			fallbackOutputFilename(queued.file.name);
 
 		return {
-			payloadType: 'blob',
 			blob,
 			requestId: headerRequestId ?? requestId,
 			filename,
@@ -684,15 +709,15 @@ export function createCompressionSession(): CompressionSession {
 		};
 	}
 
-	async function compressWithQueueEndpoint(queued: QueuedFile): Promise<CompressResult> {
-		const createdJob = await createQueuedJob(queued);
+	async function compressWithQueueEndpoint(queued: QueuedFile, signal?: AbortSignal): Promise<CompressResult> {
+		const createdJob = await createQueuedJob(queued, signal);
 		addLog(`Queued ${queued.file.name} (job ${createdJob.requestId})`, 'info');
 
 		const statusUrl = resolveQueueUrl(createdJob.statusUrl, state.serverUrl);
 		const resultUrl = resolveQueueUrl(createdJob.resultUrl, state.serverUrl);
 
-		const snapshot = await pollJob(statusUrl, queued);
-		return downloadJobResult(createdJob.requestId, resultUrl, queued, snapshot);
+		const snapshot = await pollJob(statusUrl, queued, signal);
+		return downloadJobResult(createdJob.requestId, resultUrl, queued, snapshot, signal);
 	}
 
 	async function compressAll() {
@@ -700,6 +725,9 @@ export function createCompressionSession(): CompressionSession {
 		if (pending.length === 0 || state.isCompressing) {
 			return;
 		}
+
+		abortController = new AbortController();
+		const { signal } = abortController;
 
 		state.isCompressing = true;
 		state.logs.length = 0;
@@ -710,8 +738,14 @@ export function createCompressionSession(): CompressionSession {
 			'phase',
 		);
 
-		await Promise.all(pending.map((queued) => compressFile(queued)));
+		for (const queued of pending) {
+			if (signal.aborted) {
+				break;
+			}
+			await compressFile(queued, signal);
+		}
 
+		abortController = undefined;
 		state.isCompressing = false;
 
 		const doneCount = state.files.filter((file) => file.status === 'done').length;
@@ -721,6 +755,13 @@ export function createCompressionSession(): CompressionSession {
 			addLog(`Finished: ${doneCount} compressed, ${errorCount} failed`, 'error');
 		} else {
 			addLog(`All ${doneCount} file${doneCount === 1 ? '' : 's'} compressed successfully`, 'success');
+		}
+	}
+
+	function abort() {
+		if (abortController) {
+			abortController.abort(new DOMException('Compression cancelled', 'AbortError'));
+			abortController = undefined;
 		}
 	}
 
@@ -763,6 +804,7 @@ export function createCompressionSession(): CompressionSession {
 		removeFile,
 		clearFiles,
 		compressAll,
+		abort,
 		handleServerUrlChange,
 		restoreServerUrl,
 		startHealthPolling,

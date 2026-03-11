@@ -1,20 +1,29 @@
 #!/usr/bin/env bun
 
-import { join, resolve } from 'node:path';
 import { DEFAULT_PORT, ErrorCode, formatBytes } from '@glb-compressor/core';
 import type { CompressionStreamEventMap } from '@glb-compressor/shared-types';
+import { join, resolve } from 'node:path';
+import { CORS_HEADERS, jsonError, parseCompressRequest } from './http';
 import { CompressionJobQueue } from './job-queue';
 import type { JobResult } from './job-queue';
-import { CORS_HEADERS, jsonError, parseCompressRequest } from './http';
 import { resolveTls } from './tls';
 
 const PORT = parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
 
 // Static frontend serving — resolved once at startup
 const FRONTEND_DIR = resolve(process.env.FRONTEND_DIR ?? join(process.cwd(), 'dist', 'frontend'));
-const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable' as const;
+const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
 
 const jobQueue = new CompressionJobQueue();
+
+function contentDisposition(filename: string): string {
+	const ascii = filename.replace(/[^\x20-\x7E]/g, '_');
+	const encoded = encodeURIComponent(filename);
+	if (ascii === filename) {
+		return `attachment; filename="${filename}"`;
+	}
+	return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
+}
 
 interface JobRoute {
 	requestId: string;
@@ -106,7 +115,7 @@ async function handleCompress(req: globalThis.Request): Promise<Response> {
 		headers: {
 			...CORS_HEADERS,
 			'Content-Type': 'model/gltf-binary',
-			'Content-Disposition': `attachment; filename="${result.filename}"`,
+			'Content-Disposition': contentDisposition(result.filename),
 			'Content-Length': String(result.buffer.byteLength),
 			'X-Request-ID': requestId,
 			'X-Original-Size': String(result.originalSize),
@@ -138,9 +147,25 @@ async function handleCompressStream(req: globalThis.Request): Promise<Response> 
 
 	const encoder = new TextEncoder();
 	let unsubscribe: (() => void) | undefined;
+	let heartbeat: ReturnType<typeof setInterval> | undefined;
+
+	function cleanup() {
+		if (heartbeat !== undefined) {
+			clearInterval(heartbeat);
+			heartbeat = undefined;
+		}
+		if (unsubscribe) {
+			unsubscribe();
+			unsubscribe = undefined;
+		}
+	}
 
 	const stream = new ReadableStream({
 		start(controller) {
+			heartbeat = setInterval(() => {
+				controller.enqueue(encoder.encode(':keepalive\n\n'));
+			}, 15_000);
+
 			const send = <EventName extends keyof CompressionStreamEventMap>(
 				event: EventName,
 				data: CompressionStreamEventMap[EventName],
@@ -160,11 +185,8 @@ async function handleCompressStream(req: globalThis.Request): Promise<Response> 
 						requestId,
 						code: event.error.code,
 					});
+					cleanup();
 					controller.close();
-					if (unsubscribe) {
-						unsubscribe();
-						unsubscribe = undefined;
-					}
 					return;
 				}
 
@@ -175,11 +197,8 @@ async function handleCompressStream(req: globalThis.Request): Promise<Response> 
 						requestId,
 						code: ErrorCode.COMPRESSION_FAILED,
 					});
+					cleanup();
 					controller.close();
-					if (unsubscribe) {
-						unsubscribe();
-						unsubscribe = undefined;
-					}
 					return;
 				}
 
@@ -193,18 +212,12 @@ async function handleCompressStream(req: globalThis.Request): Promise<Response> 
 					method: result.method,
 				});
 
+				cleanup();
 				controller.close();
-				if (unsubscribe) {
-					unsubscribe();
-					unsubscribe = undefined;
-				}
 			});
 		},
 		cancel() {
-			if (unsubscribe) {
-				unsubscribe();
-				unsubscribe = undefined;
-			}
+			cleanup();
 		},
 	});
 
@@ -295,7 +308,7 @@ function handleGetJobResult(requestId: string): Response {
 		headers: {
 			...CORS_HEADERS,
 			'Content-Type': 'model/gltf-binary',
-			'Content-Disposition': `attachment; filename="${result.filename}"`,
+			'Content-Disposition': contentDisposition(result.filename),
 			'Content-Length': String(result.buffer.byteLength),
 			'X-Request-ID': requestId,
 			'X-Original-Size': String(result.originalSize),
@@ -350,7 +363,7 @@ export async function startServer() {
 
 			// Static file serving
 			const filePath = resolve(join(FRONTEND_DIR, url.pathname));
-			if (filePath.startsWith(FRONTEND_DIR)) {
+			if (filePath === FRONTEND_DIR || filePath.startsWith(`${FRONTEND_DIR}/`)) {
 				const file = Bun.file(filePath);
 				if (await file.exists()) {
 					const cacheControl = url.pathname.startsWith('/_app/immutable/') ? IMMUTABLE_CACHE : 'no-cache';
@@ -373,7 +386,7 @@ export async function startServer() {
 
 		error(error: Error) {
 			console.error('Server error:', error);
-			return Response.json({ error: String(error) }, { status: 500, headers: CORS_HEADERS });
+			return Response.json({ error: 'Internal server error' }, { status: 500, headers: CORS_HEADERS });
 		},
 	});
 

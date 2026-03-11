@@ -1,7 +1,7 @@
 import type { WorkerResponseMessage } from './job-protocol';
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export function parseWorkerResponse(value: unknown): WorkerResponseMessage | undefined {

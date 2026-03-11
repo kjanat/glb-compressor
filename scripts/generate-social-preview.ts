@@ -103,12 +103,15 @@ const renderBadge = ({ label, x, width }: Badge): string => {
 	const textX = x + width / 2;
 	return `
       <rect x="${x}" y="0" width="${width}" height="34" rx="7" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
-      <text x="${textX}" y="22" font-family="'SF Mono','Cascadia Code','Fira Code','Consolas',monospace" font-size="14" fill="#58a6ff" text-anchor="middle" font-weight="600">${escapeXml(label)}</text>`;
+      <text x="${textX}" y="22" font-family="'SF Mono','Cascadia Code','Fira Code','Consolas',monospace" font-size="14" fill="#58a6ff" text-anchor="middle" font-weight="600">${escapeXml(
+				label,
+			)}</text>`;
 };
 
 const renderDot = ({ x, y, r, color }: Dot): string => `<circle cx="${x}" cy="${y}" r="${r}" fill="${color}"/>`;
 
-const buildSvg = (): string => `<?xml version="1.0" encoding="UTF-8"?>
+const buildSvg = (): string =>
+	`<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${DESIGN_WIDTH}" height="${DESIGN_HEIGHT}" viewBox="0 0 ${DESIGN_WIDTH} ${DESIGN_HEIGHT}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="glb-compressor social preview">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -216,7 +219,11 @@ const buildSvg = (): string => `<?xml version="1.0" encoding="UTF-8"?>
 
   <rect x="0" y="${DESIGN_HEIGHT - 8}" width="${DESIGN_WIDTH}" height="8" fill="url(#arrowGrad)" opacity="0.2"/>
 
-  <text x="${DESIGN_WIDTH - 40}" y="40" font-family="'SF Mono','Consolas',monospace" font-size="13" fill="#484f58" text-anchor="end">v${escapeXml(version)}</text>
+  <text x="${
+		DESIGN_WIDTH - 40
+	}" y="40" font-family="'SF Mono','Consolas',monospace" font-size="13" fill="#484f58" text-anchor="end">v${escapeXml(
+		version,
+	)}</text>
 </svg>`;
 
 const isMultiplexer = (): boolean =>

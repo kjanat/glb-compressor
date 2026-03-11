@@ -1,7 +1,7 @@
 <script lang="ts">
-	let { onfiles }: { onfiles: (files: File[]) => void } = $props();
+let { onfiles }: { onfiles: (files: File[]) => void } = $props();
 
-	let dragOver = $state(false);
+let dragOver = $state(false);
 </script>
 
 <label
@@ -37,44 +37,44 @@
 </label>
 
 <style>
-	.dropzone {
-		display: block;
-		width: 100%;
-		border: 2px dashed var(--border);
-		border-radius: 8px;
-		padding: 48px 24px;
-		text-align: center;
-		cursor: pointer;
-		transition: border-color 0.2s, background 0.2s;
-		position: relative;
-		margin-bottom: 24px;
-	}
-	.dropzone:hover,
-	.dropzone.dragover {
-		border-color: var(--accent);
-		background: var(--accent-bg);
-	}
-	.dropzone input[type="file"] {
-		position: absolute;
-		inset: 0;
-		opacity: 0;
-		cursor: pointer;
-		width: 100%;
-		height: 100%;
-	}
-	.drop-icon {
-		font-size: 40px;
-		margin-bottom: 12px;
-		display: block;
-	}
-	.drop-title {
-		font-size: 18px;
-		font-weight: 600;
-		margin-bottom: 6px;
-	}
-	.drop-sub {
-		font-family: var(--mono);
-		font-size: 11px;
-		color: var(--muted);
-	}
+.dropzone {
+	display: block;
+	width: 100%;
+	border: 2px dashed var(--border);
+	border-radius: 8px;
+	padding: 48px 24px;
+	text-align: center;
+	cursor: pointer;
+	transition: border-color 0.2s, background 0.2s;
+	position: relative;
+	margin-bottom: 24px;
+}
+.dropzone:hover,
+.dropzone.dragover {
+	border-color: var(--accent);
+	background: var(--accent-bg);
+}
+.dropzone input[type="file"] {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	cursor: pointer;
+	width: 100%;
+	height: 100%;
+}
+.drop-icon {
+	font-size: 40px;
+	margin-bottom: 12px;
+	display: block;
+}
+.drop-title {
+	font-size: 18px;
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+.drop-sub {
+	font-family: var(--mono);
+	font-size: 11px;
+	color: var(--muted);
+}
 </style>

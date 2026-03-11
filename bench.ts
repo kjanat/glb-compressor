@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 /**
  * Compression benchmark: runs multiple optimization variants against a GLB file.
  * Outputs each variant to public/models/ for visual comparison.
  * Runs 3 variants in parallel for speed.
  */
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import {
 	analyzeMeshComplexity,
 	COMPRESSION_EXTENSIONS,

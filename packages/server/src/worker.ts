@@ -1,11 +1,12 @@
 import type { CompressPreset } from '@glb-compressor/core';
 import { compress, ErrorCode, formatBytes } from '@glb-compressor/core';
 import type { WorkerCompressRequest, WorkerRequestMessage, WorkerResponseMessage } from './job-protocol';
+import { COMPRESSED_FILENAME_PATTERN, COMPRESSED_FILENAME_SUFFIX } from './job-types';
 
 declare var self: Worker;
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isCompressPreset(value: unknown): value is CompressPreset {
@@ -95,7 +96,7 @@ self.onmessage = async (event: MessageEvent<unknown>) => {
 			onLog: (logMessage) => send({ type: 'log', requestId, message: logMessage }),
 		});
 
-		const ratio = Number(((1 - buffer.byteLength / input.byteLength) * 100).toFixed(1));
+		const ratio = input.byteLength > 0 ? Number(((1 - buffer.byteLength / input.byteLength) * 100).toFixed(1)) : 0;
 		send({
 			type: 'log',
 			requestId,
@@ -105,7 +106,7 @@ self.onmessage = async (event: MessageEvent<unknown>) => {
 		send({
 			type: 'result',
 			requestId,
-			filename: filename.replace(/\.(glb|gltf)$/i, '-compressed.glb'),
+			filename: filename.replace(COMPRESSED_FILENAME_PATTERN, COMPRESSED_FILENAME_SUFFIX),
 			buffer,
 			originalSize: input.byteLength,
 			compressedSize: buffer.byteLength,

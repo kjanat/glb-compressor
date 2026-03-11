@@ -7,14 +7,14 @@ main pipeline. All return `Transform` for use with `document.transform()`.
 
 ```ts
 import {
-	mergeByDistance,
-	decimateBloatedMeshes,
-	removeUnusedUVs,
-	normalizeWeights,
+	analyzeAnimations,
 	analyzeMeshComplexity,
+	decimateBloatedMeshes,
+	mergeByDistance,
+	normalizeWeights,
 	removeDegenerateFaces,
 	removeStaticTracksWithBake,
-	analyzeAnimations,
+	removeUnusedUVs,
 } from 'glb-compressor';
 ```
 
@@ -91,10 +91,10 @@ import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { dedup, prune, weld } from '@gltf-transform/functions';
 import {
+	analyzeMeshComplexity,
 	mergeByDistance,
 	removeDegenerateFaces,
 	removeUnusedUVs,
-	analyzeMeshComplexity,
 } from 'glb-compressor';
 
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);

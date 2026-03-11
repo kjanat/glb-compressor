@@ -318,7 +318,9 @@ function App() {
 							error: null,
 						});
 						addLog(
-							`OK ${queued.file.name}: ${formatBytes(event.originalSize)} -> ${formatBytes(event.compressedSize)} (-${event.ratio}%, ${event.method})`,
+							`OK ${queued.file.name}: ${formatBytes(event.originalSize)} -> ${formatBytes(
+								event.compressedSize,
+							)} (-${event.ratio}%, ${event.method})`,
 							'success',
 						);
 					},
@@ -493,7 +495,7 @@ function App() {
 							<div className="step-title">Install Bun - only once</div>
 							<div className="step-desc">
 								Click <strong>Copy</strong> below, then paste in PowerShell and press
-								<strong> Enter</strong>.
+								<strong>Enter</strong>.
 							</div>
 							<div className="cmd-block">
 								<span className="cmd-text">powershell -c "irm bun.sh/install.ps1 | iex"</span>
@@ -517,7 +519,7 @@ function App() {
 							<div className="step-title">Install the compressor - only once</div>
 							<div className="step-desc">
 								In the reopened PowerShell, click <strong>Copy</strong>, paste, then press
-								<strong> Enter</strong>.
+								<strong>Enter</strong>.
 							</div>
 							<div className="cmd-block">
 								<span className="cmd-text">bun i -g glb-compressor</span>

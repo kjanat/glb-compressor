@@ -1,7 +1,7 @@
-import * as x509 from '@peculiar/x509';
 import { mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import * as x509 from '@peculiar/x509';
 
 const TLS_DIR = join(homedir(), '.glb-compressor', 'tls');
 const CERT_PATH = join(TLS_DIR, 'cert.pem');
@@ -19,6 +19,14 @@ export interface TlsCertPair {
 async function loadCustomCerts(): Promise<TlsCertPair | undefined> {
 	const certPath = process.env.TLS_CERT;
 	const keyPath = process.env.TLS_KEY;
+
+	if (certPath && !keyPath) {
+		throw new Error('TLS_CERT is set but TLS_KEY is missing — provide both or neither');
+	}
+	if (!certPath && keyPath) {
+		throw new Error('TLS_KEY is set but TLS_CERT is missing — provide both or neither');
+	}
+
 	if (!certPath || !keyPath) return undefined;
 
 	const [cert, key] = await Promise.all([Bun.file(certPath).text(), Bun.file(keyPath).text()]);
@@ -86,7 +94,15 @@ export async function resolveTls(): Promise<TlsCertPair | undefined> {
 
 	if ((await certFile.exists()) && (await keyFile.exists())) {
 		const [cert, key] = await Promise.all([certFile.text(), keyFile.text()]);
-		return { cert, key };
+		try {
+			const parsed = new x509.X509Certificate(cert);
+			if (parsed.notAfter.getTime() > Date.now()) {
+				return { cert, key };
+			}
+			console.log('Cached TLS certificate expired, regenerating…');
+		} catch {
+			console.log('Failed to parse cached TLS certificate, regenerating…');
+		}
 	}
 
 	const pair = await generateSelfSignedCert();

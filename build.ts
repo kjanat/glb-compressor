@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+
 /**
  * Build script — produces three targets from the monorepo packages:
  *
