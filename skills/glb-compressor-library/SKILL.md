@@ -2,7 +2,7 @@
 name: glb-compressor-library
 description: Programmatic GLB/glTF 3D model compression library with a multi-phase pipeline, skinned-model awareness, and custom glTF-Transform transforms. Use when integrating compression into application code, building custom pipelines, or using individual transforms.
 license: MIT
-compatibility: Requires Bun >= 1.3 or Node.js >= 18.17. Externals (never bundled) - sharp, draco3dgltf, meshoptimizer.
+compatibility: Requires Bun >= 1.3 or Node.js >= 20.9. Externals (never bundled) - sharp, draco3dgltf, meshoptimizer.
 references:
   - references/api.md
   - references/transforms.md
