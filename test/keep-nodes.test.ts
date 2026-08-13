@@ -1,6 +1,6 @@
-import { describe, expect, test } from 'bun:test';
 import { Document, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { describe, expect, test } from 'bun:test';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { compress, init } from '../lib/mod';
 
