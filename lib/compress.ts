@@ -173,6 +173,15 @@ export interface CompressOptions {
 	 * @default "default"
 	 */
 	preset?: CompressPreset;
+
+	/**
+	 * Preserve the node hierarchy, node names and material names, for models
+	 * whose parts are moved at runtime by name (spinning wheels, sliding doors).
+	 * Skips flatten/join/instance and passes `-kn -km` to gltfpack. Costs some
+	 * compression; without it a static model collapses into one anonymous node
+	 * with the authored orientation baked into its vertices.
+	 */
+	keepNodes?: boolean;
 }
 
 /**
@@ -326,8 +335,14 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 	// - flatten/join: break skeleton hierarchy
 	// - weld: merges vertices across mesh boundaries (leg/shoe clipping)
 	// - mergeByDistance: breaks vertex weights
-	if (!hasSkins) {
+	// With keepNodes, flatten/join stay off for the same reason the skinned
+	// path skips them: the node hierarchy is load-bearing at runtime.
+	const keepNodes: boolean = options.keepNodes === true;
+	if (!hasSkins && !keepNodes) {
 		cleanupTransforms.push(transform.flatten(), transform.join(), transform.weld());
+	} else if (!hasSkins) {
+		log('  keepNodes - preserving node hierarchy and names');
+		cleanupTransforms.push(transform.weld());
 	} else {
 		log('  Skinned model detected - using conservative transforms');
 	}
@@ -347,8 +362,10 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 
 	// Phase 3: GPU optimizations (batched)
 	// Skip reorder() for skinned models - causes weight denormalization
+	// Skip instance() with keepNodes: it replaces the named nodes that share a
+	// mesh (a dedup'd pair of wheels) with one anonymous instancing node.
 	const gpuTransforms: Transform[] = [
-		transform.instance({ min: INSTANCE_MIN }),
+		...(keepNodes ? [] : [transform.instance({ min: INSTANCE_MIN })]),
 		...(!hasSkins ? [transform.reorder({ encoder: MeshoptEncoder })] : []),
 		transform.sparse(),
 	];
@@ -399,7 +416,7 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 	const preset = options.preset ?? 'default';
 	if (hasGltfpack) {
 		log(`  Running gltfpack (preset: ${preset})...`);
-		const result = await compressWithGltfpack(cleanBuffer, hasSkins, preset, log);
+		const result = await compressWithGltfpack(cleanBuffer, hasSkins, preset, keepNodes, log);
 		if (result) {
 			log(`  gltfpack: ${formatBytes(result.buffer.byteLength)}`);
 			return { ...result, originalSize: input.byteLength };
@@ -423,6 +440,7 @@ async function compressWithGltfpack(
 	cleanBuffer: Uint8Array,
 	hasSkins: boolean,
 	preset: CompressPreset,
+	keepNodes: boolean,
 	log: (msg: string) => void,
 ): Promise<CompressResult | null> {
 	return withTempDir(async (dir) => {
@@ -435,6 +453,9 @@ async function compressWithGltfpack(
 			const presetFlags = hasSkins ? config.skinned : config.static;
 			// -cc is the base compression flag (overridden by -cz in some presets)
 			const hasCompressFlag = presetFlags.some((f) => f === '-cz' || f === '-c');
+			// gltfpack merges everything it may: -kn keeps named nodes, -km keeps
+			// the materials runtime code looks up by name.
+			const keepFlags = keepNodes ? [...(presetFlags.includes('-kn') ? [] : ['-kn']), '-km'] : [];
 			// biome-ignore format: align cli flags with the values
 			const args = [
 				'gltfpack',
@@ -443,6 +464,7 @@ async function compressWithGltfpack(
 				...(hasCompressFlag ? [] : ['-cc']),
 				'-tc',
 				...presetFlags,
+				...keepFlags,
 			];
 			const proc = Bun.spawn(args, {
 				stdout: 'ignore',

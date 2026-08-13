@@ -18,6 +18,7 @@ interface CompressOptions {
 	onLog?: (msg: string) => void; // Progress callback
 	quiet?: boolean; // Suppress console output
 	preset?: CompressPreset; // Default: 'default'
+	keepNodes?: boolean; // Preserve node hierarchy + node/material names
 }
 ```
 

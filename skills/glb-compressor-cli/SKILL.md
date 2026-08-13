@@ -22,15 +22,16 @@ glb-compressor <files...> [options]
 
 ## Options
 
-| Flag                   | Description                                | Default                                   |
-| ---------------------- | ------------------------------------------ | ----------------------------------------- |
-| `-o, --output <dir>`   | Output directory                           | Same as input (with `-compressed` suffix) |
-| `-p, --preset <name>`  | Compression preset                         | `default`                                 |
-| `-s, --simplify <0-1>` | Mesh simplification ratio (e.g. 0.5 = 50%) | None                                      |
-| `-q, --quiet`          | Suppress progress output (for scripting)   | `false`                                   |
-| `-f, --force`          | Overwrite existing output files            | `false`                                   |
-| `-h, --help`           | Show help text                             |                                           |
-| `-v, --version`        | Show version                               |                                           |
+| Flag                   | Description                                                                                          | Default                                   |
+| ---------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `-o, --output <dir>`   | Output directory                                                                                     | Same as input (with `-compressed` suffix) |
+| `-p, --preset <name>`  | Compression preset                                                                                   | `default`                                 |
+| `-s, --simplify <0-1>` | Mesh simplification ratio (e.g. 0.5 = 50%)                                                           | None                                      |
+| `-k, --keep-nodes`     | Preserve node hierarchy, node and material names, for parts moved at runtime by name (wheels, doors) | `false`                                   |
+| `-q, --quiet`          | Suppress progress output (for scripting)                                                             | `false`                                   |
+| `-f, --force`          | Overwrite existing output files                                                                      | `false`                                   |
+| `-h, --help`           | Show help text                                                                                       |                                           |
+| `-v, --version`        | Show version                                                                                         |                                           |
 
 ## Presets
 
