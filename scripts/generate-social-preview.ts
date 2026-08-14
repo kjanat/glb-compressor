@@ -1,11 +1,10 @@
 #!/usr/bin/env bun
 
+import pkg from '#pkg' with { type: 'json' };
+import { packageRepositoryUrl } from 'dreamcli';
 import sharp from 'sharp';
-import pkg from '../package.json' with { type: 'json' };
 
-const REPO: string = (await Bun.$`git config --get remote.origin.url`.text())
-	.trim()
-	.replaceAll(/^(?:(?:https?:\/\/|ssh:\/\/)?(?:git@)?)?([^/:]+)[:/](.+?)(?:\.git)?$/g, '$1/$2');
+const REPO = packageRepositoryUrl(pkg, { require: true });
 
 // Images should be at least 640×320px (1280×640px for best display).
 const [DESIGN_WIDTH, DESIGN_HEIGHT] = [1280, 640];
@@ -267,11 +266,11 @@ async function main(): Promise<void> {
 
 	await Bun.write(outputPath, data);
 
-	const settingsUrl = `https://${REPO}/settings`;
+	const settingsUrl = `${REPO}/settings`;
 	const socialPreviewUrl = `${settingsUrl}/#:~:text=Social%20preview`;
 
 	console.log(`Generated ${outputPath} (${WIDTH}x${HEIGHT}, ${kb(data.byteLength)})`);
-	console.info(`Repo settings: ${link(`${REPO}/settings`, settingsUrl)}`);
+	console.info(`Repo settings: ${link(settingsUrl, settingsUrl)}`);
 	console.info(`Social preview section: ${link('Open Social preview', socialPreviewUrl)}`);
 }
 

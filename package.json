@@ -30,6 +30,10 @@
 	},
 	"license": "MIT",
 	"type": "module",
+	"imports": {
+		"#pkg": "./package.json",
+		"#src/*": "./src/*.ts"
+	},
 	"exports": {
 		".": {
 			"types": "./dist/types/lib/mod.d.ts",
