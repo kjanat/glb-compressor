@@ -16,24 +16,14 @@
  */
 
 // Core compression API
-export type {
-	CompressOptions,
-	CompressPreset,
-	CompressResult,
-} from './compress';
-export { compress, getHasGltfpack, init, PRESETS } from './compress';
+export type { CompressOptions, CompressPreset, CompressResult } from '$lib/compress';
+export { compress, getHasGltfpack, init, PRESETS } from '$lib/compress';
 
 // Constants
-export * from './constants';
+export * from '$lib/constants';
 
 // Custom transforms (for advanced / a-la-carte usage)
-export * from './transforms';
+export * from '$lib/transforms';
 
 // Utility functions
-export {
-	formatBytes,
-	parseSimplifyRatio,
-	sanitizeFilename,
-	validateGlbMagic,
-	withTempDir,
-} from './utils';
+export { formatBytes, parseSimplifyRatio, sanitizeFilename, validateGlbMagic, withTempDir } from '$lib/utils';

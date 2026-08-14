@@ -9,25 +9,13 @@
 	"files": {
 		"ignoreUnknown": true
 	},
-	"formatter": {
-		"enabled": false,
-		"indentStyle": "tab",
-		"lineWidth": 120
-	},
+	"formatter": { "enabled": false, "indentStyle": "tab", "lineWidth": 120 },
 	"linter": {
 		"enabled": true,
-		"rules": {
-			"preset": "recommended"
-		},
-		"domains": {
-			"project": "recommended"
-		}
+		"rules": { "preset": "recommended" },
+		"domains": { "project": "recommended" }
 	},
-	"javascript": {
-		"formatter": {
-			"quoteStyle": "single"
-		}
-	},
+	"javascript": { "formatter": { "quoteStyle": "single" } },
 	"html": {
 		"experimentalFullSupportEnabled": true,
 		"linter": { "enabled": true },
@@ -42,9 +30,7 @@
 	"assist": {
 		"enabled": true,
 		"actions": {
-			"source": {
-				"organizeImports": "on"
-			}
+			"source": { "organizeImports": "off" }
 		}
 	},
 	"overrides": [
