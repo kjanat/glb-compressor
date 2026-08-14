@@ -18,13 +18,13 @@
  * @module compress
  */
 
-import { join } from 'node:path';
 import { type Document, NodeIO, type Transform } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import * as transform from '@gltf-transform/functions';
 import { $ } from 'bun';
 import draco3d from 'draco3dgltf';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
+import { join } from 'node:path';
 import sharp from 'sharp';
 
 import {
@@ -75,19 +75,16 @@ interface GltfpackPresetConfig {
  */
 export const PRESETS: Record<CompressPreset, GltfpackPresetConfig> = {
 	default: {
-		// biome-ignore format: align cli flags with the values
-		skinned: [
+		skinned: /* dprint-ignore */ [
 			'-vp', '20',
 			'-kn'
 		],
-		// biome-ignore format: align cli flags with the values
-		static: [
+		static: /* dprint-ignore */ [
 			'-vp', '16'
 		],
 	},
 	balanced: {
-		// biome-ignore format: align cli flags with the values
-		skinned: [
+		skinned: /* dprint-ignore */ [
 			'-vp', '20',
 			'-kn',
 			'-at', '14',
@@ -95,8 +92,7 @@ export const PRESETS: Record<CompressPreset, GltfpackPresetConfig> = {
 			'-as', '14',
 			'-af', '24',
 		],
-		// biome-ignore format: align cli flags with the values
-		static: [
+		static: /* dprint-ignore */ [
 			'-vp', '16',
 			'-at', '14',
 			'-ar', '10',
@@ -105,8 +101,7 @@ export const PRESETS: Record<CompressPreset, GltfpackPresetConfig> = {
 		],
 	},
 	aggressive: {
-		// biome-ignore format: align cli flags with the values
-		skinned: [
+		skinned: /* dprint-ignore */ [
 			'-vp', '20',
 			'-kn',
 			'-at', '12',
@@ -114,8 +109,7 @@ export const PRESETS: Record<CompressPreset, GltfpackPresetConfig> = {
 			'-as', '12',
 			'-af', '15',
 		],
-		// biome-ignore format: align cli flags with the values
-		static: [
+		static: /* dprint-ignore */ [
 			'-vp', '14',
 			'-at', '12',
 			'-ar', '8',
@@ -124,8 +118,7 @@ export const PRESETS: Record<CompressPreset, GltfpackPresetConfig> = {
 		],
 	},
 	max: {
-		// biome-ignore format: align cli flags with the values
-		skinned: [
+		skinned: /* dprint-ignore */ [
 			'-cz',
 			'-vp', '14',
 			'-at', '12',
@@ -135,8 +128,7 @@ export const PRESETS: Record<CompressPreset, GltfpackPresetConfig> = {
 			'-si', '0.95',
 			'-slb',
 		],
-		// biome-ignore format: align cli flags with the values
-		static: [
+		static: /* dprint-ignore */ [
 			'-cz',
 			'-vp', '14',
 			'-at', '12',
@@ -460,8 +452,7 @@ async function compressWithGltfpack(
 			// gltfpack merges everything it may: -kn keeps named nodes, -km keeps
 			// the materials runtime code looks up by name.
 			const keepFlags = keepNodes ? [...(presetFlags.includes('-kn') ? [] : ['-kn']), '-km'] : [];
-			// biome-ignore format: align cli flags with the values
-			const args = [
+			const args = /* dprint-ignore */ [
 				'gltfpack',
 				'-i', inputPath,
 				'-o', outputPath,
