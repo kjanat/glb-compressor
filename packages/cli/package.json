@@ -9,6 +9,10 @@
 	},
 	"license": "MIT",
 	"type": "module",
+	"imports": {
+		"#*": "./src/*.ts",
+		"#pkg": "./package.json"
+	},
 	"exports": {
 		".": {
 			"types": "./dist/types/main.d.ts",

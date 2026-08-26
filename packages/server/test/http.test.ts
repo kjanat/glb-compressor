@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { parseCompressRequest } from '../src/http';
+import { parseCompressRequest } from '#http';
 
 const GLB_MAGIC = new Uint8Array([0x67, 0x6c, 0x54, 0x46]);
 

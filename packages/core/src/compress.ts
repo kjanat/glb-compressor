@@ -8,7 +8,7 @@
  *
  * @example
  * ```ts
- * import { compress, init } from './compress';
+ * import { compress, init } from './compress.ts';
  *
  * await init();
  * const result = await compress(glbBytes, { preset: 'aggressive' });
@@ -44,7 +44,7 @@ import {
 	MESH_WARN_THRESHOLD,
 	TEXTURE_MAX_SIZE,
 	TOTAL_WARN_THRESHOLD,
-} from './constants';
+} from '#constants';
 import {
 	analyzeMeshComplexity,
 	decimateBloatedMeshes,
@@ -53,8 +53,8 @@ import {
 	removeDegenerateFaces,
 	removeStaticTracksWithBake,
 	removeUnusedUVs,
-} from './transforms';
-import { formatBytes, withTempDir } from './utils';
+} from '#transforms';
+import { formatBytes, withTempDir } from '#utils';
 
 const execFile = promisify(execFileCallback);
 
@@ -325,9 +325,7 @@ async function readInputDocument(input: Uint8Array, options: CompressOptions): P
 
 	const resources: Record<string, Uint8Array<ArrayBuffer>> = {};
 	for (const uri of collectExternalResourceUris(parsed)) {
-		if (isRemoteUri(uri)) {
-			throw new Error(`Network resource URI not supported in glTF input: ${uri}`);
-		}
+		if (isRemoteUri(uri)) throw new Error(`Network resource URI not supported in glTF input: ${uri}`);
 
 		const decodedUri = decodeUriComponentSafe(uri);
 		const basename = getUriBasename(decodedUri);

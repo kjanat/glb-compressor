@@ -1,4 +1,4 @@
-import type { WorkerResponseMessage } from './job-protocol';
+import type { WorkerResponseMessage } from '#job-protocol';
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);

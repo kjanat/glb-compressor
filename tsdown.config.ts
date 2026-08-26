@@ -42,6 +42,5 @@ export default defineConfig([
 		minify: 'dce-only',
 		clean: true,
 		fixedExtension: false,
-		banner: '#!/usr/bin/env node',
 	},
 ]);

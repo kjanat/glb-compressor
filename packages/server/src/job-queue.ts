@@ -1,15 +1,15 @@
-import { compress, ErrorCode } from '@glb-compressor/core';
-import { Worker } from 'node:worker_threads';
-import type { WorkerCompressRequest } from './job-protocol';
-import type { JobEvent, JobRecord, JobResult, JobSnapshot, JobSubmission } from './job-types';
+import type { WorkerCompressRequest } from '#job-protocol';
+import type { JobEvent, JobRecord, JobResult, JobSnapshot, JobSubmission } from '#job-types';
 import {
 	COMPRESSED_FILENAME_PATTERN,
 	COMPRESSED_FILENAME_SUFFIX,
 	createJobRecord,
 	summarizeResult,
 	toIso,
-} from './job-types';
-import { parseWorkerResponse, resolveWorkerSpecifier } from './worker-runtime';
+} from '#job-types';
+import { parseWorkerResponse, resolveWorkerSpecifier } from '#worker-runtime';
+import { compress, ErrorCode } from '@glb-compressor/core';
+import { Worker } from 'node:worker_threads';
 
 const JOB_RETENTION_MS = 10 * 60_000;
 const MAX_LOG_ENTRIES = 200;
@@ -34,17 +34,13 @@ export type {
 	JobResultSummary,
 	JobSnapshot,
 	JobSubmission,
-} from './job-types';
+} from './job-types.ts';
 
 export class CompressionJobQueue {
 	private readonly jobs = new Map<string, JobRecord>();
 	private readonly pendingJobIds: string[] = [];
 	private activeJobId: string | undefined;
 	private worker: Worker | undefined;
-
-	constructor() {
-		this.worker = this.createWorker();
-	}
 
 	submit(submission: JobSubmission): string {
 		this.prune();
@@ -128,20 +124,27 @@ export class CompressionJobQueue {
 
 	private createWorker(): Worker | undefined {
 		try {
-			const worker = new Worker(resolveWorkerSpecifier(import.meta.url));
+			const specifier = resolveWorkerSpecifier(import.meta.url);
+			const execArgv = specifier.pathname.endsWith('.ts')
+				? ['--conditions=development', '--experimental-strip-types']
+				: [];
+			const workerEnv = { ...process.env };
+			delete workerEnv.WATCH_REPORT_DEPENDENCIES;
+			const worker = new Worker(specifier, { env: workerEnv, execArgv });
 			worker.on('message', (message: unknown) => {
 				this.handleWorkerMessage(message);
 			});
 			worker.once('error', (error) => {
 				if (this.worker !== worker) return;
-				this.worker = this.createWorker();
+				this.worker = undefined;
 				this.failActiveJob(ErrorCode.COMPRESSION_FAILED, getEventMessage(error) ?? 'Worker thread crashed');
 			});
 			worker.once('exit', (code) => {
 				if (this.worker !== worker || code === 0) return;
-				this.worker = this.createWorker();
+				this.worker = undefined;
 				this.failActiveJob(ErrorCode.COMPRESSION_FAILED, `Worker thread exited with code ${code}`);
 			});
+			worker.unref();
 			return worker;
 		} catch (error) {
 			console.warn('Worker initialization failed, falling back to main-thread compression.', error);
@@ -153,7 +156,10 @@ export class CompressionJobQueue {
 		if (this.activeJobId !== undefined) return;
 
 		const nextId = this.pendingJobIds.shift();
-		if (nextId === undefined) return;
+		if (nextId === undefined) {
+			this.worker?.unref();
+			return;
+		}
 
 		const job = this.jobs.get(nextId);
 		if (!job?.input) {
@@ -168,7 +174,9 @@ export class CompressionJobQueue {
 
 		const input = job.input;
 
-		if (this.worker) {
+		const worker = this.worker ?? this.createWorker();
+		this.worker = worker;
+		if (worker) {
 			const message: WorkerCompressRequest = {
 				type: 'compress',
 				requestId: job.requestId,
@@ -178,7 +186,8 @@ export class CompressionJobQueue {
 				simplifyRatio: job.simplifyRatio,
 				resources: job.resources,
 			};
-			this.worker.postMessage(message);
+			worker.ref();
+			worker.postMessage(message);
 			return;
 		}
 

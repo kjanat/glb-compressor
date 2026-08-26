@@ -8,15 +8,8 @@
  *
  * @module cli/command
  */
-
-import {
-	compress,
-	type CompressPreset,
-	formatBytes,
-	init,
-	parseSimplifyRatio,
-	validateGlbMagic,
-} from '@glb-compressor/core';
+import type { CompressPreset } from '@glb-compressor/core';
+import { compress, formatBytes, init, parseSimplifyRatio, validateGlbMagic } from '@glb-compressor/core';
 import { arg, cli, CLIError, command, flag } from 'dreamcli';
 import { glob, readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -103,9 +96,7 @@ export const compressGlb = command('compress')
 	})
 	.action(async ({ args, flags, ctx, out }) => {
 		const files = await expandPatterns(args.files);
-		if (files.length === 0) {
-			throw new CLIError('No matching files found', { code: 'NO_MATCHING_FILES' });
-		}
+		if (files.length === 0) throw new CLIError('No matching files found', { code: 'NO_MATCHING_FILES' });
 
 		out.status(`preset ${flags.preset}, ${files.length} file(s)`);
 		await init();
@@ -135,9 +126,7 @@ export const compressGlb = command('compress')
 			if (!flags.force && (await pathExists(outputPath))) {
 				return `Output file exists: ${outputPath} (use -f to overwrite)`;
 			}
-			if (!(await pathExists(inputPath))) {
-				return `File not found: ${inputPath}`;
-			}
+			if (!(await pathExists(inputPath))) return `File not found: ${inputPath}`;
 
 			const input = await readFile(inputPath);
 			if (/\.glb$/i.test(inputPath)) {

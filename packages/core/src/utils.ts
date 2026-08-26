@@ -4,10 +4,10 @@
  * @module utils
  */
 
+import { GLB_MAGIC } from '#constants';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { GLB_MAGIC } from './constants';
 
 /**
  * Format a byte count into a human-readable string (B, KB, or MB).

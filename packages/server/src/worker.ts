@@ -1,8 +1,8 @@
+import type { WorkerCompressRequest, WorkerRequestMessage, WorkerResponseMessage } from '#job-protocol';
+import { COMPRESSED_FILENAME_PATTERN, COMPRESSED_FILENAME_SUFFIX } from '#job-types';
 import type { CompressPreset } from '@glb-compressor/core';
 import { compress, ErrorCode, formatBytes } from '@glb-compressor/core';
 import { parentPort } from 'node:worker_threads';
-import type { WorkerCompressRequest, WorkerRequestMessage, WorkerResponseMessage } from './job-protocol';
-import { COMPRESSED_FILENAME_PATTERN, COMPRESSED_FILENAME_SUFFIX } from './job-types';
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);

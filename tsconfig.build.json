@@ -6,7 +6,8 @@
 		"emitDeclarationOnly": true,
 		"declarationDir": "./dist/types",
 		"rootDir": ".",
-		"allowImportingTsExtensions": false,
+		"allowImportingTsExtensions": true,
+		"rewriteRelativeImportExtensions": true,
 		"paths": {
 			"@glb-compressor/core": ["./packages/core/src/mod.ts"],
 			"@glb-compressor/cli": ["./packages/cli/src/main.ts"],

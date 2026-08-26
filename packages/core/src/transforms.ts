@@ -13,6 +13,7 @@
  * @module transforms
  */
 
+import { toLoc } from '#utils';
 import type {
 	Accessor,
 	Animation,
@@ -31,7 +32,6 @@ import { simplify } from '@gltf-transform/functions';
 import { space as s } from 'ansispeck';
 import type { MeshoptSimplifier } from 'meshoptimizer';
 import { log } from 'node:console';
-import { toLoc } from './utils';
 
 /** Index into a `TypedArray`, asserting the value is defined.
  *

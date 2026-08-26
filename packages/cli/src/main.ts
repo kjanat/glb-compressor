@@ -9,6 +9,6 @@
  * @module cli
  */
 
-import { buildCli } from './command';
+import { buildCli } from '#command';
 
 buildCli().run();

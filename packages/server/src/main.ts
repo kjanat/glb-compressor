@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+import { CORS_HEADERS, jsonError, parseCompressRequest } from '#http';
+import { CompressionJobQueue } from '#job-queue';
+import type { JobResult } from '#job-queue';
+import { resolveTls } from '#tls';
 import { DEFAULT_PORT, ErrorCode, formatBytes } from '@glb-compressor/core';
 import type { CompressionStreamEventMap } from '@glb-compressor/shared-types';
 import { once } from 'node:events';
@@ -11,10 +15,6 @@ import { createServer as createHttpsServer } from 'node:https';
 import { extname, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
-import { CORS_HEADERS, jsonError, parseCompressRequest } from './http';
-import { CompressionJobQueue } from './job-queue';
-import type { JobResult } from './job-queue';
-import { resolveTls } from './tls';
 
 const PORT = parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
 

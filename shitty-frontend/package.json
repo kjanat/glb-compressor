@@ -9,7 +9,7 @@
 	},
 	"type": "module",
 	"scripts": {
-		"bd": "npm run build",
+		"bd": "bun run build",
 		"build": "tsc -b && vite build",
 		"dev": "vite",
 		"lint": "eslint .",

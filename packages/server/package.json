@@ -9,6 +9,10 @@
 	},
 	"license": "MIT",
 	"type": "module",
+	"imports": {
+		"#*": "./src/*.ts",
+		"#pkg": "./package.json"
+	},
 	"exports": {
 		".": {
 			"types": "./dist/types/main.d.ts",
@@ -28,7 +32,7 @@
 		"dist/types"
 	],
 	"scripts": {
-		"dev": "node --watch --conditions=development --experimental-strip-types src/main.ts"
+		"dev": "node --watch-path=src --conditions=development --experimental-strip-types src/main.ts"
 	},
 	"dependencies": {
 		"@glb-compressor/core": "workspace:*",
@@ -37,6 +41,6 @@
 		"micro509": "0.14.0"
 	},
 	"engines": {
-		"node": ">=22.22.2"
+		"node": ">=24"
 	}
 }

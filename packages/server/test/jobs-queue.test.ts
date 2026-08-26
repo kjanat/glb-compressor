@@ -198,7 +198,7 @@ describe('jobs queue error handling', () => {
 		const last = await createJob('valid-minimal.gltf');
 
 		const firstStatus = await waitForTerminalStatus(first.statusUrl);
-		expect(firstStatus.status).toBe('done');
+		expect(firstStatus.status, firstStatus.errorMessage).toBe('done');
 
 		const middleStatus = await waitForTerminalStatus(middle.statusUrl);
 		expect(middleStatus.status).toBe('error');
@@ -206,7 +206,7 @@ describe('jobs queue error handling', () => {
 		expect(middleStatus.errorMessage).toBeDefined();
 
 		const lastStatus = await waitForTerminalStatus(last.statusUrl);
-		expect(lastStatus.status).toBe('done');
+		expect(lastStatus.status, lastStatus.errorMessage).toBe('done');
 
 		const firstResult = await fetch(`${baseUrl}${first.resultUrl}`);
 		expect(firstResult.status).toBe(200);
