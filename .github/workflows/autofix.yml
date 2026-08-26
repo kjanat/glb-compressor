@@ -15,7 +15,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - uses: kjanat/dprint-check@v3
         with: { install-only: true }
-      - run: bunx --bun biome check --write
+      - run: bunx --bun biome lint --write
       - run: dprint config update
       - run: dprint fmt --allow-no-files --diff --excludes ".github"
 
