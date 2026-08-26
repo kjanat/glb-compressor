@@ -41,8 +41,8 @@ RUN bun build.ts
 # Keep runtime image smaller: prune to production dependencies only.
 RUN bun install --frozen-lockfile --production
 
-# Stage 3: Runtime image
-FROM oven/bun:latest
+# Stage 3: Node.js runtime image
+FROM node:latest-slim
 
 RUN groupadd --gid 1001 appuser && \
 	useradd --no-log-init --uid 1001 --gid 1001 --no-create-home --shell /bin/false appuser
@@ -57,8 +57,8 @@ COPY --from=gltfpack-builder /usr/local/bin/gltfpack /usr/local/bin/gltfpack
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD bun -e "fetch('http://localhost:8080/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+  CMD node -e "fetch('http://localhost:8080/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 USER appuser
 
-CMD ["bun", "run", "./dist/bun/server/src/main.js"]
+CMD ["node", "./dist/node/server/src/main.js"]
