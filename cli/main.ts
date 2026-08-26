@@ -74,6 +74,8 @@ ${c.bold}OPTIONS${c.reset}
   -o, --output <dir>    Output directory (default: same as input with -compressed suffix)
   -p, --preset <name>   Compression preset (default: "default")
   -s, --simplify <0-1>  Additional mesh simplification ratio (e.g., 0.5 = 50%)
+  -k, --keep-nodes      Preserve node hierarchy, node and material names
+                        (for parts moved at runtime by name: wheels, doors)
   -q, --quiet           Suppress progress output
   -f, --force           Overwrite existing files
   -h, --help            Show this help
@@ -108,6 +110,8 @@ interface Options {
 	simplify?: number;
 	/** Named compression preset. */
 	preset: CompressPreset;
+	/** Preserve the node hierarchy, node names and material names. */
+	keepNodes: boolean;
 	/** Suppress all progress output. */
 	quiet: boolean;
 	/** Overwrite existing output files without prompting. */
@@ -182,6 +186,7 @@ async function compressFile(inputPath: string, options: Options): Promise<{ succ
 		const result = await compress(input, {
 			simplifyRatio: simplify,
 			preset: options.preset,
+			keepNodes: options.keepNodes,
 			quiet,
 		});
 
@@ -226,6 +231,7 @@ async function main() {
 			output: { type: 'string', short: 'o' },
 			preset: { type: 'string', short: 'p' },
 			simplify: { type: 'string', short: 's' },
+			'keep-nodes': { type: 'boolean', short: 'k', default: false },
 			quiet: { type: 'boolean', short: 'q', default: false },
 			force: { type: 'boolean', short: 'f', default: false },
 			help: { type: 'boolean', short: 'h', default: false },
@@ -297,6 +303,7 @@ async function main() {
 		output: values.output,
 		simplify,
 		preset,
+		keepNodes: values['keep-nodes'],
 		quiet: values.quiet,
 		force: values.force,
 	};

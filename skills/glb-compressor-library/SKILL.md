@@ -48,13 +48,14 @@ Main entry point. Runs the full 6-phase pipeline.
 
 **Parameters:**
 
-| Param                   | Type             | Description                                              |
-| ----------------------- | ---------------- | -------------------------------------------------------- |
-| `input`                 | `Uint8Array`     | Raw GLB file bytes                                       |
-| `options.preset`        | `CompressPreset` | `'default'` \| `'balanced'` \| `'aggressive'` \| `'max'` |
-| `options.simplifyRatio` | `number`         | Additional simplification in `(0, 1)`                    |
-| `options.onLog`         | `(msg) => void`  | Progress callback (used by SSE)                          |
-| `options.quiet`         | `boolean`        | Suppress console output                                  |
+| Param                   | Type             | Description                                                            |
+| ----------------------- | ---------------- | ---------------------------------------------------------------------- |
+| `input`                 | `Uint8Array`     | Raw GLB file bytes                                                     |
+| `options.preset`        | `CompressPreset` | `'default'` \| `'balanced'` \| `'aggressive'` \| `'max'`               |
+| `options.simplifyRatio` | `number`         | Additional simplification in `(0, 1)`                                  |
+| `options.onLog`         | `(msg) => void`  | Progress callback (used by SSE)                                        |
+| `options.quiet`         | `boolean`        | Suppress console output                                                |
+| `options.keepNodes`     | `boolean`        | Preserve node hierarchy + node/material names (runtime-animated parts) |
 
 **Returns:** `CompressResult`
 

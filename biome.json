@@ -17,7 +17,7 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true
+			"preset": "recommended"
 		},
 		"domains": {
 			"project": "recommended"
@@ -27,6 +27,12 @@
 		"formatter": {
 			"quoteStyle": "single"
 		}
+	},
+	"html": {
+		"experimentalFullSupportEnabled": true,
+		"linter": { "enabled": true },
+		"assist": { "enabled": true },
+		"parser": { "interpolation": false }
 	},
 	"css": {
 		"linter": { "enabled": true },
