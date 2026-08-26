@@ -12,7 +12,7 @@
 	"exports": {
 		".": {
 			"types": "./dist/types/main.d.ts",
-			"bun": "./src/main.ts",
+			"development": "./src/main.ts",
 			"node": "./dist/node/main.js",
 			"default": "./dist/node/main.js"
 		},
@@ -25,13 +25,12 @@
 	},
 	"files": [
 		"dist/node/**/*.*js",
-		"dist/bun/**/*.*js",
 		"dist/types"
 	],
 	"dependencies": {
 		"@glb-compressor/core": "workspace:*"
 	},
 	"devDependencies": {
-		"@glb-compressor/bun-polyfill": "workspace:*"
+		"dreamcli": "catalog:"
 	}
 }

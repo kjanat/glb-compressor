@@ -6,9 +6,7 @@ export function formatBytes(value: number): string {
 	return `${(value / 1024 / 1024).toFixed(2)} MB`;
 }
 
-export function timestamp(): string {
-	return new Date().toLocaleTimeString('en-GB', { hour12: false });
-}
+export const timestamp = (): string => new Date().toLocaleTimeString('en-GB', { hour12: false });
 
 export function downloadBlob(blob: Blob, filename: string): void {
 	const url = URL.createObjectURL(blob);
@@ -19,6 +17,4 @@ export function downloadBlob(blob: Blob, filename: string): void {
 	setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function downloadCompressionResult(result: CompressResult): void {
-	downloadBlob(result.blob, result.filename);
-}
+export const downloadCompressionResult = (result: CompressResult): void => downloadBlob(result.blob, result.filename);

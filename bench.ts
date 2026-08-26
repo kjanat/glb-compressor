@@ -1,7 +1,9 @@
-#!/usr/bin/env bun
-import { mkdtemp, rm } from 'node:fs/promises';
+#!/usr/bin/env node
+import { execFile as execFileCallback } from 'node:child_process';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { promisify } from 'node:util';
 /**
  * Compression benchmark: runs multiple optimization variants against a GLB file.
  * Outputs each variant to public/models/ for visual comparison.
@@ -27,8 +29,10 @@ import draco3d from 'draco3dgltf';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 
-const INPUT = join(import.meta.dir, '$models/owen.glb');
-const OUT_DIR = join(import.meta.dir, '$models');
+const execFile = promisify(execFileCallback);
+
+const INPUT = join(import.meta.dirname, '$models/owen.glb');
+const OUT_DIR = join(import.meta.dirname, '$models');
 const PARALLEL = 3;
 
 // ─── Init ───────────────────────────────────────────────────────────────────
@@ -67,17 +71,10 @@ async function runGltfpack(cleanBuf: Uint8Array, extraArgs: string[]): Promise<U
 	return withTmp(async (dir) => {
 		const inp = join(dir, 'in.glb'),
 			out = join(dir, 'out.glb');
-		await Bun.write(inp, cleanBuf);
+		await writeFile(inp, cleanBuf);
 		const args = ['gltfpack', '-i', inp, '-o', out, ...extraArgs];
-		const proc = Bun.spawn(args, { stdout: 'ignore', stderr: 'pipe' });
-		const tid = setTimeout(() => proc.kill(), GLTFPACK_TIMEOUT_MS);
-		const code = await proc.exited;
-		clearTimeout(tid);
-		if (code !== 0) {
-			const stderr = await new Response(proc.stderr).text();
-			throw new Error(`gltfpack failed (${code}): ${stderr}`);
-		}
-		return new Uint8Array(await Bun.file(out).arrayBuffer());
+		await execFile(args[0] ?? 'gltfpack', args.slice(1), { timeout: GLTFPACK_TIMEOUT_MS });
+		return new Uint8Array(await readFile(out));
 	});
 }
 
@@ -394,7 +391,7 @@ async function runVariant(v: Variant, rawInput: Uint8Array, originalSize: number
 		const compressed = await runGltfpack(cleanBuf, v.gltfpackArgs);
 
 		const outPath = join(OUT_DIR, `owen-${v.name}.glb`);
-		await Bun.write(outPath, compressed);
+		await writeFile(outPath, compressed);
 
 		const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
 		const ratio = ((1 - compressed.byteLength / originalSize) * 100).toFixed(1);
@@ -425,7 +422,7 @@ async function main() {
 
 	await init();
 
-	const rawInput = new Uint8Array(await Bun.file(INPUT).arrayBuffer());
+	const rawInput = new Uint8Array(await readFile(INPUT));
 	const originalSize = rawInput.byteLength;
 	console.log(`Input: ${formatBytes(originalSize)}`);
 	console.log(`Variants: ${variants.length}\n`);

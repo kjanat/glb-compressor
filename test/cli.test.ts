@@ -1,9 +1,9 @@
 import { Document, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { describe, expect, test } from 'bun:test';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { describe, expect, test } from 'vitest';
 import { buildCli, CLI_PRESETS } from '../packages/cli/src/command.ts';
 import { PRESETS } from '../packages/core/src/mod.ts';
 
@@ -63,8 +63,7 @@ describe('compressing through the command', () => {
 
 		const result = await buildCli().execute([inputPath, '-o', outDir, '-k']);
 		expect(result.exitCode, result.stderr.join('')).toBe(0);
-		const written = Bun.file(join(outDir, 'model-compressed.glb'));
-		expect(await written.exists()).toBe(true);
+		await expect(access(join(outDir, 'model-compressed.glb'))).resolves.toBeUndefined();
 		expect(result.stdout.join('')).toContain('model-compressed.glb');
 	});
 

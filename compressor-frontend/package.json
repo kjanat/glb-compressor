@@ -9,14 +9,14 @@
 	},
 	"type": "module",
 	"scripts": {
-		"bd": "bun --bun run build",
+		"bd": "npm run build",
 		"build": "vite build",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"dev": "vite dev",
 		"lint": "eslint .",
-		"prepare": "bunx --bun svelte-kit sync",
-		"preview": "bun bd && vite preview",
+		"prepare": "npx svelte-kit sync",
+		"preview": "npm run build && vite preview",
 		"test": "vitest run",
 		"test:unit": "vitest"
 	},

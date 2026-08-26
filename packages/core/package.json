@@ -12,7 +12,7 @@
 	"exports": {
 		".": {
 			"types": "./dist/types/mod.d.ts",
-			"bun": "./src/mod.ts",
+			"development": "./src/mod.ts",
 			"node": "./dist/node/mod.js",
 			"default": "./dist/node/mod.js"
 		},
@@ -22,18 +22,14 @@
 	"types": "./dist/types/mod.d.ts",
 	"files": [
 		"dist/node/**/*.*js",
-		"dist/bun/**/*.*js",
 		"dist/types"
 	],
 	"dependencies": {
-		"@gltf-transform/core": "4.4.2",
-		"@gltf-transform/extensions": "4.4.2",
-		"@gltf-transform/functions": "4.4.2",
-		"draco3dgltf": "1.5.7",
-		"meshoptimizer": "1.2.0",
-		"sharp": "0.35.4"
-	},
-	"devDependencies": {
-		"@glb-compressor/bun-polyfill": "workspace:*"
+		"@gltf-transform/core": "catalog:",
+		"@gltf-transform/extensions": "catalog:",
+		"@gltf-transform/functions": "catalog:",
+		"draco3dgltf": "catalog:",
+		"meshoptimizer": "catalog:",
+		"sharp": "catalog:"
 	}
 }

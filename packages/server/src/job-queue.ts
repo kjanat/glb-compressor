@@ -1,4 +1,5 @@
 import { compress, ErrorCode } from '@glb-compressor/core';
+import { Worker } from 'node:worker_threads';
 import type { WorkerCompressRequest } from './job-protocol';
 import type { JobEvent, JobRecord, JobResult, JobSnapshot, JobSubmission } from './job-types';
 import {
@@ -19,6 +20,7 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function getEventMessage(event: unknown): string | undefined {
+	if (event instanceof Error && event.message.length > 0) return event.message;
 	if (!isObjectRecord(event)) return undefined;
 	const message = event.message;
 	return typeof message === 'string' && message.length > 0 ? message : undefined;
@@ -125,16 +127,20 @@ export class CompressionJobQueue {
 	}
 
 	private createWorker(): Worker | undefined {
-		if (typeof Worker === 'undefined' || typeof Bun === 'undefined') return undefined;
-
 		try {
 			const worker = new Worker(resolveWorkerSpecifier(import.meta.url));
-			worker.addEventListener('message', (event: MessageEvent<unknown>) => {
-				this.handleWorkerMessage(event.data);
+			worker.on('message', (message: unknown) => {
+				this.handleWorkerMessage(message);
 			});
-			worker.addEventListener('error', (event: Event) => {
-				this.failActiveJob(ErrorCode.COMPRESSION_FAILED, getEventMessage(event) ?? 'Worker thread crashed');
+			worker.once('error', (error) => {
+				if (this.worker !== worker) return;
 				this.worker = this.createWorker();
+				this.failActiveJob(ErrorCode.COMPRESSION_FAILED, getEventMessage(error) ?? 'Worker thread crashed');
+			});
+			worker.once('exit', (code) => {
+				if (this.worker !== worker || code === 0) return;
+				this.worker = this.createWorker();
+				this.failActiveJob(ErrorCode.COMPRESSION_FAILED, `Worker thread exited with code ${code}`);
 			});
 			return worker;
 		} catch (error) {

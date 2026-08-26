@@ -1,5 +1,7 @@
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { setTimeout } from 'node:timers/promises';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 interface ApiErrorResponse {
 	error: {
@@ -99,22 +101,6 @@ function parseJobStatus(value: unknown): JobStatusResponse {
 	};
 }
 
-async function getFreePort(): Promise<number> {
-	const probe = Bun.serve({
-		port: 0,
-		fetch: () => new Response('ok'),
-	});
-
-	const port = Number(new URL(probe.url).port);
-	probe.stop(true);
-
-	if (!Number.isInteger(port) || port <= 0) {
-		throw new Error('Failed to resolve free port');
-	}
-
-	return port;
-}
-
 async function waitForHealth(baseUrl: string): Promise<void> {
 	for (let attempt = 0; attempt < 40; attempt++) {
 		try {
@@ -125,27 +111,27 @@ async function waitForHealth(baseUrl: string): Promise<void> {
 		} catch {
 			// keep retrying
 		}
-		await Bun.sleep(50);
+		await setTimeout(50);
 	}
 
 	throw new Error('Server did not become healthy in time');
 }
 
-const FIXTURES_DIR = resolve(import.meta.dir, 'fixtures');
+const FIXTURES_DIR = resolve(import.meta.dirname, 'fixtures');
 
 let baseUrl = '';
-let stopServer: (() => void) | undefined;
+let stopServer: (() => Promise<void>) | undefined;
 
-function createFixtureForm(filename: string): FormData {
+async function createFixtureForm(filename: string): Promise<FormData> {
 	const form = new FormData();
-	form.append('file', Bun.file(resolve(FIXTURES_DIR, filename)), filename);
+	form.append('file', new File([await readFile(resolve(FIXTURES_DIR, filename))], filename));
 	return form;
 }
 
 async function createJob(filename: string): Promise<JobCreateResponse> {
 	const response = await fetch(`${baseUrl}/jobs?preset=default`, {
 		method: 'POST',
-		body: createFixtureForm(filename),
+		body: await createFixtureForm(filename),
 	});
 	expect(response.status).toBe(202);
 
@@ -170,7 +156,7 @@ async function waitForTerminalStatus(statusUrl: string, timeoutMs = 20_000): Pro
 			return status;
 		}
 
-		await Bun.sleep(100);
+		await setTimeout(100);
 	}
 
 	throw new Error(`Timed out waiting for terminal status: ${statusUrl}`);
@@ -178,29 +164,25 @@ async function waitForTerminalStatus(statusUrl: string, timeoutMs = 20_000): Pro
 
 describe('jobs queue error handling', () => {
 	beforeAll(async () => {
-		const port = await getFreePort();
-		process.env.PORT = String(port);
 		const { startServer } = await import('../src/main.ts');
-		const server = await startServer();
+		const server = await startServer(0);
 
-		baseUrl = `http://127.0.0.1:${port}`;
-		stopServer = () => {
-			server.stop(true);
-		};
+		baseUrl = `http://127.0.0.1:${server.url.port}`;
+		stopServer = () => server.stop(true);
 
 		await waitForHealth(baseUrl);
 	});
 
-	afterAll(() => {
+	afterAll(async () => {
 		if (stopServer) {
-			stopServer();
+			await stopServer();
 		}
 	});
 
 	test('returns INVALID_GLB for malformed .glb uploads', async () => {
 		const response = await fetch(`${baseUrl}/jobs?preset=default`, {
 			method: 'POST',
-			body: createFixtureForm('invalid.glb'),
+			body: await createFixtureForm('invalid.glb'),
 		});
 
 		expect(response.status).toBe(400);

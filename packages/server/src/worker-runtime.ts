@@ -59,9 +59,9 @@ export function parseWorkerResponse(value: unknown): WorkerResponseMessage | und
 	return undefined;
 }
 
-export function resolveWorkerSpecifier(currentModuleUrl: string): string {
+export function resolveWorkerSpecifier(currentModuleUrl: string): URL {
 	const pathname = new URL(currentModuleUrl).pathname;
-	if (pathname.endsWith('.ts')) return new URL('./worker.ts', currentModuleUrl).href;
-	if (pathname.endsWith('.cjs')) return new URL('./worker.cjs', currentModuleUrl).href;
-	return new URL('./worker.js', currentModuleUrl).href;
+	if (pathname.endsWith('.ts')) return new URL('./worker.ts', currentModuleUrl);
+	if (pathname.endsWith('.cjs')) return new URL('./worker.cjs', currentModuleUrl);
+	return new URL('./worker.js', currentModuleUrl);
 }

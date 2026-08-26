@@ -1,35 +1,47 @@
+import { resolve } from 'node:path';
 import { defineConfig } from 'tsdown';
-import { POLYFILL_PATH, polyfillBunSource } from './packages/bun-polyfill/src/bun-transform.ts';
 
-/**
- * Builds the CLI only. The library and server keep `build.ts`; the CLI is
- * bundled standalone so dreamcli ships treeshaken inside `dist/cli/main.mjs`.
- * Native addons and WASM packages must stay external. The Bun APIs the
- * library uses go through the same polyfill as the `build.ts` Node target.
- */
+const external = ['sharp', 'draco3dgltf', 'meshoptimizer'];
+const workspaceAlias: Record<string, string> = {
+	'@glb-compressor/core': resolve('packages/core/src/mod.ts'),
+	'@glb-compressor/shared-types': resolve('packages/shared-types/src/index.ts'),
+};
 
-function bunNodePolyfill() {
-	return {
-		name: 'bun-node-polyfill',
-		transform(code: string, id: string) {
-			if (id.split(/[/\\]/).includes('node_modules') || id === POLYFILL_PATH) return null;
-			if (!/\.(ts|tsx|js|jsx)$/.test(id)) return null;
-			const transformed = polyfillBunSource(code);
-			return transformed === undefined ? null : { code: transformed, map: null };
+export default defineConfig([
+	{
+		name: 'runtime',
+		entry: {
+			'core/src/mod': 'packages/core/src/mod.ts',
+			'server/src/main': 'packages/server/src/main.ts',
+			'server/src/worker': 'packages/server/src/worker.ts',
+			'shared-types/src/index': 'packages/shared-types/src/index.ts',
 		},
-	};
-}
-
-export default defineConfig({
-	entry: { main: 'packages/cli/src/main.ts' },
-	outDir: 'dist/cli',
-	format: 'esm',
-	platform: 'node',
-	target: 'node22.22',
-	alias: { bun: POLYFILL_PATH },
-	deps: { neverBundle: ['sharp', 'draco3dgltf', 'meshoptimizer'] },
-	dts: false,
-	minify: 'dce-only',
-	clean: true,
-	plugins: [bunNodePolyfill()],
-});
+		outDir: 'dist/node',
+		format: 'esm',
+		platform: 'node',
+		target: 'node24',
+		alias: workspaceAlias,
+		deps: { neverBundle: external },
+		dts: false,
+		sourcemap: true,
+		minify: false,
+		clean: true,
+		fixedExtension: false,
+	},
+	{
+		name: 'cli',
+		entry: { main: 'packages/cli/src/main.ts' },
+		outDir: 'dist/cli',
+		format: 'esm',
+		platform: 'node',
+		target: 'node24',
+		alias: workspaceAlias,
+		deps: { neverBundle: external },
+		dts: false,
+		sourcemap: true,
+		minify: 'dce-only',
+		clean: true,
+		fixedExtension: false,
+		banner: '#!/usr/bin/env node',
+	},
+]);

@@ -5,24 +5,25 @@
     "": {
       "name": "glb-compressor",
       "dependencies": {
-        "@gltf-transform/core": "4.4.2",
-        "@gltf-transform/extensions": "4.4.2",
-        "@gltf-transform/functions": "4.4.2",
-        "draco3dgltf": "1.5.7",
-        "dreamcli": "npm:@kjanat/dreamcli@3.0.1",
-        "meshoptimizer": "1.2.0",
-        "sharp": "0.35.4",
+        "@gltf-transform/core": "catalog:",
+        "@gltf-transform/extensions": "catalog:",
+        "@gltf-transform/functions": "catalog:",
+        "draco3dgltf": "catalog:",
+        "dreamcli": "catalog:",
+        "meshoptimizer": "catalog:",
+        "sharp": "catalog:",
       },
       "devDependencies": {
-        "@biomejs/biome": "2.5.10",
+        "@biomejs/biome": "catalog:",
         "@glb-compressor/bun-polyfill": "workspace:*",
-        "@types/bun": "1.4.0",
-        "@types/draco3dgltf": "1.4.3",
-        "@types/node": "26.3.0",
-        "ansispeck": "0.4.2",
-        "dprint": "0.56.1",
-        "tsdown": "0.22.14",
-        "typescript": "7.0.2",
+        "@types/bun": "catalog:",
+        "@types/draco3dgltf": "catalog:",
+        "@types/node": "catalog:",
+        "ansispeck": "catalog:",
+        "dprint": "catalog:",
+        "tsdown": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "4.1.11",
       },
     },
     "compressor-frontend": {
@@ -74,18 +75,19 @@
       },
       "devDependencies": {
         "@glb-compressor/bun-polyfill": "workspace:*",
+        "dreamcli": "catalog:",
       },
     },
     "packages/core": {
       "name": "@glb-compressor/core",
       "version": "1.0.2",
       "dependencies": {
-        "@gltf-transform/core": "4.4.2",
-        "@gltf-transform/extensions": "4.4.2",
-        "@gltf-transform/functions": "4.4.2",
-        "draco3dgltf": "1.5.7",
-        "meshoptimizer": "1.2.0",
-        "sharp": "0.35.4",
+        "@gltf-transform/core": "catalog:",
+        "@gltf-transform/extensions": "catalog:",
+        "@gltf-transform/functions": "catalog:",
+        "draco3dgltf": "catalog:",
+        "meshoptimizer": "catalog:",
+        "sharp": "catalog:",
       },
       "devDependencies": {
         "@glb-compressor/bun-polyfill": "workspace:*",
@@ -120,7 +122,7 @@
       },
       "devDependencies": {
         "@eslint/js": "10.0.1",
-        "@types/node": "26.3.0",
+        "@types/node": "catalog:",
         "@types/react": "19.2.18",
         "@types/react-dom": "19.2.5",
         "@vitejs/plugin-react": "6.1.0",
@@ -129,13 +131,30 @@
         "eslint-plugin-react-hooks": "7.1.1",
         "eslint-plugin-react-refresh": "0.5.5",
         "globals": "17.11.0",
-        "typescript": "7.0.2",
+        "typescript": "catalog:",
         "typescript-eslint": "8.68.0",
         "vite": "8.2.2",
         "vite-robots-txt": "^1.0.0",
         "vite-svg-to-ico": "5.0.0",
       },
     },
+  },
+  "catalog": {
+    "@biomejs/biome": "2.5.10",
+    "@gltf-transform/core": "4.4.2",
+    "@gltf-transform/extensions": "4.4.2",
+    "@gltf-transform/functions": "4.4.2",
+    "@types/bun": "1.4.0",
+    "@types/draco3dgltf": "1.4.3",
+    "@types/node": "26.3.0",
+    "ansispeck": "0.4.2",
+    "dprint": "0.56.1",
+    "draco3dgltf": "1.5.7",
+    "dreamcli": "npm:@kjanat/dreamcli@^4.0.0-rc.2",
+    "meshoptimizer": "1.2.0",
+    "sharp": "0.35.4",
+    "tsdown": "0.22.14",
+    "typescript": "7.0.2",
   },
   "packages": {
     "@babel/code-frame": ["@babel/code-frame@7.29.0", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.28.5", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw=="],
@@ -746,7 +765,7 @@
 
     "draco3dgltf": ["draco3dgltf@1.5.7", "", {}, "sha512-LeqcpmoHIyYUi0z70/H3tMkGj8QhqVxq6FJGPjlzR24BNkQ6jyMheMvFKJBI0dzGZrEOUyQEmZ8axM1xRrbRiw=="],
 
-    "dreamcli": ["@kjanat/dreamcli@3.0.1", "", { "dependencies": { "ansispeck": "^0.4.1" } }, "sha512-FY5uBPI7EQouhyUEpQdMEVew4jGEcshBZSSH6a8G47Bie+uBk1flLj8l2sJrVDOyd9lG1i1BaYyV0jmgdENp3A=="],
+    "dreamcli": ["@kjanat/dreamcli@4.0.0-rc.2", "", { "dependencies": { "ansispeck": "^0.4.1" } }, "sha512-wPxReC1v/+mo7TpDN3Wa3Fc6eUBCPvK25/oU7w5rXksRBfeNhp4+4Ilvjj78geEt+wpLHOpaLDI6c2ricPmGJg=="],
 
     "dts-resolver": ["dts-resolver@3.0.0", "", { "peerDependencies": { "oxc-resolver": ">=11.0.0" }, "optionalPeers": ["oxc-resolver"] }, "sha512-1T1f+z+4tl9XD+m+0HBgWoL/nm0bOIffyWaUuUSBlFg/86IWvfx+wjNaO/ybU0AJzG9/Mi5hBUgGV6zCmWEN7Q=="],
 
@@ -1151,6 +1170,8 @@
     "vite/postcss": ["postcss@8.5.26", "", { "dependencies": { "nanoid": "^3.3.17", "picocolors": "^1.1.1", "source-map-js": "^1.2.1" } }, "sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ=="],
 
     "vite-robots-txt/vite": ["vite@7.3.6", "", { "dependencies": { "esbuild": "^0.27.0 || ^0.28.0", "fdir": "^6.5.0", "picomatch": "^4.0.3", "postcss": "^8.5.6", "rollup": "^4.43.0", "tinyglobby": "^0.2.15" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^20.19.0 || >=22.12.0", "jiti": ">=1.21.0", "less": "^4.0.0", "lightningcss": "^1.21.0", "sass": "^1.70.0", "sass-embedded": "^1.70.0", "stylus": ">=0.54.8", "sugarss": "^5.0.0", "terser": "^5.16.0", "tsx": "^4.8.1", "yaml": "^2.4.2" }, "optionalPeers": ["@types/node", "jiti", "less", "lightningcss", "sass", "sass-embedded", "stylus", "sugarss", "terser", "tsx", "yaml"], "bin": { "vite": "bin/vite.js" } }, "sha512-4XP60spRGjSZFf1qYH+dJIkK2znL3zQfl9KkOV9MkkRR/3Dls0dxaBsQPTloEc5BLXWPL9vsOxopxyKoMmDueg=="],
+
+    "vite-svg-to-ico/dreamcli": ["@kjanat/dreamcli@3.0.1", "", { "dependencies": { "ansispeck": "^0.4.1" } }, "sha512-FY5uBPI7EQouhyUEpQdMEVew4jGEcshBZSSH6a8G47Bie+uBk1flLj8l2sJrVDOyd9lG1i1BaYyV0jmgdENp3A=="],
 
     "@tailwindcss/node/lightningcss/lightningcss-android-arm64": ["lightningcss-android-arm64@1.32.0", "", { "os": "android", "cpu": "arm64" }, "sha512-YK7/ClTt4kAK0vo6w3X+Pnm0D2cf2vPHbhOXdoNti1Ga0al1P4TBZhwjATvjNwLEBCnKvjJc2jQgHXH0NEwlAg=="],
 

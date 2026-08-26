@@ -1,9 +1,8 @@
 import type { CompressPreset } from '@glb-compressor/core';
 import { compress, ErrorCode, formatBytes } from '@glb-compressor/core';
+import { parentPort } from 'node:worker_threads';
 import type { WorkerCompressRequest, WorkerRequestMessage, WorkerResponseMessage } from './job-protocol';
 import { COMPRESSED_FILENAME_PATTERN, COMPRESSED_FILENAME_SUFFIX } from './job-types';
-
-declare var self: Worker;
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -55,10 +54,12 @@ function parseWorkerRequest(value: unknown): WorkerRequestMessage | undefined {
 	return message;
 }
 
-const send = (message: WorkerResponseMessage) => postMessage(message);
+if (parentPort === null) throw new Error('Compression worker must run inside a worker thread');
 
-self.onmessage = async (event: MessageEvent<unknown>) => {
-	const message = parseWorkerRequest(event.data);
+const send = (message: WorkerResponseMessage) => parentPort?.postMessage(message);
+
+parentPort.on('message', async (payload: unknown) => {
+	const message = parseWorkerRequest(payload);
 	if (!message) {
 		return;
 	}
@@ -104,4 +105,4 @@ self.onmessage = async (event: MessageEvent<unknown>) => {
 			message: error instanceof Error ? error.message : 'Compression failed',
 		});
 	}
-};
+});

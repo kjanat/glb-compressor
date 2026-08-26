@@ -1,7 +1,10 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 import pkg from '#pkg' with { type: 'json' };
 import { packageRepositoryUrl } from 'dreamcli';
+import { writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const REPO = packageRepositoryUrl(pkg, { require: true });
@@ -219,7 +222,7 @@ const buildSvg = (): string =>
 
     <g transform="translate(0, 375)">
       <text x="0" y="16" font-family="'Inter','Segoe UI','Helvetica Neue','Arial',sans-serif" font-size="15" fill="#484f58" letter-spacing="0.3">
-        Draco &#183; Meshopt &#183; gltfpack &#183; WebP &#183; Bun + Node.js
+        Draco &#183; Meshopt &#183; gltfpack &#183; WebP &#183; Node.js
       </text>
     </g>
   </g>
@@ -254,7 +257,7 @@ export const link = (text: string, url: string): string => {
 const kb = (bytes: number): string => `${(bytes / 1024).toFixed(1)} KB`;
 
 async function main(): Promise<void> {
-	const outputPath = Bun.argv[2] ?? DEFAULT_OUTPUT;
+	const outputPath = process.argv[2] ?? DEFAULT_OUTPUT;
 	const svg = buildSvg();
 
 	// `density` improves text/filter rasterization quality for SVG -> PNG.
@@ -264,7 +267,7 @@ async function main(): Promise<void> {
 		.png({ compressionLevel: 9, effort: 10 })
 		.toBuffer({ resolveWithObject: true });
 
-	await Bun.write(outputPath, data);
+	await writeFile(outputPath, data);
 
 	const settingsUrl = `${REPO}/settings`;
 	const socialPreviewUrl = `${settingsUrl}/#:~:text=Social%20preview`;
@@ -274,7 +277,8 @@ async function main(): Promise<void> {
 	console.info(`Social preview section: ${link('Open Social preview', socialPreviewUrl)}`);
 }
 
-if (import.meta.main) {
+const entryPath = process.argv[1];
+if (entryPath !== undefined && fileURLToPath(import.meta.url) === resolve(entryPath)) {
 	await main().catch((error: unknown) => {
 		console.error(error instanceof Error ? error.message : String(error));
 		process.exit(1);

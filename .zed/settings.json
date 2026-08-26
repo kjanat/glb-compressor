@@ -6,7 +6,6 @@
 	"wrap_guides": [80],
 	"file_types": {
 		"Dockerfile": ["Dockerfile", "Dockerfile.*"],
-		"XML": ["*.svg"],
 		"Markdown": [".rules"],
 		"JSON": [".gltf"]
 	},
@@ -19,12 +18,7 @@
 			"formatter": [
 				{ "code_action": "source.fixAll.biome" },
 				{ "code_action": "source.organizeImports.biome" },
-				{
-					"external": {
-						"command": "dprint",
-						"arguments": ["fmt", "--stdin", "{buffer_path}"]
-					}
-				}
+				{ "external": { "command": "dprint", "arguments": ["fmt", "--stdin", "{buffer_path}"] } }
 			]
 		}
 	},
@@ -38,10 +32,6 @@
 	},
 	"lsp": {
 		"biome": {
-			"binary": {
-				"path": "biome",
-				"arguments": ["lsp-proxy"]
-			},
 			"settings": { "require_config_file": false }
 		},
 		"json-language-server": {

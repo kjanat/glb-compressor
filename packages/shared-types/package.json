@@ -12,7 +12,7 @@
 	"exports": {
 		".": {
 			"types": "./dist/types/index.d.ts",
-			"bun": "./src/index.ts",
+			"development": "./src/index.ts",
 			"node": "./dist/node/index.js",
 			"default": "./dist/node/index.js"
 		},
@@ -22,7 +22,6 @@
 	"types": "./dist/types/index.d.ts",
 	"files": [
 		"dist/node/**/*.*js",
-		"dist/bun/**/*.*js",
 		"dist/types"
 	]
 }

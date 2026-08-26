@@ -30,6 +30,7 @@
 		// Interop with CommonJS modules
 		"esModuleInterop": true,
 		"allowSyntheticDefaultImports": true,
+		"types": ["*"],
 
 		// Path aliases
 		"paths": {

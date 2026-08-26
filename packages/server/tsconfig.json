@@ -1,7 +1,7 @@
 {
 	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"types": ["bun"],
+		"types": ["node"],
 		"paths": {
 			"@glb-compressor/core": ["../core/src/mod.ts"],
 			"@glb-compressor/shared-types": ["../shared-types/src/index.ts"]

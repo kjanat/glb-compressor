@@ -1,5 +1,5 @@
 import { createSelfSignedCertificate, parseCertificatePemOrThrow } from 'micro509';
-import { mkdir } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -28,7 +28,7 @@ async function loadCustomCerts(): Promise<TlsCertPair | undefined> {
 
 	if (!certPath || !keyPath) return undefined;
 
-	const [cert, key] = await Promise.all([Bun.file(certPath).text(), Bun.file(keyPath).text()]);
+	const [cert, key] = await Promise.all([readFile(certPath, 'utf8'), readFile(keyPath, 'utf8')]);
 	return { cert, key };
 }
 
@@ -58,7 +58,16 @@ async function generateSelfSignedCert(): Promise<TlsCertPair> {
 /** Write cert pair to disk for reuse across restarts. */
 async function cacheCerts(pair: TlsCertPair): Promise<void> {
 	await mkdir(TLS_DIR, { recursive: true });
-	await Promise.all([Bun.write(CERT_PATH, pair.cert), Bun.write(KEY_PATH, pair.key)]);
+	await Promise.all([writeFile(CERT_PATH, pair.cert), writeFile(KEY_PATH, pair.key)]);
+}
+
+async function fileExists(path: string): Promise<boolean> {
+	try {
+		await access(path);
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 /**
@@ -71,11 +80,8 @@ export async function resolveTls(): Promise<TlsCertPair | undefined> {
 	const custom = await loadCustomCerts();
 	if (custom) return custom;
 
-	const certFile = Bun.file(CERT_PATH);
-	const keyFile = Bun.file(KEY_PATH);
-
-	if ((await certFile.exists()) && (await keyFile.exists())) {
-		const [cert, key] = await Promise.all([certFile.text(), keyFile.text()]);
+	if ((await fileExists(CERT_PATH)) && (await fileExists(KEY_PATH))) {
+		const [cert, key] = await Promise.all([readFile(CERT_PATH, 'utf8'), readFile(KEY_PATH, 'utf8')]);
 		try {
 			const parsed = parseCertificatePemOrThrow(cert);
 			if (parsed.notAfter.getTime() > Date.now()) return { cert, key };

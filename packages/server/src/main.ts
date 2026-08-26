@@ -1,8 +1,16 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 import { DEFAULT_PORT, ErrorCode, formatBytes } from '@glb-compressor/core';
 import type { CompressionStreamEventMap } from '@glb-compressor/shared-types';
-import { join, resolve } from 'node:path';
+import { once } from 'node:events';
+import { readFile, stat } from 'node:fs/promises';
+import type { IncomingMessage, Server as HttpServer, ServerResponse } from 'node:http';
+import { createServer as createHttpServer } from 'node:http';
+import type { Server as HttpsServer } from 'node:https';
+import { createServer as createHttpsServer } from 'node:https';
+import { extname, join, resolve } from 'node:path';
+import { Readable } from 'node:stream';
+import { fileURLToPath } from 'node:url';
 import { CORS_HEADERS, jsonError, parseCompressRequest } from './http';
 import { CompressionJobQueue } from './job-queue';
 import type { JobResult } from './job-queue';
@@ -13,6 +21,20 @@ const PORT = parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
 // Static frontend serving — resolved once at startup
 const FRONTEND_DIR = resolve(process.env.FRONTEND_DIR ?? join(process.cwd(), 'dist', 'frontend'));
 const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
+
+const CONTENT_TYPES: Readonly<Record<string, string>> = {
+	'.css': 'text/css;charset=utf-8',
+	'.html': 'text/html;charset=utf-8',
+	'.ico': 'image/x-icon',
+	'.js': 'text/javascript;charset=utf-8',
+	'.json': 'application/json;charset=utf-8',
+	'.map': 'application/json;charset=utf-8',
+	'.png': 'image/png',
+	'.svg': 'image/svg+xml',
+	'.txt': 'text/plain;charset=utf-8',
+	'.wasm': 'application/wasm',
+	'.webp': 'image/webp',
+};
 
 const jobQueue = new CompressionJobQueue();
 
@@ -299,73 +321,182 @@ function handleGetJobResult(requestId: string): Response {
 	});
 }
 
-export async function startServer() {
-	const tls = await resolveTls();
-
-	const server = Bun.serve({
-		port: PORT,
-		hostname: '0.0.0.0',
-		tls,
-
-		routes: {
-			'/healthz': new Response('ok', { headers: CORS_HEADERS }),
-			'/compress': {
-				POST: handleCompress,
-				OPTIONS: handleOptions,
-			},
-			'/compress-stream': {
-				POST: handleCompressStream,
-				OPTIONS: handleOptions,
-			},
-		},
-
-		fetch: async (req: globalThis.Request) => {
-			const url = new URL(req.url);
-
-			if (url.pathname === '/jobs') {
-				if (req.method === 'POST') return handleCreateJob(req);
-				if (req.method === 'OPTIONS') return handleOptions();
-			}
-
-			const route = parseJobRoute(url.pathname);
-			if (route) {
-				if (req.method === 'GET') {
-					return route.kind === 'status'
-						? handleGetJobStatus(route.requestId)
-						: handleGetJobResult(route.requestId);
-				}
-				if (req.method === 'OPTIONS') return handleOptions();
-			}
-
-			// Static file serving
-			const filePath = resolve(join(FRONTEND_DIR, url.pathname));
-			if (filePath === FRONTEND_DIR || filePath.startsWith(`${FRONTEND_DIR}/`)) {
-				const file = Bun.file(filePath);
-				if (await file.exists()) {
-					const cacheControl = url.pathname.startsWith('/_app/immutable/') ? IMMUTABLE_CACHE : 'no-cache';
-					return new Response(file, { headers: { ...CORS_HEADERS, 'Cache-Control': cacheControl } });
-				}
-
-				// SPA fallback — serve index.html for client-side routing
-				const indexFile = Bun.file(join(FRONTEND_DIR, 'index.html'));
-				if (await indexFile.exists()) {
-					return new Response(indexFile, { headers: { ...CORS_HEADERS, 'Content-Type': 'text/html;charset=utf-8' } });
-				}
-			}
-
-			return new Response('Not found', { status: 404, headers: CORS_HEADERS });
-		},
-
-		error(error: Error) {
-			console.error('Server error:', error);
-			return Response.json({ error: 'Internal server error' }, { status: 500, headers: CORS_HEADERS });
-		},
-	});
-
-	console.log(`Compression server running at ${server.url}`);
-	return server;
+async function staticFileResponse(path: string, cacheControl: string): Promise<Response | undefined> {
+	try {
+		const metadata = await stat(path);
+		if (!metadata.isFile()) return undefined;
+		const body = await readFile(path);
+		const contentType = CONTENT_TYPES[extname(path).toLowerCase()] ?? 'application/octet-stream';
+		return new Response(body, {
+			headers: { ...CORS_HEADERS, 'Cache-Control': cacheControl, 'Content-Type': contentType },
+		});
+	} catch {
+		return undefined;
+	}
 }
 
-if (import.meta.main) {
-	startServer();
+async function handleRequest(req: globalThis.Request): Promise<Response> {
+	const url = new URL(req.url);
+
+	if (url.pathname === '/healthz') return new Response('ok', { headers: CORS_HEADERS });
+
+	if (url.pathname === '/compress') {
+		if (req.method === 'POST') return handleCompress(req);
+		if (req.method === 'OPTIONS') return handleOptions();
+	}
+
+	if (url.pathname === '/compress-stream') {
+		if (req.method === 'POST') return handleCompressStream(req);
+		if (req.method === 'OPTIONS') return handleOptions();
+	}
+
+	if (url.pathname === '/jobs') {
+		if (req.method === 'POST') return handleCreateJob(req);
+		if (req.method === 'OPTIONS') return handleOptions();
+	}
+
+	const route = parseJobRoute(url.pathname);
+	if (route) {
+		if (req.method === 'GET') {
+			return route.kind === 'status' ? handleGetJobStatus(route.requestId) : handleGetJobResult(route.requestId);
+		}
+		if (req.method === 'OPTIONS') return handleOptions();
+	}
+
+	const filePath = resolve(join(FRONTEND_DIR, url.pathname));
+	if (filePath === FRONTEND_DIR || filePath.startsWith(`${FRONTEND_DIR}/`)) {
+		const cacheControl = url.pathname.startsWith('/_app/immutable/') ? IMMUTABLE_CACHE : 'no-cache';
+		const fileResponse = await staticFileResponse(filePath, cacheControl);
+		if (fileResponse) return fileResponse;
+
+		const indexResponse = await staticFileResponse(join(FRONTEND_DIR, 'index.html'), 'no-cache');
+		if (indexResponse) return indexResponse;
+	}
+
+	return new Response('Not found', { status: 404, headers: CORS_HEADERS });
+}
+
+interface NodeRequestInit extends RequestInit {
+	duplex?: 'half';
+}
+
+function toWebRequest(nodeRequest: IncomingMessage, protocol: 'http' | 'https', port: number): Request {
+	const headers = new Headers();
+	for (const [name, value] of Object.entries(nodeRequest.headers)) {
+		if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(', ') : value);
+	}
+
+	const method = nodeRequest.method ?? 'GET';
+	const hasBody = method !== 'GET' && method !== 'HEAD';
+	const url = new URL(nodeRequest.url ?? '/', `${protocol}://${nodeRequest.headers.host ?? `localhost:${port}`}`);
+	const init: NodeRequestInit = {
+		method,
+		headers,
+		body: hasBody ? Readable.toWeb(nodeRequest) : null,
+		duplex: hasBody ? 'half' : undefined,
+	};
+	return new Request(url, init);
+}
+
+async function writeWebResponse(response: Response, nodeResponse: ServerResponse): Promise<void> {
+	nodeResponse.writeHead(response.status, Object.fromEntries(response.headers.entries()));
+	if (response.body === null) {
+		nodeResponse.end();
+		return;
+	}
+
+	const reader = response.body.getReader();
+	let finished = false;
+	nodeResponse.once('close', () => {
+		if (!finished) void reader.cancel();
+	});
+
+	try {
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			if (!nodeResponse.write(value)) await once(nodeResponse, 'drain');
+		}
+		finished = true;
+		nodeResponse.end();
+	} catch (error) {
+		void reader.cancel();
+		throw error;
+	}
+}
+
+async function handleNodeRequest(
+	nodeRequest: IncomingMessage,
+	nodeResponse: ServerResponse,
+	protocol: 'http' | 'https',
+	port: number,
+): Promise<void> {
+	try {
+		await writeWebResponse(await handleRequest(toWebRequest(nodeRequest, protocol, port)), nodeResponse);
+	} catch (error) {
+		console.error('Server error:', error);
+		if (nodeResponse.headersSent) {
+			nodeResponse.destroy();
+			return;
+		}
+		await writeWebResponse(
+			Response.json({ error: 'Internal server error' }, { status: 500, headers: CORS_HEADERS }),
+			nodeResponse,
+		);
+	}
+}
+
+type NodeServer = HttpServer | HttpsServer;
+
+export interface CompressionServer {
+	url: URL;
+	stop(force?: boolean): Promise<void>;
+}
+
+async function listen(server: NodeServer, port: number): Promise<void> {
+	await new Promise<void>((resolveListen, reject) => {
+		const onError = (error: Error) => reject(error);
+		server.once('error', onError);
+		server.listen(port, '0.0.0.0', () => {
+			server.off('error', onError);
+			resolveListen();
+		});
+	});
+}
+
+export async function startServer(port = PORT): Promise<CompressionServer> {
+	const tls = await resolveTls();
+	const protocol = tls === undefined ? 'http' : 'https';
+	const listener = (request: IncomingMessage, response: ServerResponse) => {
+		void handleNodeRequest(request, response, protocol, port);
+	};
+	const server: NodeServer = tls === undefined ? createHttpServer(listener) : createHttpsServer(tls, listener);
+
+	await listen(server, port);
+	const address = server.address();
+	if (address === null || typeof address === 'string') {
+		server.close();
+		throw new Error('Failed to resolve listening server address');
+	}
+
+	const url = new URL(`${protocol}://0.0.0.0:${address.port}/`);
+	console.log(`Compression server running at ${url}`);
+
+	return {
+		url,
+		async stop(force = false) {
+			if (force) server.closeAllConnections();
+			await new Promise<void>((resolveClose, reject) => {
+				server.close((error) => error === undefined ? resolveClose() : reject(error));
+			});
+		},
+	};
+}
+
+const entryPath = process.argv[1];
+if (entryPath !== undefined && fileURLToPath(import.meta.url) === resolve(entryPath)) {
+	void startServer().catch((error: unknown) => {
+		console.error(error instanceof Error ? error.message : String(error));
+		process.exitCode = 1;
+	});
 }

@@ -12,14 +12,17 @@
  *
  * await init();
  * const result = await compress(glbBytes, { preset: 'aggressive' });
- * await Bun.write('out.glb', result.buffer);
+ * await writeFile('out.glb', result.buffer);
  * ```
  *
  * @module compress
  */
 
-import { $ } from 'bun';
-import { join } from 'node:path';
+import { execFile as execFileCallback } from 'node:child_process';
+import { constants as fsConstants } from 'node:fs';
+import { access, readFile, writeFile } from 'node:fs/promises';
+import { delimiter, join } from 'node:path';
+import { promisify } from 'node:util';
 
 import type { Document, GLTF, JSONDocument, Transform } from '@gltf-transform/core';
 import { NodeIO } from '@gltf-transform/core';
@@ -52,6 +55,8 @@ import {
 	removeUnusedUVs,
 } from './transforms';
 import { formatBytes, withTempDir } from './utils';
+
+const execFile = promisify(execFileCallback);
 
 /**
  * Compression preset controlling gltfpack flags.
@@ -210,6 +215,29 @@ export interface CompressResult {
 
 let io: NodeIO;
 let hasGltfpack: boolean = false;
+let gltfpackPath: string | undefined;
+
+async function findExecutable(command: string): Promise<string | undefined> {
+	const pathDirectories = (process.env.PATH ?? '').split(delimiter);
+	const extensions = process.platform === 'win32'
+		? (process.env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';')
+		: [''];
+
+	for (const directory of pathDirectories) {
+		if (directory.length === 0) continue;
+		for (const extension of extensions) {
+			const candidate = join(directory, `${command}${extension}`);
+			try {
+				await access(candidate, process.platform === 'win32' ? fsConstants.F_OK : fsConstants.X_OK);
+				return candidate;
+			} catch {
+				// Try the next PATH entry.
+			}
+		}
+	}
+
+	return undefined;
+}
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null;
@@ -363,12 +391,12 @@ async function doInit(): Promise<void> {
 	console.log('Initialized glTF-Transform with Draco + Meshopt');
 
 	try {
-		// Bun.which is native on Bun, polyfilled via build/polyfills.ts for Node
-		const gltfpackBin = typeof Bun?.which === 'function' ? Bun.which('gltfpack') : null;
-		if (!gltfpackBin) {
+		gltfpackPath = await findExecutable('gltfpack');
+		if (gltfpackPath === undefined) {
 			console.warn('gltfpack not found in PATH, will use meshopt fallback');
 		} else {
-			const version = (await $`gltfpack -v`.text()).trim().split(/\s/, 2)[1] || 'unknown';
+			const { stdout } = await execFile(gltfpackPath, ['-v'], { encoding: 'utf8' });
+			const version = stdout.trim().split(/\s/, 2)[1] || 'unknown';
 			if (version === 'unknown') console.warn('Could not determine gltfpack version');
 			else console.log('gltfpack:', version);
 			hasGltfpack = true;
@@ -432,7 +460,7 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 	// Debug: save immediately after read (before any transforms)
 	if (process.env.DEBUG_RAW) {
 		const rawBuffer = await io.writeBinary(document);
-		await Bun.write('/tmp/debug-raw.glb', rawBuffer);
+		await writeFile('/tmp/debug-raw.glb', rawBuffer);
 		log(`${space(2)}Debug: saved /tmp/debug-raw.glb (${formatBytes(rawBuffer.byteLength)})`);
 	}
 
@@ -498,9 +526,7 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 
 	// Phase 4: Animation + weights (batched)
 	const animTransforms: Transform[] = [transform.resample(), removeStaticTracksWithBake()];
-	if (hasSkins) {
-		animTransforms.push(normalizeWeights());
-	}
+	if (hasSkins) animTransforms.push(normalizeWeights());
 	await document.transform(...animTransforms);
 
 	// Phase 5: Texture compression (async, separate call required)
@@ -533,7 +559,7 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 
 	// Debug: save clean GLB for inspection
 	if (process.env.DEBUG_CLEAN) {
-		await Bun.write('/tmp/debug-clean.glb', cleanBuffer);
+		await writeFile('/tmp/debug-clean.glb', cleanBuffer);
 		log(`${space(2)}Debug: saved /tmp/debug-clean.glb`);
 	}
 
@@ -574,7 +600,7 @@ async function compressWithGltfpack(
 		const outputPath = join(dir, 'compressed.glb');
 
 		try {
-			await Bun.write(inputPath, cleanBuffer);
+			await writeFile(inputPath, cleanBuffer);
 			const config = PRESETS[preset];
 			const presetFlags = hasSkins ? config.skinned : config.static;
 			// -cc is the base compression flag (overridden by -cz in some presets)
@@ -582,9 +608,7 @@ async function compressWithGltfpack(
 			// gltfpack merges everything it may: -kn keeps named nodes, -km keeps
 			// the materials runtime code looks up by name.
 			const keepFlags = keepNodes ? [...(presetFlags.includes('-kn') ? [] : ['-kn']), '-km'] : [];
-			// dprint-ignore
-			const args = [
-				'gltfpack',
+			const args = /* dprint-ignore */ [
 				'-i', inputPath,
 				'-o', outputPath,
 				...(hasCompressFlag ? [] : ['-cc']),
@@ -592,21 +616,10 @@ async function compressWithGltfpack(
 				...presetFlags,
 				...keepFlags,
 			];
-			const proc = Bun.spawn(args, {
-				stdout: 'ignore',
-				stderr: 'pipe',
-			});
+			if (gltfpackPath === undefined) throw new Error('gltfpack executable is unavailable');
+			await execFile(gltfpackPath, args, { timeout: GLTFPACK_TIMEOUT_MS });
 
-			const timeoutId = setTimeout(() => proc.kill(), GLTFPACK_TIMEOUT_MS);
-			const exitCode = await proc.exited;
-			clearTimeout(timeoutId);
-
-			if (exitCode !== 0) {
-				const stderr = await new Response(proc.stderr).text();
-				throw new Error(`gltfpack exited with code ${exitCode}: ${stderr}`);
-			}
-
-			const buffer = new Uint8Array(await Bun.file(outputPath).arrayBuffer());
+			const buffer = new Uint8Array(await readFile(outputPath));
 			log(`gltfpack: ${formatBytes(buffer.byteLength)}`);
 			return { buffer, method: 'gltfpack' };
 		} catch (err) {
