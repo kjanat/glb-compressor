@@ -8,8 +8,8 @@
  * Hook 3 — onResolve('pkg'):  safety net for tsconfig `pkg` → package.json alias
  */
 
-import type { BunPlugin } from 'bun';
 import { join } from 'node:path';
+import type { BunPlugin } from 'bun';
 import { POLYFILL_PATH, polyfillBunSource } from './bun-transform';
 
 type BunLoader = 'ts' | 'tsx' | 'js' | 'jsx';

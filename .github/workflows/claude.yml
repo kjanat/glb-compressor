@@ -10,6 +10,9 @@ on:
   workflow_dispatch: { inputs: { prompt: { description: "Prompt for Claude", required: false, type: string } } }
 jobs:
   claude:
+    concurrency:
+      group: "claude-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}"
+      cancel-in-progress: false
     if: |
       github.event_name != 'pull_request' && (
         github.event_name == 'workflow_dispatch' ||
@@ -53,6 +56,9 @@ jobs:
             --permission-mode bypassPermissions
   claude-bot-review:
     name: "@claude v bots"
+    concurrency:
+      group: "claude-bots-${{ github.event.pull_request.number }}"
+      cancel-in-progress: true
     if: |
       github.event_name == 'pull_request' && (
         github.actor == 'dependabot[bot]' ||
