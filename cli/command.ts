@@ -9,11 +9,11 @@
  * @module cli/command
  */
 
+import { compress, type CompressPreset, formatBytes, init, parseSimplifyRatio, validateGlbMagic } from '$lib/mod';
+import { arg, cli, CLIError, command, flag } from 'dreamcli';
 import { glob, readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
-import { arg, CLIError, cli, command, flag } from 'dreamcli';
 import { version } from 'pkg';
-import { type CompressPreset, compress, formatBytes, init, parseSimplifyRatio, validateGlbMagic } from '$lib/mod';
 
 /**
  * Every preset name, spelled out so `flag.enum()` infers the literal union.
@@ -150,12 +150,13 @@ export const compressGlb = command('compress')
 				await writeFile(outputPath, result.buffer);
 
 				const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
-				const ratio =
-					input.byteLength > 0 ? ((1 - result.buffer.byteLength / input.byteLength) * 100).toFixed(1) : '0.0';
+				const ratio = input.byteLength > 0
+					? ((1 - result.buffer.byteLength / input.byteLength) * 100).toFixed(1)
+					: '0.0';
 				spinner.succeed(`${basename(inputPath)} done (${elapsed}s)`);
 				out.log(
-					`${formatBytes(input.byteLength)} -> ${out.color.bold(formatBytes(result.buffer.byteLength))} ` +
-						`${out.color.green(`(-${ratio}%)`)} via ${out.color.magenta(result.method)} -> ${outputPath}`,
+					`${formatBytes(input.byteLength)} -> ${out.color.bold(formatBytes(result.buffer.byteLength))} `
+						+ `${out.color.green(`(-${ratio}%)`)} via ${out.color.magenta(result.method)} -> ${outputPath}`,
 				);
 				return undefined;
 			} catch (err) {

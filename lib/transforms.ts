@@ -111,7 +111,7 @@ export function mergeByDistance(tolerance = 0.0001): Transform {
 					if (!oldArray) continue;
 
 					const itemSize: number = attr.getElementSize();
-					const TypedArrayCtor = oldArray.constructor as new (len: number) => TypedArray;
+					const TypedArrayCtor = oldArray.constructor as new(len: number) => TypedArray;
 					const newArray: TypedArray = new TypedArrayCtor(newToOld.length * itemSize);
 
 					for (let i: number = 0; i < newToOld.length; i++) {
@@ -580,10 +580,9 @@ export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 				}
 			}
 
-			const matchesBase: boolean =
-				baseValue !== null &&
-				baseValue.length === reference.length &&
-				baseValue.every((v: number, i: number): boolean => Math.abs(v - at(reference, i)) <= tolerance);
+			const matchesBase: boolean = baseValue !== null
+				&& baseValue.length === reference.length
+				&& baseValue.every((v: number, i: number): boolean => Math.abs(v - at(reference, i)) <= tolerance);
 
 			if (matchesBase) {
 				removableKeys.add(key);
