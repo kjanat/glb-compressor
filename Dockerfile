@@ -61,4 +61,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 USER appuser
 
-CMD ["bun", "run", "./dist/bun-bytecode/server/src/main.cjs"]
+CMD ["bun", "run", "./dist/bun/server/src/main.js"]

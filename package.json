@@ -44,7 +44,7 @@
 		},
 		"./server": {
 			"types": "./dist/types/packages/server/src/main.d.ts",
-			"bun": "./dist/bun-bytecode/server/src/main.cjs",
+			"bun": "./dist/bun/server/src/main.js",
 			"node": "./dist/node/server/src/main.js",
 			"default": "./dist/node/server/src/main.js"
 		},
@@ -65,7 +65,6 @@
 		"src",
 		"dist/node/**/*.*js",
 		"dist/bun/**/*.*js",
-		"dist/bun-bytecode/**/*.{cjs,cjs.jsc}",
 		"dist/types",
 		"CHANGELOG.md",
 		"skills"

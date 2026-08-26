@@ -26,7 +26,6 @@
 	"files": [
 		"dist/node/**/*.*js",
 		"dist/bun/**/*.*js",
-		"dist/bun-bytecode/**/*.{cjs,cjs.jsc}",
 		"dist/types"
 	],
 	"scripts": {
