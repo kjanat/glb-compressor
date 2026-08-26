@@ -9,11 +9,11 @@
  * @module cli/command
  */
 
+import { version } from '#pkg';
 import { compress, type CompressPreset, formatBytes, init, parseSimplifyRatio, validateGlbMagic } from '$lib/mod';
 import { arg, cli, CLIError, command, flag } from 'dreamcli';
 import { glob, readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
-import { version } from 'pkg';
 
 /**
  * Every preset name, spelled out so `flag.enum()` infers the literal union.
