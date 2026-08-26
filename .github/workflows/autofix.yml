@@ -9,6 +9,7 @@ permissions: { contents: read }
 jobs:
   autofix:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.stack == null
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
