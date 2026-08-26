@@ -1,8 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-	<title>ruistextuur</title>
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+	<title>
+		ruistextuur
+	</title>
 	<filter id="a">
-		<feTurbulence baseFrequency="1" numOctaves="4" stitchTiles="stitch" type="fractalNoise"/>
-		<feColorMatrix type="saturate" values="0"/>
+		<feTurbulence baseFrequency="1" numOctaves="4" stitchTiles="stitch" type="fractalNoise" />
+		<feColorMatrix type="saturate" values="0" />
 	</filter>
-	<rect width="100%" height="100%" filter="url(#a)" opacity=".04"/>
+	<rect width="100%" height="100%" opacity=".04" filter="url(#a)" />
 </svg>
