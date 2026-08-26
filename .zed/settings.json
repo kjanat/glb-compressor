@@ -14,7 +14,7 @@
 		"YAML": { "wrap_guides": [140] },
 		"TypeScript": {
 			"wrap_guides": [120],
-			"language_servers": ["vtsls", "biome", "tsgo"],
+			"language_servers": ["typescript", "biome"],
 			"formatter": [
 				{ "code_action": "source.fixAll.biome" },
 				{ "code_action": "source.organizeImports.biome" },

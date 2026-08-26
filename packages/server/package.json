@@ -15,7 +15,8 @@
 			"bun": "./src/main.ts",
 			"node": "./dist/node/main.js",
 			"default": "./dist/node/main.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"main": "./dist/node/main.js",
 	"types": "./dist/types/main.d.ts",
@@ -34,7 +35,7 @@
 	"dependencies": {
 		"@glb-compressor/core": "workspace:*",
 		"@glb-compressor/shared-types": "workspace:*",
-		"@peculiar/x509": "1.14.3"
+		"@peculiar/x509": "2.0.0"
 	},
 	"devDependencies": {
 		"@glb-compressor/bun-polyfill": "workspace:*"

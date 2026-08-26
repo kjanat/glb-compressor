@@ -15,7 +15,8 @@
 			"bun": "./src/index.ts",
 			"node": "./dist/node/index.js",
 			"default": "./dist/node/index.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"main": "./dist/node/index.js",
 	"types": "./dist/types/index.d.ts",

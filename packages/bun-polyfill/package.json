@@ -12,6 +12,7 @@
 	"type": "module",
 	"exports": {
 		"./plugin": "./src/plugin.ts",
-		"./polyfills": "./src/polyfills.ts"
+		"./polyfills": "./src/polyfills.ts",
+		"./package.json": "./package.json"
 	}
 }

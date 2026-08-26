@@ -15,7 +15,8 @@
 			"bun": "./src/main.ts",
 			"node": "./dist/node/main.js",
 			"default": "./dist/node/main.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"main": "./dist/node/main.js",
 	"types": "./dist/types/main.d.ts",
