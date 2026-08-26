@@ -14,8 +14,8 @@ and this project adheres to
 
 - Skills validated against source code — all types, exports, flags, endpoints
   confirmed accurate.
-- User-facing skill installation docs in README and AGENTS.md (`npx skills
-  add` - manual paths for Claude Code, Cursor, OpenCode).
+- User-facing skill installation docs in README and AGENTS.md\
+  (`npx skills add` - manual paths for Claude Code, Cursor, OpenCode).
 - Skills section in `.rules` (AGENTS.md/CLAUDE.md) with directory structure,
   conventions, and "when to update" guide.
 - Skills relocated from `.agents/skills/` to `skills/` (standard discovery
