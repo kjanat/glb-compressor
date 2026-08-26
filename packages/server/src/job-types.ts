@@ -90,9 +90,7 @@ export function summarizeResult(result: JobResult): JobResultSummary {
 }
 
 export function toIso(timestampMs: number | undefined): string | undefined {
-	if (timestampMs === undefined) {
-		return undefined;
-	}
+	if (timestampMs === undefined) return undefined;
 	return new Date(timestampMs).toISOString();
 }
 

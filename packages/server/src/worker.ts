@@ -14,23 +14,13 @@ function isCompressPreset(value: unknown): value is CompressPreset {
 }
 
 function isResourceMap(value: unknown): value is Record<string, Uint8Array> {
-	if (!isObjectRecord(value)) {
-		return false;
-	}
-
-	for (const item of Object.values(value)) {
-		if (!(item instanceof Uint8Array)) {
-			return false;
-		}
-	}
-
+	if (!isObjectRecord(value)) return false;
+	for (const item of Object.values(value)) if (!(item instanceof Uint8Array)) return false;
 	return true;
 }
 
 function parseWorkerRequest(value: unknown): WorkerRequestMessage | undefined {
-	if (!isObjectRecord(value)) {
-		return undefined;
-	}
+	if (!isObjectRecord(value)) return undefined;
 
 	if (
 		value.type !== 'compress'
@@ -47,14 +37,10 @@ function parseWorkerRequest(value: unknown): WorkerRequestMessage | undefined {
 		: value.simplifyRatio === undefined
 		? undefined
 		: null;
-	if (simplifyRatio === null) {
-		return undefined;
-	}
+	if (simplifyRatio === null) return undefined;
 
 	const resources = value.resources === undefined ? undefined : isResourceMap(value.resources) ? value.resources : null;
-	if (resources === null) {
-		return undefined;
-	}
+	if (resources === null) return undefined;
 
 	const message: WorkerCompressRequest = {
 		type: 'compress',
@@ -69,9 +55,7 @@ function parseWorkerRequest(value: unknown): WorkerRequestMessage | undefined {
 	return message;
 }
 
-function send(message: WorkerResponseMessage) {
-	postMessage(message);
-}
+const send = (message: WorkerResponseMessage) => postMessage(message);
 
 self.onmessage = async (event: MessageEvent<unknown>) => {
 	const message = parseWorkerRequest(event.data);

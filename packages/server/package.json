@@ -34,6 +34,7 @@
 	"dependencies": {
 		"@glb-compressor/core": "workspace:*",
 		"@glb-compressor/shared-types": "workspace:*",
+		"@mjackson/multipart-parser": "0.10.1",
 		"micro509": "0.14.0"
 	},
 	"devDependencies": {

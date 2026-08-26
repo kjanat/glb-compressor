@@ -19,9 +19,7 @@ const jobQueue = new CompressionJobQueue();
 function contentDisposition(filename: string): string {
 	const ascii = filename.replace(/[^\x20-\x7E]/g, '_');
 	const encoded = encodeURIComponent(filename);
-	if (ascii === filename) {
-		return `attachment; filename="${filename}"`;
-	}
+	if (ascii === filename) return `attachment; filename="${filename}"`;
 	return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
 }
 
@@ -31,20 +29,14 @@ interface JobRoute {
 }
 
 function parseJobRoute(pathname: string): JobRoute | undefined {
-	if (!pathname.startsWith('/jobs/')) {
-		return undefined;
-	}
+	if (!pathname.startsWith('/jobs/')) return undefined;
 
 	const suffix = pathname.slice('/jobs/'.length);
-	if (suffix.length === 0) {
-		return undefined;
-	}
+	if (suffix.length === 0) return undefined;
 
 	const parts = suffix.split('/');
 	const [rawRequestId] = parts;
-	if (rawRequestId === undefined || rawRequestId.length === 0) {
-		return undefined;
-	}
+	if (rawRequestId === undefined || rawRequestId.length === 0) return undefined;
 
 	let requestId: string;
 	try {
@@ -53,13 +45,8 @@ function parseJobRoute(pathname: string): JobRoute | undefined {
 		return undefined;
 	}
 
-	if (parts.length === 1) {
-		return { requestId, kind: 'status' };
-	}
-
-	if (parts.length === 2 && parts[1] === 'result') {
-		return { requestId, kind: 'result' };
-	}
+	if (parts.length === 1) return { requestId, kind: 'status' };
+	if (parts.length === 2 && parts[1] === 'result') return { requestId, kind: 'result' };
 
 	return undefined;
 }
@@ -75,10 +62,7 @@ async function handleCompress(req: globalThis.Request): Promise<Response> {
 	const requestId = crypto.randomUUID();
 
 	const parsed = await parseCompressRequest(req, requestId, false);
-	if (parsed instanceof Response) {
-		return parsed;
-	}
-
+	if (parsed instanceof Response) return parsed;
 	const { input, filename, preset, simplifyRatio, resources } = parsed;
 
 	console.log(`[${requestId}] Enqueue ${filename}: ${formatBytes(input.byteLength)} (preset: ${preset})`);
@@ -270,9 +254,7 @@ async function handleCreateJob(req: globalThis.Request): Promise<Response> {
 
 function handleGetJobStatus(requestId: string): Response {
 	const snapshot = jobQueue.getSnapshot(requestId);
-	if (!snapshot) {
-		return jsonError('JOB_NOT_FOUND', `Job not found: ${requestId}`, 404, requestId);
-	}
+	if (!snapshot) return jsonError('JOB_NOT_FOUND', `Job not found: ${requestId}`, 404, requestId);
 
 	return Response.json(snapshot, {
 		headers: {
@@ -284,9 +266,7 @@ function handleGetJobStatus(requestId: string): Response {
 
 function handleGetJobResult(requestId: string): Response {
 	const snapshot = jobQueue.getSnapshot(requestId);
-	if (!snapshot) {
-		return jsonError('JOB_NOT_FOUND', `Job not found: ${requestId}`, 404, requestId);
-	}
+	if (!snapshot) return jsonError('JOB_NOT_FOUND', `Job not found: ${requestId}`, 404, requestId);
 
 	if (snapshot.status === 'queued' || snapshot.status === 'running') {
 		return jsonError('JOB_NOT_READY', 'Job is not finished yet', 409, requestId);
@@ -302,9 +282,7 @@ function handleGetJobResult(requestId: string): Response {
 	}
 
 	const result = jobQueue.getResult(requestId);
-	if (!result) {
-		return jsonError('JOB_RESULT_MISSING', 'Job finished but no result is available', 500, requestId);
-	}
+	if (!result) return jsonError('JOB_RESULT_MISSING', 'Job finished but no result is available', 500, requestId);
 
 	return new Response(result.buffer, {
 		headers: {
@@ -345,22 +323,18 @@ export async function startServer() {
 			const url = new URL(req.url);
 
 			if (url.pathname === '/jobs') {
-				if (req.method === 'POST') {
-					return handleCreateJob(req);
-				}
-				if (req.method === 'OPTIONS') {
-					return handleOptions();
-				}
+				if (req.method === 'POST') return handleCreateJob(req);
+				if (req.method === 'OPTIONS') return handleOptions();
 			}
 
 			const route = parseJobRoute(url.pathname);
 			if (route) {
 				if (req.method === 'GET') {
-					return route.kind === 'status' ? handleGetJobStatus(route.requestId) : handleGetJobResult(route.requestId);
+					return route.kind === 'status'
+						? handleGetJobStatus(route.requestId)
+						: handleGetJobResult(route.requestId);
 				}
-				if (req.method === 'OPTIONS') {
-					return handleOptions();
-				}
+				if (req.method === 'OPTIONS') return handleOptions();
 			}
 
 			// Static file serving
@@ -369,17 +343,13 @@ export async function startServer() {
 				const file = Bun.file(filePath);
 				if (await file.exists()) {
 					const cacheControl = url.pathname.startsWith('/_app/immutable/') ? IMMUTABLE_CACHE : 'no-cache';
-					return new Response(file, {
-						headers: { ...CORS_HEADERS, 'Cache-Control': cacheControl },
-					});
+					return new Response(file, { headers: { ...CORS_HEADERS, 'Cache-Control': cacheControl } });
 				}
 
 				// SPA fallback — serve index.html for client-side routing
 				const indexFile = Bun.file(join(FRONTEND_DIR, 'index.html'));
 				if (await indexFile.exists()) {
-					return new Response(indexFile, {
-						headers: { ...CORS_HEADERS, 'Content-Type': 'text/html;charset=utf-8' },
-					});
+					return new Response(indexFile, { headers: { ...CORS_HEADERS, 'Content-Type': 'text/html;charset=utf-8' } });
 				}
 			}
 

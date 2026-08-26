@@ -78,9 +78,7 @@ export async function resolveTls(): Promise<TlsCertPair | undefined> {
 		const [cert, key] = await Promise.all([certFile.text(), keyFile.text()]);
 		try {
 			const parsed = parseCertificatePemOrThrow(cert);
-			if (parsed.notAfter.getTime() > Date.now()) {
-				return { cert, key };
-			}
+			if (parsed.notAfter.getTime() > Date.now()) return { cert, key };
 			console.log('Cached TLS certificate expired, regenerating…');
 		} catch {
 			console.log('Failed to parse cached TLS certificate, regenerating…');

@@ -10,9 +10,7 @@ export function parseWorkerResponse(value: unknown): WorkerResponseMessage | und
 	}
 
 	if (value.type === 'log') {
-		if (typeof value.message !== 'string') {
-			return undefined;
-		}
+		if (typeof value.message !== 'string') return undefined;
 
 		return {
 			type: 'log',
@@ -63,11 +61,7 @@ export function parseWorkerResponse(value: unknown): WorkerResponseMessage | und
 
 export function resolveWorkerSpecifier(currentModuleUrl: string): string {
 	const pathname = new URL(currentModuleUrl).pathname;
-	if (pathname.endsWith('.ts')) {
-		return new URL('./worker.ts', currentModuleUrl).href;
-	}
-	if (pathname.endsWith('.cjs')) {
-		return new URL('./worker.cjs', currentModuleUrl).href;
-	}
+	if (pathname.endsWith('.ts')) return new URL('./worker.ts', currentModuleUrl).href;
+	if (pathname.endsWith('.cjs')) return new URL('./worker.cjs', currentModuleUrl).href;
 	return new URL('./worker.js', currentModuleUrl).href;
 }

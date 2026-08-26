@@ -1,14 +1,10 @@
 import { compress, ErrorCode } from '@glb-compressor/core';
 import type { WorkerCompressRequest } from './job-protocol';
+import type { JobEvent, JobRecord, JobResult, JobSnapshot, JobSubmission } from './job-types';
 import {
 	COMPRESSED_FILENAME_PATTERN,
 	COMPRESSED_FILENAME_SUFFIX,
 	createJobRecord,
-	type JobEvent,
-	type JobRecord,
-	type JobResult,
-	type JobSnapshot,
-	type JobSubmission,
 	summarizeResult,
 	toIso,
 } from './job-types';
@@ -23,10 +19,7 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function getEventMessage(event: unknown): string | undefined {
-	if (!isObjectRecord(event)) {
-		return undefined;
-	}
-
+	if (!isObjectRecord(event)) return undefined;
 	const message = event.message;
 	return typeof message === 'string' && message.length > 0 ? message : undefined;
 }
@@ -54,9 +47,7 @@ export class CompressionJobQueue {
 	submit(submission: JobSubmission): string {
 		this.prune();
 
-		if (this.jobs.has(submission.requestId)) {
-			throw new Error(`Duplicate job id: ${submission.requestId}`);
-		}
+		if (this.jobs.has(submission.requestId)) throw new Error(`Duplicate job id: ${submission.requestId}`);
 
 		if (this.pendingJobIds.length >= MAX_PENDING_JOBS) {
 			throw new Error(`Queue is full (max ${MAX_PENDING_JOBS} pending jobs)`);
@@ -71,18 +62,14 @@ export class CompressionJobQueue {
 
 	waitForCompletion(requestId: string): Promise<JobResult> {
 		const job = this.jobs.get(requestId);
-		if (!job) {
-			return Promise.reject(new Error(`Job not found: ${requestId}`));
-		}
+		if (!job) return Promise.reject(new Error(`Job not found: ${requestId}`));
 		return job.completion;
 	}
 
 	getSnapshot(requestId: string): JobSnapshot | undefined {
 		this.prune();
 		const job = this.jobs.get(requestId);
-		if (!job) {
-			return undefined;
-		}
+		if (!job) return undefined;
 
 		let queuePosition: number | undefined;
 		if (job.status === 'queued') {
@@ -110,22 +97,16 @@ export class CompressionJobQueue {
 	getResult(requestId: string): JobResult | undefined {
 		this.prune();
 		const job = this.jobs.get(requestId);
-		if (!job || job.result === undefined) {
-			return undefined;
-		}
+		if (!job || job.result === undefined) return undefined;
 
 		return job.result;
 	}
 
 	subscribe(requestId: string, listener: (event: JobEvent) => void): () => void {
 		const job = this.jobs.get(requestId);
-		if (!job) {
-			return () => {};
-		}
+		if (!job) return () => {};
 
-		for (const message of job.logs) {
-			listener({ type: 'log', message });
-		}
+		for (const message of job.logs) listener({ type: 'log', message });
 
 		if (job.result !== undefined) {
 			listener({ type: 'result', result: summarizeResult(job.result) });
@@ -144,9 +125,7 @@ export class CompressionJobQueue {
 	}
 
 	private createWorker(): Worker | undefined {
-		if (typeof Worker === 'undefined' || typeof Bun === 'undefined') {
-			return undefined;
-		}
+		if (typeof Worker === 'undefined' || typeof Bun === 'undefined') return undefined;
 
 		try {
 			const worker = new Worker(resolveWorkerSpecifier(import.meta.url));
@@ -165,14 +144,10 @@ export class CompressionJobQueue {
 	}
 
 	private dispatchNext() {
-		if (this.activeJobId !== undefined) {
-			return;
-		}
+		if (this.activeJobId !== undefined) return;
 
 		const nextId = this.pendingJobIds.shift();
-		if (nextId === undefined) {
-			return;
-		}
+		if (nextId === undefined) return;
 
 		const job = this.jobs.get(nextId);
 		if (!job?.input) {
@@ -240,9 +215,7 @@ export class CompressionJobQueue {
 		}
 
 		const job = this.jobs.get(message.requestId);
-		if (!job) {
-			return;
-		}
+		if (!job) return;
 
 		if (message.type === 'log') {
 			this.pushLog(job, message.message);
@@ -266,9 +239,7 @@ export class CompressionJobQueue {
 
 	private pushLog(job: JobRecord, message: string) {
 		job.logs.push(message);
-		if (job.logs.length > MAX_LOG_ENTRIES) {
-			job.logs.shift();
-		}
+		if (job.logs.length > MAX_LOG_ENTRIES) job.logs.shift();
 		job.updatedAtMs = Date.now();
 		this.notify(job, { type: 'log', message });
 	}
@@ -302,16 +273,12 @@ export class CompressionJobQueue {
 	}
 
 	private finishActiveJob(requestId: string) {
-		if (this.activeJobId === requestId) {
-			this.activeJobId = undefined;
-		}
+		if (this.activeJobId === requestId) this.activeJobId = undefined;
 		this.dispatchNext();
 	}
 
 	private failActiveJob(code: string, message: string) {
-		if (this.activeJobId === undefined) {
-			return;
-		}
+		if (this.activeJobId === undefined) return;
 
 		const job = this.jobs.get(this.activeJobId);
 		if (!job) {
@@ -323,24 +290,14 @@ export class CompressionJobQueue {
 	}
 
 	private notify(job: JobRecord, event: JobEvent) {
-		for (const listener of job.listeners) {
-			listener(event);
-		}
-
-		if (event.type === 'result' || event.type === 'error') {
-			job.listeners.clear();
-		}
+		for (const listener of job.listeners) listener(event);
+		if (event.type === 'result' || event.type === 'error') job.listeners.clear();
 	}
 
 	private prune(now = Date.now()) {
 		for (const [requestId, job] of this.jobs.entries()) {
-			if (job.finishedAtMs === undefined) {
-				continue;
-			}
-
-			if (now - job.finishedAtMs <= JOB_RETENTION_MS) {
-				continue;
-			}
+			if (job.finishedAtMs === undefined) continue;
+			if (now - job.finishedAtMs <= JOB_RETENTION_MS) continue;
 
 			this.jobs.delete(requestId);
 		}
