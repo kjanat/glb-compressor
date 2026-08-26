@@ -18,14 +18,19 @@
  * @module compress
  */
 
-import { type Document, NodeIO, type Transform } from '@gltf-transform/core';
+import { $ } from 'bun';
+import { join } from 'node:path';
+
+import type { Document, Transform } from '@gltf-transform/core';
+import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import * as transform from '@gltf-transform/functions';
-import { $ } from 'bun';
+
 import draco3d from 'draco3dgltf';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
-import { join } from 'node:path';
 import sharp from 'sharp';
+
+import { space } from 'ansispeck';
 
 import {
 	COMPRESSION_EXTENSIONS,
@@ -260,7 +265,7 @@ async function doInit(): Promise<void> {
 function stripCompressionExtensions(document: Document, log: (msg: string) => void): void {
 	for (const ext of document.getRoot().listExtensionsUsed()) {
 		if (COMPRESSION_EXTENSIONS.includes(ext.extensionName)) {
-			log(`  Removing extension: ${ext.extensionName}`);
+			log(`${space(2)}Removing extension: ${ext.extensionName}`);
 			ext.dispose();
 		}
 	}
@@ -304,7 +309,7 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 	if (process.env.DEBUG_RAW) {
 		const rawBuffer = await io.writeBinary(document);
 		await Bun.write('/tmp/debug-raw.glb', rawBuffer);
-		log(`  Debug: saved /tmp/debug-raw.glb (${formatBytes(rawBuffer.byteLength)})`);
+		log(`${space(2)}Debug: saved /tmp/debug-raw.glb (${formatBytes(rawBuffer.byteLength)})`);
 	}
 
 	// Strip existing compression (already decoded by NodeIO), then clean up geometry
@@ -337,10 +342,10 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 	if (!hasSkins && !keepNodes) {
 		cleanupTransforms.push(transform.flatten(), transform.join(), transform.weld());
 	} else if (!hasSkins) {
-		log('  keepNodes - preserving node hierarchy and names');
+		log(`${space(2)}keepNodes - preserving node hierarchy and names`);
 		cleanupTransforms.push(transform.weld());
 	} else {
-		log('  Skinned model detected - using conservative transforms');
+		log(`${space(2)}Skinned model detected - using conservative transforms`);
 	}
 
 	await document.transform(...cleanupTransforms);
@@ -389,7 +394,7 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 	// Optional additional mesh simplification (user-requested)
 	const { simplifyRatio } = options;
 	if (simplifyRatio && simplifyRatio > 0 && simplifyRatio < 1) {
-		log(`  User simplify: ${(simplifyRatio * 100).toFixed(0)}%`);
+		log(`${space(2)}User simplify: ${(simplifyRatio * 100).toFixed(0)}%`);
 		await document.transform(
 			transform.simplify({
 				simplifier: MeshoptSimplifier,
@@ -405,23 +410,24 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 	// Debug: save clean GLB for inspection
 	if (process.env.DEBUG_CLEAN) {
 		await Bun.write('/tmp/debug-clean.glb', cleanBuffer);
-		log('  Debug: saved /tmp/debug-clean.glb');
+		log(`${space(2)}Debug: saved /tmp/debug-clean.glb`);
 	}
 
 	// Try gltfpack first (better compression), fall back to glTF-Transform meshopt
 	const preset = options.preset ?? 'default';
 	if (hasGltfpack) {
-		log(`  Running gltfpack (preset: ${preset})...`);
+		log(`${space(2)}Running gltfpack (preset: ${preset})...`);
 		const result = await compressWithGltfpack(cleanBuffer, hasSkins, preset, keepNodes, log);
 		if (result) {
-			log(`  gltfpack: ${formatBytes(result.buffer.byteLength)}`);
+			log(`${space(2)}gltfpack: ${formatBytes(result.buffer.byteLength)}`);
 			return { ...result, originalSize: input.byteLength };
 		}
 	}
 
-	log('  Running meshopt fallback...');
+	log(`${space(2)}Running meshopt fallback...`);
 	const result = await compressWithMeshopt(document, hasSkins, log);
-	log(`  meshopt: ${formatBytes(result.buffer.byteLength)}`);
+
+	log(`${space(2)}meshopt: ${formatBytes(result.buffer.byteLength)}`);
 	return { ...result, originalSize: input.byteLength };
 }
 
