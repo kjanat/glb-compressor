@@ -9,7 +9,7 @@
 
 import { bunPolyfillPlugin } from './build/bun-polyfill-plugin';
 
-const entrypoints: string[] = ['./lib/mod.ts', './cli/main.ts', './server/main.ts'];
+const entrypoints: string[] = ['./lib/mod.ts', './server/main.ts'];
 
 // Native addons & WASM packages must stay external
 const external: string[] = ['sharp', 'draco3dgltf', 'meshoptimizer'];

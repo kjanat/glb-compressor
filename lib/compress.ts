@@ -321,11 +321,16 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 	// Check for skinned meshes - skip transforms that break skeleton hierarchy
 	const hasSkins: boolean = document.getRoot().listSkins().length > 0;
 
+	const keepNodes: boolean = options.keepNodes === true;
+
 	// BATCHED TRANSFORMS - reduces overhead by combining compatible transforms
 	// Phase 1: Analysis + cleanup (sync transforms batched together)
+	// dedup() merges equal-property materials whatever they are called; under
+	// keepNodes those names are the runtime lookup key, so uniquely named
+	// duplicates stay.
 	const cleanupTransforms: Transform[] = [
 		analyzeMeshComplexity(MESH_WARN_THRESHOLD, TOTAL_WARN_THRESHOLD),
-		transform.dedup(),
+		transform.dedup(keepNodes ? { keepUniqueNames: true } : {}),
 		transform.prune(),
 		removeUnusedUVs(),
 	];
@@ -337,7 +342,6 @@ export async function compress(input: Uint8Array, options: CompressOptions = {})
 	// - mergeByDistance: breaks vertex weights
 	// With keepNodes, flatten/join stay off for the same reason the skinned
 	// path skips them: the node hierarchy is load-bearing at runtime.
-	const keepNodes: boolean = options.keepNodes === true;
 	if (!hasSkins && !keepNodes) {
 		cleanupTransforms.push(transform.flatten(), transform.join(), transform.weld());
 	} else if (!hasSkins) {

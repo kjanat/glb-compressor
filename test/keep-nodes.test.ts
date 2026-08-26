@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { Document, NodeIO } from '@gltf-transform/core';
+import { Document, type Node, NodeIO, type Scene } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { compress, init } from '../lib/mod';
@@ -13,17 +13,18 @@ import { compress, init } from '../lib/mod';
 
 const WHEEL = 'wiel_voor_band';
 const FRAME = 'frame';
+const FORK = 'voorvork';
 const WHEEL_TRANSLATION = [0, 0.32, 0.78] as const;
 
-function trianglePart(document: Document, name: string, materialName: string, spread: number): void {
-	// Elk materiaal een eigen kleur, zoals in een echt model: identieke materialen
-	// voegt gltfpack samen ongeacht hun naam.
+function trianglePart(document: Document, name: string, materialName: string, spread: number, tint = spread): Node {
+	// Elk materiaal standaard een eigen kleur: dedup() voegt gelijke materialen
+	// samen tenzij keepNodes hun namen beschermt, en dat pad test twinMaterialBytes.
 	const material =
 		document
 			.getRoot()
 			.listMaterials()
 			.find((candidate) => candidate.getName() === materialName) ??
-		document.createMaterial(materialName).setBaseColorFactor([spread, 0.1, 0.1, 1]);
+		document.createMaterial(materialName).setBaseColorFactor([tint, 0.1, 0.1, 1]);
 	// Per onderdeel eigen geometrie, zoals in een echt model: identieke driehoeken
 	// laat dedup() samenvallen en dan verweest het tweede materiaal in de fixture.
 	const position = document
@@ -35,15 +36,30 @@ function trianglePart(document: Document, name: string, materialName: string, sp
 	const mesh = document.createMesh(name).addPrimitive(prim);
 	const node = document.createNode(name).setMesh(mesh);
 	if (name === WHEEL) node.setTranslation([...WHEEL_TRANSLATION]);
-	const scene = document.getRoot().listScenes()[0] ?? document.createScene();
-	scene.addChild(node);
+	return node;
+}
+
+function sceneOf(document: Document): Scene {
+	return document.getRoot().listScenes()[0] ?? document.createScene();
 }
 
 async function bikeBytes(): Promise<Uint8Array> {
 	const document = new Document();
 	document.createBuffer();
-	trianglePart(document, WHEEL, 'rubber', 0.32);
-	trianglePart(document, FRAME, 'paint', 0.7);
+	// Het wiel hangt onder een benoemde voorvork, zoals in het echte model:
+	// stuurgeometrie draait de vork, het wiel draait daarbinnen om zijn eigen as.
+	const fork = document.createNode(FORK).addChild(trianglePart(document, WHEEL, 'rubber', 0.32));
+	sceneOf(document).addChild(fork);
+	sceneOf(document).addChild(trianglePart(document, FRAME, 'paint', 0.7));
+	return await new NodeIO().registerExtensions(ALL_EXTENSIONS).writeBinary(document);
+}
+
+async function twinMaterialBytes(): Promise<Uint8Array> {
+	const document = new Document();
+	document.createBuffer();
+	// Zelfde kleur, eigen naam: runtime-tinting zoekt op naam, dus beide moeten blijven.
+	sceneOf(document).addChild(trianglePart(document, WHEEL, 'rubber', 0.32, 0.5));
+	sceneOf(document).addChild(trianglePart(document, FRAME, 'paint', 0.7, 0.5));
 	return await new NodeIO().registerExtensions(ALL_EXTENSIONS).writeBinary(document);
 }
 
@@ -66,6 +82,14 @@ describe('keepNodes', () => {
 			.map((node) => node.getName());
 		expect(names, `nodes after compression: ${names.join(', ') || '(none)'}`).toContain(WHEEL);
 		expect(names, `nodes after compression: ${names.join(', ') || '(none)'}`).toContain(FRAME);
+		expect(names, `nodes after compression: ${names.join(', ') || '(none)'}`).toContain(FORK);
+
+		const fork = document
+			.getRoot()
+			.listNodes()
+			.find((node) => node.getName() === FORK);
+		const forkChildren = fork?.listChildren().map((child) => child.getName()) ?? [];
+		expect(forkChildren, `fork children after compression: ${forkChildren.join(', ') || '(none)'}`).toContain(WHEEL);
 
 		const wheel = document
 			.getRoot()
@@ -85,6 +109,18 @@ describe('keepNodes', () => {
 			.getRoot()
 			.listMaterials()
 			.map((material) => material.getName());
+		expect(materials, `materials after compression: ${materials.join(', ')}`).toContain('paint');
+	});
+
+	test('equal materials with distinct names both survive', async () => {
+		await init();
+		const result = await compress(await twinMaterialBytes(), { quiet: true, keepNodes: true });
+		const document = await readResult(result.buffer);
+		const materials = document
+			.getRoot()
+			.listMaterials()
+			.map((material) => material.getName());
+		expect(materials, `materials after compression: ${materials.join(', ')}`).toContain('rubber');
 		expect(materials, `materials after compression: ${materials.join(', ')}`).toContain('paint');
 	});
 });

@@ -7,17 +7,12 @@ on:
   issues: { types: [opened, assigned, labeled] }
   pull_request_review: { types: [submitted, edited] }
   pull_request: { types: [opened, synchronize] }
-  workflow_dispatch: {
-    inputs: {
-      prompt: {
-        description: "Prompt for Claude",
-        required: false,
-        type: string,
-      },
-    },
-  }
+  workflow_dispatch: { inputs: { prompt: { description: "Prompt for Claude", required: false, type: string } } }
 jobs:
   claude:
+    concurrency:
+      group: "claude-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}"
+      cancel-in-progress: false
     if: |
       github.event_name != 'pull_request' && (
         github.event_name == 'workflow_dispatch' ||
@@ -28,18 +23,17 @@ jobs:
          (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude'))
         )))
     runs-on: ubuntu-latest
-    permissions:
-      {
-        contents: write,
-        pull-requests: write,
-        issues: write,
-        id-token: write,
-        actions: read,
-      }
+    permissions: {
+      contents: write,
+      pull-requests: write,
+      issues: write,
+      id-token: write,
+      actions: read,
+    }
     steps:
-      - { uses: actions/checkout@v6, with: { fetch-depth: 0 } }
-      - { uses: actions/setup-node@v6, with: { node-version: latest } }
-      - uses: oven-sh/setup-bun@v2
+      - { uses: actions/checkout@v7, with: { fetch-depth: 0 } }
+      - { uses: actions/setup-node@v7, with: { node-version: latest } }
+      - { uses: oven-sh/setup-bun@v2, id: bun }
       - run: bun install
       - name: "@claude"
         uses: anthropics/claude-code-action@v1
@@ -55,30 +49,33 @@ jobs:
           assignee_trigger: claude
           branch_name_template: "{{prefix}}{{label}}-{{entityNumber}}-{{description}}"
           exclude_comments_by_actor: "*[bot]"
-          allowed_bots: "coderabbitai[bot],dependabot[bot],renovate[bot]"
+          allowed_bots: "coderabbitai[bot],github-actions[bot],dependabot[bot],renovate[bot]"
+          path_to_bun_executable: ${{ steps.bun.outputs.bun-path }}
           claude_args: |
-            --model claude-opus-4-6
-
+            --model opus
+            --permission-mode bypassPermissions
   claude-bot-review:
     name: "@claude v bots"
+    concurrency:
+      group: "claude-bots-${{ github.event.pull_request.number }}"
+      cancel-in-progress: true
     if: |
       github.event_name == 'pull_request' && (
         github.actor == 'dependabot[bot]' ||
         github.actor == 'renovate[bot]'
       )
     runs-on: ubuntu-latest
-    permissions:
-      {
-        contents: write,
-        pull-requests: write,
-        issues: write,
-        id-token: write,
-        actions: read,
-      }
+    permissions: {
+      contents: write,
+      pull-requests: write,
+      issues: write,
+      id-token: write,
+      actions: read,
+    }
     steps:
-      - { uses: actions/checkout@v6, with: { fetch-depth: 0 } }
-      - { uses: actions/setup-node@v6, with: { node-version: latest } }
-      - uses: oven-sh/setup-bun@v2
+      - { uses: actions/checkout@v7, with: { fetch-depth: 0 } }
+      - { uses: actions/setup-node@v7, with: { node-version: latest } }
+      - { uses: oven-sh/setup-bun@v2, id: bun }
       - run: bun install
       - name: Review bot PR
         id: claude
@@ -87,6 +84,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           use_commit_signing: true
           additional_permissions: "actions: read"
+          path_to_bun_executable: ${{ steps.bun.outputs.bun-path }}
           prompt: |
             Review this dependency update PR #${{ github.event.pull_request.number }} by ${{ github.actor }}.
             Title: ${{ github.event.pull_request.title }}
@@ -105,5 +103,4 @@ jobs:
             6. If everything passes (or after fixes), approve the PR with a summary
             7. Apply a label using `gh pr edit ${{ github.event.pull_request.number }} --add-label "claude: approved"`
                or `--add-label "claude: needs-attention"` if you couldn't fix it
-          claude_args: |
-            --model claude-opus-4-6
+          claude_args: "--model opus"
