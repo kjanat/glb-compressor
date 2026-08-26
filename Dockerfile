@@ -10,21 +10,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Clone meshoptimizer and basis_universal at pinned versions
 RUN git clone --depth 1 https://github.com/zeux/meshoptimizer.git /meshoptimizer && \
-    git clone --depth 1 --branch v2_0_2 https://github.com/BinomialLLC/basis_universal.git /basis_universal
+    git clone --depth 1 --branch v2_50 https://github.com/BinomialLLC/basis_universal.git /basis_universal
 
 WORKDIR /meshoptimizer
 
 # Build with BasisU support for texture compression (-tc flag)
-RUN cmake -B build -DCMAKE_BUILD_TYPE=Release \
-    -DMESHOPT_BUILD_GLTFPACK=ON \
-    -DMESHOPT_GLTFPACK_BASISU_PATH=/basis_universal \
-    && cmake --build build --config Release --target gltfpack -j$(nproc) \
+RUN cmake -B build -DCMAKE_BUILD_TYPE="Release" \
+    -DMESHOPT_BUILD_GLTFPACK="ON" \
+    -DMESHOPT_GLTFPACK_BASISU_PATH="/basis_universal" \
+    && cmake --build build --config Release --target gltfpack -j"$(nproc)" \
     && cp build/gltfpack /usr/local/bin/gltfpack \
     && chmod +x /usr/local/bin/gltfpack \
     && gltfpack -v
 
 # Stage 2: Bundle with bytecode (not standalone)
-FROM oven/bun:1-debian AS builder
+FROM oven/bun:debian AS builder
 
 WORKDIR /app
 
@@ -50,11 +50,11 @@ RUN bun build ./server/main.ts \
     --external draco3dgltf
 
 # Stage 3: Final minimal image
-FROM oven/bun:1-debian
+FROM oven/bun:latest
 
 # Create non-root user
 RUN groupadd --gid 1001 appuser && \
-    useradd --uid 1001 --gid 1001 --no-create-home --shell /bin/false appuser
+    useradd --no-log-init --uid 1001 --gid 1001 --no-create-home --shell /bin/false appuser
 
 # Copy gltfpack binary
 COPY --from=gltfpack-builder /usr/local/bin/gltfpack /usr/local/bin/gltfpack
