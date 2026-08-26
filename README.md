@@ -108,7 +108,8 @@ curl -X POST -F "file=@model.glb" "http://localhost:8080/compress-stream"
 ### Library
 
 ```ts
-import { compress, init, type CompressOptions } from 'glb-compressor';
+import type { CompressOptions } from 'glb-compressor';
+import { compress, init } from 'glb-compressor';
 
 await init(); // Optional, called automatically by compress()
 
@@ -129,13 +130,13 @@ Individual transforms are also exported for advanced use:
 
 ```ts
 import {
+	analyzeMeshComplexity,
+	decimateBloatedMeshes,
 	mergeByDistance,
+	normalizeWeights,
 	removeDegenerateFaces,
 	removeStaticTracksWithBake,
 	removeUnusedUVs,
-	normalizeWeights,
-	analyzeMeshComplexity,
-	decimateBloatedMeshes,
 } from 'glb-compressor';
 ```
 

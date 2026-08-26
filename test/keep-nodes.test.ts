@@ -1,6 +1,6 @@
-import { describe, expect, test } from 'bun:test';
 import { Document, type Node, NodeIO, type Scene } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { describe, expect, test } from 'bun:test';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { compress, init } from '../lib/mod';
 
@@ -19,12 +19,11 @@ const WHEEL_TRANSLATION = [0, 0.32, 0.78] as const;
 function trianglePart(document: Document, name: string, materialName: string, spread: number, tint = spread): Node {
 	// Elk materiaal standaard een eigen kleur: dedup() voegt gelijke materialen
 	// samen tenzij keepNodes hun namen beschermt, en dat pad test twinMaterialBytes.
-	const material =
-		document
-			.getRoot()
-			.listMaterials()
-			.find((candidate) => candidate.getName() === materialName) ??
-		document.createMaterial(materialName).setBaseColorFactor([tint, 0.1, 0.1, 1]);
+	const material = document
+		.getRoot()
+		.listMaterials()
+		.find((candidate) => candidate.getName() === materialName)
+		?? document.createMaterial(materialName).setBaseColorFactor([tint, 0.1, 0.1, 1]);
 	// Per onderdeel eigen geometrie, zoals in een echt model: identieke driehoeken
 	// laat dedup() samenvallen en dan verweest het tweede materiaal in de fixture.
 	const position = document

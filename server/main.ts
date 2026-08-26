@@ -33,8 +33,8 @@ import {
 	ErrorCode,
 	formatBytes,
 	MAX_FILE_SIZE,
-	PRESETS,
 	parseSimplifyRatio,
+	PRESETS,
 	sanitizeFilename,
 	validateGlbMagic,
 } from '$lib/mod';
@@ -219,9 +219,11 @@ async function handleCompress(req: globalThis.Request): Promise<Response> {
 
 	const ratio: string = ((1 - buffer.byteLength / input.byteLength) * 100).toFixed(1);
 	console.log(
-		`[${requestId}] ${formatBytes(input.byteLength)} -> ${formatBytes(
-			buffer.byteLength,
-		)} (${ratio}% reduction, ${method})`,
+		`[${requestId}] ${formatBytes(input.byteLength)} -> ${
+			formatBytes(
+				buffer.byteLength,
+			)
+		} (${ratio}% reduction, ${method})`,
 	);
 
 	return new Response(buffer, {

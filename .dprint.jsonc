@@ -1,6 +1,6 @@
 {
 	"$schema": "https://dprint.dev/schemas/v0.json",
-	"extends": "https://raw.githubusercontent.com/kjanat/kjanat/refs/heads/master/configs/dprint.biome.json",
+	"extends": "https://cdn.jsdelivr.net/gh/kjanat/kjanat@35d9bb8660321d74ea0457e9f8925a14d15e6800/configs/dprint.remote.json",
 	"useTabs": true,
 	"yaml": { "printWidth": 180 },
 	"markdown": {
