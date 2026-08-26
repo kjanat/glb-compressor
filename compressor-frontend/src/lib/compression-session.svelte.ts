@@ -185,18 +185,18 @@ interface QueueJobSnapshot {
 	logs: string[];
 	result:
 		| {
-				filename: string;
-				originalSize: number;
-				compressedSize: number;
-				ratio: number;
-				method: string;
-		  }
+			filename: string;
+			originalSize: number;
+			compressedSize: number;
+			ratio: number;
+			method: string;
+		}
 		| undefined;
 	error:
 		| {
-				code: string;
-				message: string;
-		  }
+			code: string;
+			message: string;
+		}
 		| undefined;
 }
 
@@ -214,10 +214,10 @@ function parseQueueCreateJobResponse(value: unknown): QueueCreateJobResponse | u
 
 	const { requestId, status, statusUrl, resultUrl } = value;
 	if (
-		typeof requestId !== 'string' ||
-		status !== 'queued' ||
-		typeof statusUrl !== 'string' ||
-		typeof resultUrl !== 'string'
+		typeof requestId !== 'string'
+		|| status !== 'queued'
+		|| typeof statusUrl !== 'string'
+		|| typeof resultUrl !== 'string'
 	) {
 		return undefined;
 	}
@@ -267,11 +267,11 @@ function parseQueueJobSnapshot(value: unknown): QueueJobSnapshot | undefined {
 		const method = value.result.method;
 
 		if (
-			typeof filename !== 'string' ||
-			typeof originalSize !== 'number' ||
-			typeof compressedSize !== 'number' ||
-			typeof ratio !== 'number' ||
-			typeof method !== 'string'
+			typeof filename !== 'string'
+			|| typeof originalSize !== 'number'
+			|| typeof compressedSize !== 'number'
+			|| typeof ratio !== 'number'
+			|| typeof method !== 'string'
 		) {
 			return undefined;
 		}
@@ -494,9 +494,11 @@ export function createCompressionSession(): CompressionSession {
 				error: null,
 			});
 			addLog(
-				`OK ${queued.file.name}: ${formatBytes(result.originalSize)} -> ${formatBytes(
-					result.compressedSize,
-				)} (-${result.ratio}%, ${result.method})`,
+				`OK ${queued.file.name}: ${formatBytes(result.originalSize)} -> ${
+					formatBytes(
+						result.compressedSize,
+					)
+				} (-${result.ratio}%, ${result.method})`,
 				'success',
 			);
 		} catch (error) {
@@ -505,12 +507,11 @@ export function createCompressionSession(): CompressionSession {
 				return;
 			}
 
-			const message =
-				error instanceof Error && error.message.includes('Failed to fetch')
-					? 'Cannot reach server. Is glb-server running?'
-					: error instanceof Error
-						? error.message
-						: 'Compression failed';
+			const message = error instanceof Error && error.message.includes('Failed to fetch')
+				? 'Cannot reach server. Is glb-server running?'
+				: error instanceof Error
+				? error.message
+				: 'Compression failed';
 
 			updateFile(queued.id, { status: 'error', error: message });
 			addLog(`x ${queued.file.name}: ${message}`, 'error');
@@ -548,12 +549,11 @@ export function createCompressionSession(): CompressionSession {
 			const normalizedDecodedUri = normalizeResourceKey(decodedUri);
 			const basename = getUriBasename(normalizedDecodedUri);
 
-			const match =
-				resourceIndex.get(uri) ??
-				resourceIndex.get(normalizedUri) ??
-				resourceIndex.get(decodedUri) ??
-				resourceIndex.get(normalizedDecodedUri) ??
-				resourceIndex.get(basename);
+			const match = resourceIndex.get(uri)
+				?? resourceIndex.get(normalizedUri)
+				?? resourceIndex.get(decodedUri)
+				?? resourceIndex.get(normalizedDecodedUri)
+				?? resourceIndex.get(basename);
 
 			if (!match) {
 				missingUris.push(uri);
@@ -684,19 +684,17 @@ export function createCompressionSession(): CompressionSession {
 		const blob = await response.blob();
 
 		const headerRequestId = response.headers.get('X-Request-ID');
-		const originalSize =
-			parseFiniteNumber(response.headers.get('X-Original-Size')) ?? snapshot.result?.originalSize ?? queued.file.size;
-		const compressedSize =
-			parseFiniteNumber(response.headers.get('X-Compressed-Size')) ?? snapshot.result?.compressedSize ?? blob.size;
+		const originalSize = parseFiniteNumber(response.headers.get('X-Original-Size')) ?? snapshot.result?.originalSize
+			?? queued.file.size;
+		const compressedSize = parseFiniteNumber(response.headers.get('X-Compressed-Size'))
+			?? snapshot.result?.compressedSize ?? blob.size;
 		const method = response.headers.get('X-Compression-Method') ?? snapshot.result?.method ?? 'unknown';
-		const ratio =
-			parseFiniteNumber(response.headers.get('X-Compression-Ratio')) ??
-			snapshot.result?.ratio ??
-			toRatioPercent(originalSize, compressedSize);
-		const filename =
-			parseContentDispositionFilename(response.headers.get('content-disposition')) ??
-			snapshot.result?.filename ??
-			fallbackOutputFilename(queued.file.name);
+		const ratio = parseFiniteNumber(response.headers.get('X-Compression-Ratio'))
+			?? snapshot.result?.ratio
+			?? toRatioPercent(originalSize, compressedSize);
+		const filename = parseContentDispositionFilename(response.headers.get('content-disposition'))
+			?? snapshot.result?.filename
+			?? fallbackOutputFilename(queued.file.name);
 
 		return {
 			blob,

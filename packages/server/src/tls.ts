@@ -1,7 +1,7 @@
+import * as x509 from '@peculiar/x509';
 import { mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import * as x509 from '@peculiar/x509';
 
 const TLS_DIR = join(homedir(), '.glb-compressor', 'tls');
 const CERT_PATH = join(TLS_DIR, 'cert.pem');

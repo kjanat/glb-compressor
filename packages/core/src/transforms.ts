@@ -22,19 +22,16 @@ import type {
 	GLTF,
 	Mesh,
 	Node,
-	Primitive,
+	Root,
 	TextureInfo,
 	Transform,
 	TypedArray,
 } from '@gltf-transform/core';
-import * as transform from '@gltf-transform/functions';
-import type { MeshoptSimplifier as MeshoptSimplifierType } from 'meshoptimizer';
-
-type LogFn = (msg: string) => void;
-
-const defaultLog: LogFn = (msg: string): void => {
-	console.log(msg);
-};
+import { simplify } from '@gltf-transform/functions';
+import { space as s } from 'ansispeck';
+import type { MeshoptSimplifier } from 'meshoptimizer';
+import { log } from 'node:console';
+import { toLoc } from './utils';
 
 /** Index into a `TypedArray`, asserting the value is defined.
  *
@@ -44,70 +41,6 @@ function at(arr: TypedArray | number[], i: number): number {
 	const v = arr[i];
 	if (v === undefined) throw new RangeError(`Index ${i} out of bounds (length ${arr.length})`);
 	return v;
-}
-
-function createTypedArrayWithLength(source: TypedArray, length: number): TypedArray {
-	if (source instanceof Uint8Array) return new Uint8Array(length);
-	if (source instanceof Uint16Array) return new Uint16Array(length);
-	if (source instanceof Uint32Array) return new Uint32Array(length);
-	if (source instanceof Int8Array) return new Int8Array(length);
-	if (source instanceof Int16Array) return new Int16Array(length);
-	if (source instanceof Float32Array) return new Float32Array(length);
-	return new Uint32Array(length);
-}
-
-function createIndexArrayLike(source: TypedArray, values: number[]): TypedArray {
-	let maxIndex = 0;
-	for (const value of values) {
-		if (value > maxIndex) maxIndex = value;
-	}
-
-	if (source instanceof Uint8Array) {
-		if (maxIndex <= 0xff) return Uint8Array.from(values);
-		if (maxIndex <= 0xffff) return Uint16Array.from(values);
-		return Uint32Array.from(values);
-	}
-
-	if (source instanceof Uint16Array) {
-		if (maxIndex <= 0xffff) return Uint16Array.from(values);
-		return Uint32Array.from(values);
-	}
-
-	if (source instanceof Uint32Array) {
-		return Uint32Array.from(values);
-	}
-
-	return Uint32Array.from(values);
-}
-
-function renormalizeIntegerWeights(values: number[], maxComponent: number): number[] {
-	const total: number = values.reduce((sum: number, value: number): number => sum + value, 0);
-	if (total <= 0) return values;
-
-	const scaled: number[] = values.map((value: number): number => (value * maxComponent) / total);
-	const normalized: number[] = scaled.map((value: number): number => Math.floor(value));
-	let missing: number = maxComponent - normalized.reduce((sum: number, value: number): number => sum + value, 0);
-
-	if (missing > 0) {
-		const remainderOrder: number[] = scaled
-			.map((value: number, index: number): { index: number; remainder: number } => ({
-				index,
-				remainder: value - Math.floor(value),
-			}))
-			.sort((a, b): number => b.remainder - a.remainder)
-			.map((entry): number => entry.index);
-
-		for (let i = 0; i < remainderOrder.length && missing > 0; i++) {
-			const index = remainderOrder[i];
-			if (index === undefined) continue;
-			const current = normalized[index];
-			if (current === undefined) continue;
-			normalized[index] = current + 1;
-			missing--;
-		}
-	}
-
-	return normalized;
 }
 
 /**
@@ -125,15 +58,13 @@ function renormalizeIntegerWeights(values: number[], maxComponent: number): numb
  *                    Internally converted to a spatial-hash precision of `1 / tolerance`.
  * @returns A glTF-Transform `Transform` function.
  */
-export function mergeByDistance(tolerance = 0.0001, log: LogFn = defaultLog): Transform {
+export function mergeByDistance(tolerance = 0.0001): Transform {
 	return (doc: Document): void => {
 		const precision: number = 1 / tolerance;
 		let totalRemoved: number = 0;
 
 		for (const mesh of doc.getRoot().listMeshes()) {
 			for (const prim of mesh.listPrimitives()) {
-				if (prim.listTargets().length > 0) continue;
-
 				const posAccessor: Accessor | null = prim.getAttribute('POSITION');
 				const indicesAccessor: Accessor | null = prim.getIndices();
 				if (!posAccessor || !indicesAccessor) continue;
@@ -155,9 +86,8 @@ export function mergeByDistance(tolerance = 0.0001, log: LogFn = defaultLog): Tr
 					const key = `${x},${y},${z}`;
 
 					const existing: number | undefined = vertexMap.get(key);
-					if (existing !== undefined) {
-						remap[i] = existing;
-					} else {
+					if (existing !== undefined) remap[i] = existing;
+					else {
 						const newIdx: number = newToOld.length;
 						vertexMap.set(key, newIdx);
 						newToOld.push(i);
@@ -170,10 +100,8 @@ export function mergeByDistance(tolerance = 0.0001, log: LogFn = defaultLog): Tr
 				totalRemoved += removed;
 
 				// Remap indices
-				const newIndices: TypedArray = createTypedArrayWithLength(indices, indices.length);
-				for (let i: number = 0; i < indices.length; i++) {
-					newIndices[i] = at(remap, at(indices, i));
-				}
+				const newIndices = new Uint32Array(indices.length);
+				for (let i: number = 0; i < indices.length; i++) newIndices[i] = at(remap, at(indices, i));
 
 				// Compact all vertex attributes
 				for (const semantic of prim.listSemantics()) {
@@ -184,23 +112,19 @@ export function mergeByDistance(tolerance = 0.0001, log: LogFn = defaultLog): Tr
 					if (!oldArray) continue;
 
 					const itemSize: number = attr.getElementSize();
-					const TypedArrayCtor = oldArray.constructor as new (len: number) => TypedArray;
+					const TypedArrayCtor = oldArray.constructor as new(len: number) => TypedArray;
 					const newArray: TypedArray = new TypedArrayCtor(newToOld.length * itemSize);
 
 					for (let i: number = 0; i < newToOld.length; i++) {
 						const oldIdx: number = at(newToOld, i);
-						for (let j: number = 0; j < itemSize; j++) {
-							newArray[i * itemSize + j] = at(oldArray, oldIdx * itemSize + j);
-						}
+						for (let j: number = 0; j < itemSize; j++) newArray[i * itemSize + j] = at(oldArray, oldIdx * itemSize + j);
 					}
 					attr.setArray(newArray);
 				}
-
 				indicesAccessor.setArray(newIndices);
 			}
 		}
-
-		if (totalRemoved > 0) log(`  mergeByDistance: removed ${totalRemoved} duplicate vertices`);
+		if (totalRemoved > 0) log(`${s(2)}mergeByDistance: removed ${totalRemoved} duplicate vertices`);
 	};
 }
 
@@ -213,19 +137,17 @@ export function mergeByDistance(tolerance = 0.0001, log: LogFn = defaultLog): Tr
  *
  * @param threshold   - Vertex count above which a mesh is considered "bloated".
  * @param targetRatio - Desired vertex reduction factor (0.5 = target 50% of threshold).
- * @param simplifier  - The meshoptimizer `MeshoptSimplifier` WASM module instance.
+ * @param simplifier  - The meshoptimizer {@linkcode MeshoptSimplifier} WASM module instance.
  * @returns A glTF-Transform `Transform` function (async).
  */
 export function decimateBloatedMeshes(
 	threshold = 2000,
 	targetRatio = 0.5,
-	simplifier: typeof MeshoptSimplifierType,
-	log: LogFn = defaultLog,
+	simplifier: typeof MeshoptSimplifier,
 ): Transform {
 	return async (doc: Document): Promise<void> => {
 		const dominated: Array<{
 			mesh: string;
-			primitive: Primitive;
 			verts: number;
 			targetVerts: number;
 		}> = [];
@@ -240,7 +162,6 @@ export function decimateBloatedMeshes(
 					const targetVerts: number = Math.floor(threshold * targetRatio);
 					dominated.push({
 						mesh: mesh.getName() || 'unnamed',
-						primitive: prim,
 						verts: vertCount,
 						targetVerts,
 					});
@@ -249,18 +170,20 @@ export function decimateBloatedMeshes(
 		}
 
 		if (dominated.length > 0) {
-			log(`  decimateBloated: ${dominated.length} mesh(es) exceed ${threshold} verts`);
-			await simplifier.ready;
-
-			for (const { mesh, primitive, verts, targetVerts } of dominated) {
-				log(`    ${mesh}: ${verts} -> ~${targetVerts} verts`);
-				const ratio: number = Math.max(0.1, Math.min(targetVerts / verts, 0.8));
-				transform.simplifyPrimitive(primitive, {
-					simplifier,
-					ratio,
-					error: 0.01,
-				});
+			log(`${s(2)}decimateBloated: ${dominated.length} mesh(es) exceed ${threshold} verts`);
+			for (const { mesh, verts, targetVerts } of dominated) {
+				log(`${s(4)}${mesh}: ${verts} -> ~${targetVerts} verts`);
 			}
+
+			// Use glTF-Transform's simplify with aggressive ratio for bloated meshes
+			const ratio: number = targetRatio * (threshold / Math.max(...dominated.map((d): number => d.verts)));
+			await doc.transform(
+				simplify({
+					simplifier,
+					ratio: Math.max(0.1, Math.min(ratio, 0.8)),
+					error: 0.01,
+				}),
+			);
 		}
 	};
 }
@@ -275,28 +198,9 @@ export function decimateBloatedMeshes(
  *
  * @returns A glTF-Transform `Transform` function.
  */
-export function removeUnusedUVs(log: LogFn = defaultLog): Transform {
+export function removeUnusedUVs(): Transform {
 	return (doc: Document): void => {
 		let removed: number = 0;
-
-		const hasPotentialMaterialTextureExtensions: boolean = doc
-			.getRoot()
-			.listExtensionsUsed()
-			.some((ext): boolean => {
-				const name = ext.extensionName;
-				return (
-					name.startsWith('KHR_materials_') ||
-					name.startsWith('EXT_materials_') ||
-					name.startsWith('KHR_texture_') ||
-					name.startsWith('EXT_texture_') ||
-					name.startsWith('MSFT_texture_')
-				);
-			});
-
-		if (hasPotentialMaterialTextureExtensions) {
-			log('  removeUnusedUVs: skipped (material/texture extensions present)');
-			return;
-		}
 
 		// Collect UV sets actually used by materials
 		const usedUVSets = new Set<number>();
@@ -309,15 +213,11 @@ export function removeUnusedUVs(log: LogFn = defaultLog): Transform {
 				mat.getEmissiveTextureInfo(),
 				mat.getMetallicRoughnessTextureInfo(),
 			];
-			for (const info of texInfos) {
-				if (info) usedUVSets.add(info.getTexCoord());
-			}
+			for (const info of texInfos) if (info) usedUVSets.add(info.getTexCoord());
 		}
 
 		// Default to `TEXCOORD_0` if any textures exist
-		if (doc.getRoot().listTextures().length > 0 && usedUVSets.size === 0) {
-			usedUVSets.add(0);
-		}
+		if (doc.getRoot().listTextures().length > 0 && usedUVSets.size === 0) usedUVSets.add(0);
 
 		// Remove unused `TEXCOORD_N` attributes
 		for (const mesh of doc.getRoot().listMeshes()) {
@@ -333,8 +233,7 @@ export function removeUnusedUVs(log: LogFn = defaultLog): Transform {
 				}
 			}
 		}
-
-		if (removed > 0) log(`  removeUnusedUVs: removed ${removed} unused UV set(s)`);
+		if (removed > 0) log(`${s(2)}removeUnusedUVs: removed ${removed} unused UV set(s)`);
 	};
 }
 
@@ -348,7 +247,7 @@ export function removeUnusedUVs(log: LogFn = defaultLog): Transform {
  *
  * @returns A glTF-Transform `Transform` function.
  */
-export function normalizeWeights(log: LogFn = defaultLog): Transform {
+export function normalizeWeights(): Transform {
 	return (doc: Document): void => {
 		let normalized: number = 0;
 
@@ -364,45 +263,17 @@ export function normalizeWeights(log: LogFn = defaultLog): Transform {
 				const count: number = arr.length / elementSize;
 
 				for (let i: number = 0; i < count; i++) {
-					const baseIndex: number = i * elementSize;
-
-					if (arr instanceof Uint8Array || arr instanceof Uint16Array) {
-						const maxComponent: number = arr instanceof Uint8Array ? 0xff : 0xffff;
-						const values: number[] = [];
-						let sum = 0;
-						for (let j: number = 0; j < elementSize; j++) {
-							const value: number = at(arr, baseIndex + j);
-							values.push(value);
-							sum += value;
-						}
-
-						if (sum > 0 && sum !== maxComponent) {
-							const normalizedValues: number[] = renormalizeIntegerWeights(values, maxComponent);
-							for (let j: number = 0; j < elementSize; j++) {
-								arr[baseIndex + j] = at(normalizedValues, j);
-							}
-							normalized++;
-						}
-						continue;
-					}
-
 					let sum: number = 0;
-					for (let j: number = 0; j < elementSize; j++) {
-						sum += at(arr, baseIndex + j);
-					}
+					for (let j: number = 0; j < elementSize; j++) sum += at(arr, i * elementSize + j);
 					if (sum > 0 && Math.abs(sum - 1.0) > 1e-6) {
-						for (let j: number = 0; j < elementSize; j++) {
-							arr[baseIndex + j] = at(arr, baseIndex + j) / sum;
-						}
+						for (let j: number = 0; j < elementSize; j++) arr[i * elementSize + j] = at(arr, i * elementSize + j) / sum;
 						normalized++;
 					}
 				}
-
 				weights0.setArray(arr);
 			}
 		}
-
-		if (normalized > 0) log(`  normalizeWeights: fixed ${normalized} vertices`);
+		if (normalized > 0) log(`${s(2)}normalizeWeights: fixed ${normalized} vertices`);
 	};
 }
 
@@ -419,11 +290,7 @@ export function normalizeWeights(log: LogFn = defaultLog): Transform {
  * @param totalWarnThreshold - Total scene vertex count that triggers a high-complexity warning.
  * @returns A glTF-Transform `Transform` function.
  */
-export function analyzeMeshComplexity(
-	warnThreshold = 2000,
-	totalWarnThreshold = 15000,
-	log: LogFn = defaultLog,
-): Transform {
+export function analyzeMeshComplexity(warnThreshold = 2000, totalWarnThreshold = 15000): Transform {
 	return (doc: Document): void => {
 		let totalVerts: number = 0;
 		const bloated: Array<{ name: string; verts: number }> = [];
@@ -435,32 +302,25 @@ export function analyzeMeshComplexity(
 				if (pos) meshVerts += pos.getCount();
 			}
 			totalVerts += meshVerts;
-
-			if (meshVerts > warnThreshold) {
-				bloated.push({ name: mesh.getName() || 'unnamed', verts: meshVerts });
-			}
+			if (meshVerts > warnThreshold) bloated.push({ name: mesh.getName() || 'unnamed', verts: meshVerts });
 		}
 
 		const skins: number = doc.getRoot().listSkins().length;
 		const animations: number = doc.getRoot().listAnimations().length;
 		const meshCount: number = doc.getRoot().listMeshes().length;
 
-		log(`  Scene: ${meshCount} meshes, ${totalVerts.toLocaleString()} verts, ${skins} skins, ${animations} animations`);
+		log(`${s(2)}Scene: ${meshCount} meshes, ${toLoc(totalVerts)} verts, ${skins} skins, ${animations} animations`);
 
 		if (bloated.length > 0) {
-			log(`  Bloated meshes (>${warnThreshold} verts):`);
+			log(`${s(2)}Bloated meshes (>${warnThreshold} verts):`);
 			for (const { name, verts } of bloated.slice(0, 5)) {
-				log(`    ${name}: ${verts.toLocaleString()} verts`);
+				log(`${s(4)}${name}: ${toLoc(verts)} verts`);
 			}
-			if (bloated.length > 5) {
-				log(`    ... and ${bloated.length - 5} more`);
-			}
+			if (bloated.length > 5) log(`${s(4)}... and ${bloated.length - 5} more`);
 		}
 
 		if (totalVerts > totalWarnThreshold) {
-			log(
-				`  Warning: High total vertex count (${totalVerts.toLocaleString()} > ${totalWarnThreshold.toLocaleString()})`,
-			);
+			log(`${s(2)}Warning: High total vertex count (${toLoc(totalVerts)} > ${toLoc(totalWarnThreshold)})`);
 		}
 	};
 }
@@ -476,7 +336,7 @@ export function analyzeMeshComplexity(
  *                  Triangles smaller than this are discarded.
  * @returns A glTF-Transform `Transform` function.
  */
-export function removeDegenerateFaces(minArea = 1e-10, log: LogFn = defaultLog): Transform {
+export function removeDegenerateFaces(minArea = 1e-10): Transform {
 	return (doc: Document): void => {
 		let totalRemoved: number = 0;
 
@@ -532,18 +392,12 @@ export function removeDegenerateFaces(minArea = 1e-10, log: LogFn = defaultLog):
 						totalRemoved++;
 						continue;
 					}
-
 					validIndices.push(i0, i1, i2);
 				}
-
-				if (validIndices.length < indices.length) {
-					const nextIndices: TypedArray = createIndexArrayLike(indices, validIndices);
-					indicesAccessor.setArray(nextIndices);
-				}
+				if (validIndices.length < indices.length) indicesAccessor.setArray(new Uint32Array(validIndices));
 			}
 		}
-
-		if (totalRemoved > 0) log(`  removeDegenerateFaces: removed ${totalRemoved} degenerate triangles`);
+		if (totalRemoved > 0) log(`${s(2)}removeDegenerateFaces: removed ${totalRemoved} degenerate triangles`);
 	};
 }
 
@@ -567,7 +421,7 @@ export function removeDegenerateFaces(minArea = 1e-10, log: LogFn = defaultLog):
  * @param tolerance - Maximum per-component difference to consider two values equal.
  * @returns A glTF-Transform `Transform` function.
  */
-export function removeStaticTracksWithBake(tolerance = 1e-6, log: LogFn = defaultLog): Transform {
+export function removeStaticTracksWithBake(tolerance = 1e-6): Transform {
 	return (doc: Document): void => {
 		let removedTracks: number = 0;
 		let skippedNoConsensus: number = 0;
@@ -578,13 +432,8 @@ export function removeStaticTracksWithBake(tolerance = 1e-6, log: LogFn = defaul
 		// Pass 1: Analyze every channel across all animations
 		// For each node+path, collect: is each channel static? what's its value?
 		// Key: "nodeIndex::path"  (use index for uniqueness, not name)
-		const nodeIndexMap = new Map<
-			ReturnType<typeof doc.getRoot>['listNodes'] extends () => (infer N)[] ? N : never,
-			number
-		>();
-		for (const [i, node] of doc.getRoot().listNodes().entries()) {
-			nodeIndexMap.set(node, i);
-		}
+		const nodeIndexMap = new Map<Root['listNodes'] extends () => (infer N)[] ? N : never, number>();
+		for (const [i, node] of doc.getRoot().listNodes().entries()) nodeIndexMap.set(node, i);
 
 		interface TrackInfo {
 			isStatic: boolean;
@@ -656,9 +505,7 @@ export function removeStaticTracksWithBake(tolerance = 1e-6, log: LogFn = defaul
 			const reference = firstTrack.staticValue;
 			if (!reference) continue;
 			const allAgree: boolean = tracks.every((t: TrackInfo): boolean => {
-				if (!t.staticValue || t.staticValue.length !== reference.length) {
-					return false;
-				}
+				if (!t.staticValue || t.staticValue.length !== reference.length) return false;
 				return t.staticValue.every((v: number, i: number): boolean => Math.abs(v - at(reference, i)) <= tolerance);
 			});
 			if (!allAgree) continue;
@@ -690,20 +537,17 @@ export function removeStaticTracksWithBake(tolerance = 1e-6, log: LogFn = defaul
 				}
 			}
 
-			const matchesBase: boolean =
-				baseValue !== null &&
-				baseValue.length === reference.length &&
-				baseValue.every((v: number, i: number): boolean => Math.abs(v - at(reference, i)) <= tolerance);
+			const matchesBase: boolean = baseValue !== null
+				&& baseValue.length === reference.length
+				&& baseValue.every((v: number, i: number): boolean => Math.abs(v - at(reference, i)) <= tolerance);
 
-			if (matchesBase) {
-				removableKeys.add(key);
-			}
+			if (matchesBase) removableKeys.add(key);
 		}
 
 		// Pass 3: Remove only globally-consensed tracks
 		for (const animation of animations) {
 			for (const channel of animation.listChannels()) {
-				const targetNode: Node | null = channel.getTargetNode();
+				const targetNode = channel.getTargetNode();
 				const targetPath: GLTF.AnimationChannelTargetPath | null = channel.getTargetPath();
 				if (!targetNode || !targetPath) continue;
 
@@ -741,10 +585,8 @@ export function removeStaticTracksWithBake(tolerance = 1e-6, log: LogFn = defaul
 
 		if (removedTracks > 0 || skippedNoConsensus > 0) {
 			const parts: string[] = [`${removedTracks} tracks removed (global consensus)`];
-			if (skippedNoConsensus > 0) {
-				parts.push(`${skippedNoConsensus} kept (no consensus)`);
-			}
-			log(`  removeStaticTracks: ${parts.join(', ')}`);
+			if (skippedNoConsensus > 0) parts.push(`${skippedNoConsensus} kept (no consensus)`);
+			log(`${s(2)}removeStaticTracks: ${parts.join(', ')}`);
 		}
 	};
 }
@@ -757,13 +599,14 @@ export function removeStaticTracksWithBake(tolerance = 1e-6, log: LogFn = defaul
  *
  * @returns A glTF-Transform `Transform` function.
  */
-export function analyzeAnimations(log: LogFn = defaultLog): Transform {
+export function analyzeAnimations(): Transform {
 	return (doc: Document): void => {
 		const animations: Animation[] = doc.getRoot().listAnimations();
-		if (animations.length === 0) return;
+		const { length: anLen } = animations;
+		if (anLen === 0) return;
 
-		let totalKeyframes: number = 0;
-		let totalChannels: number = 0;
+		let totalKeyframes = 0;
+		let totalChannels = 0;
 
 		for (const animation of animations) {
 			const channels: AnimationChannel[] = animation.listChannels();
@@ -776,8 +619,6 @@ export function analyzeAnimations(log: LogFn = defaultLog): Transform {
 			}
 		}
 
-		log(
-			`  Animations: ${animations.length} clips, ${totalChannels} channels, ${totalKeyframes.toLocaleString()} keyframes`,
-		);
+		log(`${s(2)}Animations: ${anLen} clips, ${totalChannels} channels, ${toLoc(totalKeyframes)} keyframes`);
 	};
 }

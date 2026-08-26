@@ -26,12 +26,12 @@
 		"dist/types"
 	],
 	"dependencies": {
-		"@gltf-transform/core": "4.3.0",
-		"@gltf-transform/extensions": "4.3.0",
-		"@gltf-transform/functions": "4.3.0",
+		"@gltf-transform/core": "4.4.2",
+		"@gltf-transform/extensions": "4.4.2",
+		"@gltf-transform/functions": "4.4.2",
 		"draco3dgltf": "1.5.7",
-		"meshoptimizer": "1.0.1",
-		"sharp": "0.34.5"
+		"meshoptimizer": "1.2.0",
+		"sharp": "0.35.4"
 	},
 	"devDependencies": {
 		"@glb-compressor/bun-polyfill": "workspace:*"

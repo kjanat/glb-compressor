@@ -30,11 +30,11 @@ Reimplements Bun APIs using Node.js stdlib:
 
 ## Complexity hotspots
 
-- `serve()` is ~100 lines bridging Bun's route-based API to Node's req/res.
-  Must handle URL construction, header conversion, body streaming, three-way
-  route matching, and Web Response -> Node ServerResponse with backpressure.
-- `Glob.scan()` has two code paths: globstar vs simple patterns. Handles
-  Node 18 vs 20 `readdir` API differences (`entry.parentPath` vs `entry.path`).
+- `serve()` is ~100 lines bridging Bun's route-based API to Node's req/res. Must
+  handle URL construction, header conversion, body streaming, three-way route
+  matching, and Web Response -> Node ServerResponse with backpressure.
+- `Glob.scan()` has two code paths: globstar vs simple patterns. Handles Node 18
+  vs 20 `readdir` API differences (`entry.parentPath` vs `entry.path`).
 - `file().arrayBuffer()` uses `buf.buffer.slice(buf.byteOffset, ...)` because
   Node's Buffer can share the underlying ArrayBuffer with other views.
 
@@ -42,7 +42,8 @@ Reimplements Bun APIs using Node.js stdlib:
 
 - Don't import from `core/`, `cli/`, or `server/` -- build infra is
   self-contained.
-- Don't use polyfills at runtime -- they exist only for the Node.js build target.
-- `as Type` casts exist here for Node->Web API bridging -- tolerated
-  but minimize additions.
+- Don't use polyfills at runtime -- they exist only for the Node.js build
+  target.
+- `as Type` casts exist here for Node->Web API bridging -- tolerated but
+  minimize additions.
 - Don't add Bun API polyfills without verifying both Node 18 and 20 compat.

@@ -1,14 +1,7 @@
 {
 	"hard_tabs": true,
 	"tab_size": 2,
-	"formatter": [
-		{
-			"external": {
-				"command": "dprint",
-				"arguments": ["fmt", "--stdin", "{buffer_path}"]
-			}
-		}
-	],
+	"formatter": [{ "external": { "command": "dprint", "arguments": ["fmt", "--stdin", "{buffer_path}"] } }],
 	"prettier": { "allowed": false },
 	"wrap_guides": [80],
 	"file_types": {

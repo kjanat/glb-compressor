@@ -15,7 +15,7 @@ import { GLB_MAGIC } from './constants';
  * @param bytes - Raw byte count.
  * @returns Formatted string, e.g. `"1.5 KB"` or `"3.21 MB"`.
  */
-export function formatBytes(bytes: number): string {
+function formatBytes(bytes: number): string {
 	if (bytes < 1024) return `${bytes} B`;
 	const kb: number = bytes / 1024;
 	if (kb < 1024) return `${kb.toFixed(1)} KB`;
@@ -32,7 +32,7 @@ export function formatBytes(bytes: number): string {
  * @param name - Raw filename, possibly containing path separators or invalid characters.
  * @returns A filesystem-safe filename.
  */
-export function sanitizeFilename(name: string): string {
+function sanitizeFilename(name: string): string {
 	const base = name.split(/[\\/]/).pop() || '';
 	const clean = base
 		// biome-ignore lint/suspicious/noControlCharactersInRegex: security
@@ -49,7 +49,7 @@ export function sanitizeFilename(name: string): string {
  * @param input - Raw file bytes to check.
  * @throws {Error} If the buffer is too small or the magic number doesn't match.
  */
-export function validateGlbMagic(input: Uint8Array): void {
+function validateGlbMagic(input: Uint8Array): void {
 	if (input.length < 4) {
 		throw new Error('File too small to be a valid GLB');
 	}
@@ -69,7 +69,7 @@ export function validateGlbMagic(input: Uint8Array): void {
  * @param fn - Async function receiving the temp directory path.
  * @returns The value returned by `fn`.
  */
-export async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
+async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
 	const dir: string = await mkdtemp(join(tmpdir(), 'gltf-compress-'));
 	try {
 		return await fn(dir);
@@ -87,7 +87,7 @@ export async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T
  * @param raw - String value from query param or CLI flag, or `null`.
  * @returns Parsed ratio in `(0, 1)`, or `undefined` if invalid.
  */
-export function parseSimplifyRatio(raw: string | null): number | undefined {
+function parseSimplifyRatio(raw: string | null): number | undefined {
 	if (!raw) return undefined;
 	const trimmed = raw.trim();
 	if (trimmed.length === 0) return undefined;
@@ -97,3 +97,16 @@ export function parseSimplifyRatio(raw: string | null): number | undefined {
 	if (Number.isNaN(n) || n <= 0 || n >= 1) return undefined;
 	return n;
 }
+
+/**
+ * Format a number using the given locale, falling back to the default locale.
+ *
+ * @param n  - Number to format.
+ * @param l  - Optional {@link Intl.LocalesArgument | locale string or array of locale strings} (e.g. `"en-US"`).
+ * @param lo - Optional {@linkcode Intl.NumberFormatOptions} for custom formatting.
+ * @returns Formatted number string.
+ */
+const toLoc = (n: number, l?: Intl.LocalesArgument, lo?: Intl.NumberFormatOptions) =>
+	n.toLocaleString(l ?? undefined, lo ?? undefined);
+
+export { formatBytes, parseSimplifyRatio, sanitizeFilename, toLoc, validateGlbMagic, withTempDir };

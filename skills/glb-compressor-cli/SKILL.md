@@ -2,13 +2,15 @@
 name: glb-compressor-cli
 description: Compress GLB/glTF 3D models using the glb-compressor CLI. Use when running compression from the command line, writing shell scripts that compress models, or integrating into CI/CD pipelines.
 license: MIT
-compatibility: Requires Bun >= 1.3 or Node.js >= 18.17. Optional gltfpack binary for best compression.
+compatibility: Requires Bun >= 1.3 or Node.js >= 22.22.2. Optional gltfpack binary for best compression.
 ---
 
 # glb-compressor CLI
 
 Command-line tool for compressing GLB/glTF 3D model files. Supports glob
-patterns, configurable presets, mesh simplification, and batch processing.
+patterns, configurable presets, mesh simplification, and batch processing. Built
+on [dreamcli](https://dreamcli.kjanat.dev), so `--help`, `--version`, `--quiet`,
+and `--json` are framework-owned root flags.
 
 ## Binary Name
 
@@ -22,15 +24,17 @@ glb-compressor <files...> [options]
 
 ## Options
 
-| Flag                   | Description                                | Default                                   |
-| ---------------------- | ------------------------------------------ | ----------------------------------------- |
-| `-o, --output <dir>`   | Output directory                           | Same as input (with `-compressed` suffix) |
-| `-p, --preset <name>`  | Compression preset                         | `default`                                 |
-| `-s, --simplify <0-1>` | Mesh simplification ratio (e.g. 0.5 = 50%) | None                                      |
-| `-q, --quiet`          | Suppress progress output (for scripting)   | `false`                                   |
-| `-f, --force`          | Overwrite existing output files            | `false`                                   |
-| `-h, --help`           | Show help text                             |                                           |
-| `-v, --version`        | Show version                               |                                           |
+| Flag                   | Description                                                                                          | Default                                   |
+| ---------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `-o, --output <dir>`   | Output directory                                                                                     | Same as input (with `-compressed` suffix) |
+| `-p, --preset <name>`  | Compression preset                                                                                   | `default`                                 |
+| `-s, --simplify <0-1>` | Mesh simplification ratio (e.g. 0.5 = 50%)                                                           | None                                      |
+| `-k, --keep-nodes`     | Preserve node hierarchy, node and material names, for parts moved at runtime by name (wheels, doors) | `false`                                   |
+| `-f, --force`          | Overwrite existing output files                                                                      | `false`                                   |
+| `-q, --quiet`          | Suppress informational output (root flag, for scripting)                                             | `false`                                   |
+| `--json`               | Emit machine-readable JSON output (root flag)                                                        | `false`                                   |
+| `-h, --help`           | Show help text                                                                                       |                                           |
+| `-V, --version`        | Show version                                                                                         |                                           |
 
 ## Presets
 
@@ -71,10 +75,11 @@ input file.
 
 ## Exit Codes
 
-| Code | Meaning                           |
-| ---- | --------------------------------- |
-| `0`  | All files compressed successfully |
-| `1`  | One or more files failed          |
+| Code | Meaning                                             |
+| ---- | --------------------------------------------------- |
+| `0`  | All files compressed successfully                   |
+| `1`  | One or more files failed, or invalid simplify ratio |
+| `2`  | Parse or constraint error (e.g. unknown preset)     |
 
 ## Pipeline
 

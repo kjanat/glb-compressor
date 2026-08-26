@@ -111,9 +111,9 @@ createCompressionSession() -> session
 
 ## Complexity hotspots
 
-- `compression-session.svelte.ts` (~770 lines) -- largest file; hand-rolled
-  JSON parsers for all server responses (no `as`/`any`); `pollJob()` is an
-  infinite `for(;;)` loop with no timeout/max-retry guard; `compressAll()` fires
+- `compression-session.svelte.ts` (~770 lines) -- largest file; hand-rolled JSON
+  parsers for all server responses (no `as`/`any`); `pollJob()` is an infinite
+  `for(;;)` loop with no timeout/max-retry guard; `compressAll()` fires
   `Promise.all` with no concurrency limit; `resourcePool` SvelteMap grows
   monotonically (never cleared)
 - `parseQueueJobSnapshot()` (~80 lines) -- deepest nesting for manual runtime

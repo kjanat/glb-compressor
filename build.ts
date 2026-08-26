@@ -9,13 +9,13 @@
  *   dist/types/         TypeScript declarations
  */
 
-import { resolve } from 'node:path';
 import { bunPolyfillPlugin } from '@glb-compressor/bun-polyfill/plugin';
 import type { BunPlugin } from 'bun';
+import { resolve } from 'node:path';
 
+// The CLI is bundled separately by tsdown (see tsdown.config.ts).
 const entrypoints: string[] = [
 	'./packages/core/src/mod.ts',
-	'./packages/cli/src/main.ts',
 	'./packages/server/src/main.ts',
 	'./packages/server/src/worker.ts',
 	'./packages/shared-types/src/index.ts',
@@ -134,15 +134,17 @@ async function build() {
 
 	// ── 4. TypeScript declarations ───────────────────────────
 	console.log('Generating TypeScript declarations...');
-	// tsgo is provided by @typescript/native-preview in devDependencies
-	const tscProc = Bun.spawn(['bun', 'run', 'tsgo', '-p', 'tsconfig.build.json'], {
+	const tscProc = Bun.spawn(['bun', 'run', 'tsc', '-p', 'tsconfig.build.json'], {
 		stdout: 'pipe',
 		stderr: 'pipe',
 	});
 	const tscExit = await tscProc.exited;
 	if (tscExit !== 0) {
+		// tsc writes its diagnostics to stdout
+		const tscStdout = await new Response(tscProc.stdout).text();
 		const tscStderr = await new Response(tscProc.stderr).text();
 		console.error('TypeScript declaration generation failed:');
+		console.error(tscStdout);
 		console.error(tscStderr);
 		process.exit(1);
 	}

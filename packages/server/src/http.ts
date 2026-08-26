@@ -3,8 +3,8 @@ import {
 	ErrorCode,
 	formatBytes,
 	MAX_FILE_SIZE,
-	PRESETS,
 	parseSimplifyRatio,
+	PRESETS,
 	sanitizeFilename,
 	validateGlbMagic,
 } from '@glb-compressor/core';

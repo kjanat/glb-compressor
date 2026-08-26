@@ -2,7 +2,7 @@
 name: glb-compressor-library
 description: Programmatic GLB/glTF 3D model compression library with a multi-phase pipeline, skinned-model awareness, and custom glTF-Transform transforms. Use when integrating compression into application code, building custom pipelines, or using individual transforms.
 license: MIT
-compatibility: Requires Bun >= 1.3 or Node.js >= 18.17. Externals (never bundled) - sharp, draco3dgltf, meshoptimizer.
+compatibility: Requires Bun >= 1.3 or Node.js >= 22.22.2. Externals (never bundled) - sharp, draco3dgltf, meshoptimizer.
 references:
   - references/api.md
   - references/transforms.md
@@ -48,13 +48,14 @@ Main entry point. Runs the full 6-phase pipeline.
 
 **Parameters:**
 
-| Param                   | Type             | Description                                              |
-| ----------------------- | ---------------- | -------------------------------------------------------- |
-| `input`                 | `Uint8Array`     | Raw GLB file bytes                                       |
-| `options.preset`        | `CompressPreset` | `'default'` \| `'balanced'` \| `'aggressive'` \| `'max'` |
-| `options.simplifyRatio` | `number`         | Additional simplification in `(0, 1)`                    |
-| `options.onLog`         | `(msg) => void`  | Progress callback (used by SSE)                          |
-| `options.quiet`         | `boolean`        | Suppress console output                                  |
+| Param                   | Type             | Description                                                            |
+| ----------------------- | ---------------- | ---------------------------------------------------------------------- |
+| `input`                 | `Uint8Array`     | Raw GLB file bytes                                                     |
+| `options.preset`        | `CompressPreset` | `'default'` \| `'balanced'` \| `'aggressive'` \| `'max'`               |
+| `options.simplifyRatio` | `number`         | Additional simplification in `(0, 1)`                                  |
+| `options.onLog`         | `(msg) => void`  | Progress callback (used by SSE)                                        |
+| `options.quiet`         | `boolean`        | Suppress console output                                                |
+| `options.keepNodes`     | `boolean`        | Preserve node hierarchy + node/material names (runtime-animated parts) |
 
 **Returns:** `CompressResult`
 

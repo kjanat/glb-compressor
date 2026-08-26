@@ -175,7 +175,7 @@ export class CompressionJobQueue {
 		}
 
 		const job = this.jobs.get(nextId);
-		if (!job || !job.input) {
+		if (!job?.input) {
 			this.dispatchNext();
 			return;
 		}

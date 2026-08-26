@@ -2,13 +2,13 @@
 name: glb-compressor-server
 description: HTTP server for compressing GLB/glTF 3D models via REST API and SSE streaming. Use when building web integrations, setting up a compression microservice, or adding real-time compression progress to a frontend.
 license: MIT
-compatibility: Requires Bun >= 1.3 or Node.js >= 18.17. Optional gltfpack binary for best compression.
+compatibility: Requires Bun >= 1.3 or Node.js >= 22.22.2. Optional gltfpack binary for best compression.
 ---
 
 # glb-compressor Server
 
-HTTP compression server built on `Bun.serve()`. Provides synchronous,
-streaming (SSE), and async job-queue endpoints with full CORS support.
+HTTP compression server built on `Bun.serve()`. Provides synchronous, streaming
+(SSE), and async job-queue endpoints with full CORS support.
 
 ## Starting the Server
 

@@ -158,7 +158,7 @@ function App() {
 	}, [files]);
 
 	useEffect(() => {
-		if (logOpen) {
+		if (logOpen && logs.length > 0) {
 			logsRef.current?.scrollTo({ top: logsRef.current.scrollHeight });
 		}
 	}, [logs, logOpen]);
@@ -318,9 +318,11 @@ function App() {
 							error: null,
 						});
 						addLog(
-							`OK ${queued.file.name}: ${formatBytes(event.originalSize)} -> ${formatBytes(
-								event.compressedSize,
-							)} (-${event.ratio}%, ${event.method})`,
+							`OK ${queued.file.name}: ${formatBytes(event.originalSize)} -> ${
+								formatBytes(
+									event.compressedSize,
+								)
+							} (-${event.ratio}%, ${event.method})`,
 							'success',
 						);
 					},
@@ -342,12 +344,11 @@ function App() {
 				const latest = filesStateRef.current.find((item) => item.id === queued.id);
 				if (latest?.status !== 'compressing') return;
 
-				const message =
-					error instanceof Error && error.message.includes('Failed to fetch')
-						? 'Cannot reach server. Is glb-server running?'
-						: error instanceof Error
-							? error.message
-							: 'Compression failed';
+				const message = error instanceof Error && error.message.includes('Failed to fetch')
+					? 'Cannot reach server. Is glb-server running?'
+					: error instanceof Error
+					? error.message
+					: 'Compression failed';
 
 				updateFile(queued.id, {
 					status: 'error',
@@ -431,12 +432,12 @@ function App() {
 	}, [files, isCompressing, pendingCount, serverOnline]);
 
 	return (
-		<div className="wrapper">
+		<div className='wrapper'>
 			<header>
-				<div className="header-row">
-					<p className="tag">{'// glb-compressor'}</p>
+				<div className='header-row'>
+					<p className='tag'>{'// glb-compressor'}</p>
 					<div className={`server-status ${serverOnline ? 'online' : 'offline'}`}>
-						<span className="server-dot"></span>
+						<span className='server-dot'></span>
 						<span>{serverOnline ? 'Connected' : 'Offline'}</span>
 					</div>
 				</div>
@@ -445,18 +446,18 @@ function App() {
 					<br />
 					<span>your GLB.</span>
 				</h1>
-				<p className="subtitle">Drop files. Pick a preset. Done.</p>
+				<p className='subtitle'>Drop files. Pick a preset. Done.</p>
 			</header>
 
-			<div className="setup">
+			<div className='setup'>
 				<button
-					type="button"
+					type='button'
 					className={`setup-header ${setupOpen ? 'open' : ''}`}
 					onClick={() => setSetupOpen((open) => !open)}
 				>
-					<div className="setup-header-left">
-						<span className="setup-badge">First time?</span>
-						<span className="setup-title">Click here for setup instructions</span>
+					<div className='setup-header-left'>
+						<span className='setup-badge'>First time?</span>
+						<span className='setup-title'>Click here for setup instructions</span>
 					</div>
 					<span className={`setup-chevron ${setupOpen ? 'open' : ''}`}>&#9660;</span>
 				</button>
@@ -476,32 +477,32 @@ function App() {
 						Step 4 you do <strong style={{ color: '#999' }}>each time</strong> you want to use this page.
 					</p>
 
-					<div className="step">
-						<div className="step-num">1</div>
-						<div className="step-content">
-							<div className="step-title">Open PowerShell</div>
-							<div className="step-desc">
+					<div className='step'>
+						<div className='step-num'>1</div>
+						<div className='step-content'>
+							<div className='step-title'>Open PowerShell</div>
+							<div className='step-desc'>
 								Press the <strong>Windows key</strong> on your keyboard (bottom-left, looks like &#8862;).
 								<br />
-								Type <strong>PowerShell</strong> and press <strong>Enter</strong>.<br />A blue or black window will open
-								- that is normal.
+								Type <strong>PowerShell</strong> and press{' '}
+								<strong>Enter</strong>.<br />A blue or black window will open - that is normal.
 							</div>
 						</div>
 					</div>
 
-					<div className="step">
-						<div className="step-num">2</div>
-						<div className="step-content">
-							<div className="step-title">Install Bun - only once</div>
-							<div className="step-desc">
+					<div className='step'>
+						<div className='step-num'>2</div>
+						<div className='step-content'>
+							<div className='step-title'>Install Bun - only once</div>
+							<div className='step-desc'>
 								Click <strong>Copy</strong> below, then paste in PowerShell and press
 								<strong>Enter</strong>.
 							</div>
-							<div className="cmd-block">
-								<span className="cmd-text">powershell -c "irm bun.sh/install.ps1 | iex"</span>
+							<div className='cmd-block'>
+								<span className='cmd-text'>powershell -c "irm bun.sh/install.ps1 | iex"</span>
 								<button
-									type="button"
-									className="copy-btn"
+									type='button'
+									className='copy-btn'
 									onClick={(event) => {
 										onCopyCommand('powershell -c "irm bun.sh/install.ps1 | iex"', event.currentTarget);
 									}}
@@ -509,23 +510,23 @@ function App() {
 									Copy
 								</button>
 							</div>
-							<div className="step-note">&#9888; When finished: close PowerShell completely, then reopen it.</div>
+							<div className='step-note'>&#9888; When finished: close PowerShell completely, then reopen it.</div>
 						</div>
 					</div>
 
-					<div className="step">
-						<div className="step-num">3</div>
-						<div className="step-content">
-							<div className="step-title">Install the compressor - only once</div>
-							<div className="step-desc">
+					<div className='step'>
+						<div className='step-num'>3</div>
+						<div className='step-content'>
+							<div className='step-title'>Install the compressor - only once</div>
+							<div className='step-desc'>
 								In the reopened PowerShell, click <strong>Copy</strong>, paste, then press
 								<strong>Enter</strong>.
 							</div>
-							<div className="cmd-block">
-								<span className="cmd-text">bun i -g glb-compressor</span>
+							<div className='cmd-block'>
+								<span className='cmd-text'>bun i -g glb-compressor</span>
 								<button
-									type="button"
-									className="copy-btn"
+									type='button'
+									className='copy-btn'
 									onClick={(event) => {
 										onCopyCommand('bun i -g glb-compressor', event.currentTarget);
 									}}
@@ -533,22 +534,22 @@ function App() {
 									Copy
 								</button>
 							</div>
-							<div className="step-note">Wait for it to finish. Then continue.</div>
+							<div className='step-note'>Wait for it to finish. Then continue.</div>
 						</div>
 					</div>
 
-					<hr className="divider" />
+					<hr className='divider' />
 
-					<div className="step">
-						<div className="step-num">4</div>
-						<div className="step-content">
-							<div className="step-title">Start the server - every time you use this page</div>
-							<div className="step-desc">Open PowerShell, then run this:</div>
-							<div className="cmd-block">
-								<span className="cmd-text">glb-server</span>
+					<div className='step'>
+						<div className='step-num'>4</div>
+						<div className='step-content'>
+							<div className='step-title'>Start the server - every time you use this page</div>
+							<div className='step-desc'>Open PowerShell, then run this:</div>
+							<div className='cmd-block'>
+								<span className='cmd-text'>glb-server</span>
 								<button
-									type="button"
-									className="copy-btn"
+									type='button'
+									className='copy-btn'
 									onClick={(event) => {
 										onCopyCommand('glb-server', event.currentTarget);
 									}}
@@ -556,7 +557,7 @@ function App() {
 									Copy
 								</button>
 							</div>
-							<div className="warning-box">
+							<div className='warning-box'>
 								<strong>&#9888; Keep PowerShell open!</strong>
 								Do not close that window while using this page.
 							</div>
@@ -566,7 +567,7 @@ function App() {
 			</div>
 
 			<label
-				htmlFor="fileInput"
+				htmlFor='fileInput'
 				className={`dropzone ${dragOver ? 'dragover' : ''} ${acceptedPulse ? 'accepted' : ''}`}
 				onDragOver={(event) => {
 					event.preventDefault();
@@ -582,10 +583,10 @@ function App() {
 				}}
 			>
 				<input
-					id="fileInput"
+					id='fileInput'
 					ref={fileInputRef}
-					type="file"
-					accept=".glb,.gltf"
+					type='file'
+					accept='.glb,.gltf'
 					multiple
 					onChange={(event) => {
 						if (event.currentTarget.files && event.currentTarget.files.length > 0) {
@@ -594,18 +595,18 @@ function App() {
 						event.currentTarget.value = '';
 					}}
 				/>
-				<span className="drop-icon">&#128230;</span>
-				<p className="drop-title">Drop your GLB files here</p>
-				<p className="drop-sub">or click to browse - .glb / .gltf - multiple files OK</p>
+				<span className='drop-icon'>&#128230;</span>
+				<p className='drop-title'>Drop your GLB files here</p>
+				<p className='drop-sub'>or click to browse - .glb / .gltf - multiple files OK</p>
 			</label>
 
 			<div className={`file-list ${files.length > 0 ? 'active' : ''}`}>
-				<div className="file-list-header">
-					<span className="file-count">
+				<div className='file-list-header'>
+					<span className='file-count'>
 						{files.length} file{files.length === 1 ? '' : 's'}
 						{doneCount > 0 ? ` · ${doneCount} compressed` : ''}
 					</span>
-					<button type="button" className="file-clear" onClick={clearFiles}>
+					<button type='button' className='file-clear' onClick={clearFiles}>
 						Clear all
 					</button>
 				</div>
@@ -613,27 +614,27 @@ function App() {
 				<div>
 					{files.map((item) => (
 						<div key={item.id} className={`file-item ${item.status}`}>
-							<span className="file-icon">
+							<span className='file-icon'>
 								{item.status === 'pending' && '○'}
-								{item.status === 'compressing' && <span className="spinner">⟳</span>}
+								{item.status === 'compressing' && <span className='spinner'>⟳</span>}
 								{item.status === 'done' && '✓'}
 								{item.status === 'error' && '✗'}
 							</span>
-							<span className="file-name" title={item.file.name}>
+							<span className='file-name' title={item.file.name}>
 								{item.file.name}
 							</span>
-							<span className="file-size">
+							<span className='file-size'>
 								{item.status === 'done' && item.result
 									? `${formatBytes(item.result.originalSize)} -> ${formatBytes(item.result.compressedSize)}`
 									: formatBytes(item.file.size)}
-								{item.status === 'done' && item.result && <span className="file-ratio">-{item.result.ratio}%</span>}
+								{item.status === 'done' && item.result && <span className='file-ratio'>-{item.result.ratio}%</span>}
 							</span>
-							<span className="file-actions">
+							<span className='file-actions'>
 								{item.status === 'done' && item.result && (
 									<button
-										type="button"
-										className="file-dl"
-										title="Download"
+										type='button'
+										className='file-dl'
+										title='Download'
 										onClick={() => {
 											if (!item.result) return;
 											downloadBase64(item.result.data, item.result.filename);
@@ -643,7 +644,12 @@ function App() {
 									</button>
 								)}
 								{item.status !== 'compressing' && (
-									<button type="button" className="file-rm" title="Remove" onClick={() => removeFile(item.id)}>
+									<button
+										type='button'
+										className='file-rm'
+										title='Remove'
+										onClick={() => removeFile(item.id)}
+									>
 										×
 									</button>
 								)}
@@ -653,29 +659,29 @@ function App() {
 				</div>
 			</div>
 
-			<p className="section-label">Compression preset</p>
-			<div className="presets">
+			<p className='section-label'>Compression preset</p>
+			<div className='presets'>
 				{PRESETS.map((preset) => (
 					<button
 						key={preset.id}
-						type="button"
+						type='button'
 						className={`preset-btn ${selectedPreset === preset.id ? 'active' : ''}`}
 						onClick={() => {
 							if (isCompressing) return;
 							setSelectedPreset(preset.id);
 						}}
 					>
-						<span className="preset-name">{preset.name}</span>
-						<span className="preset-reduction">{preset.reduction}</span>
-						<span className="preset-desc">{preset.desc}</span>
+						<span className='preset-name'>{preset.name}</span>
+						<span className='preset-reduction'>{preset.reduction}</span>
+						<span className='preset-desc'>{preset.desc}</span>
 					</button>
 				))}
 			</div>
 
-			<div className="options-row">
-				<label className="option-label">
+			<div className='options-row'>
+				<label className='option-label'>
 					<input
-						type="checkbox"
+						type='checkbox'
 						checked={simplifyEnabled}
 						onChange={(event) => setSimplifyEnabled(event.currentTarget.checked)}
 					/>
@@ -683,7 +689,7 @@ function App() {
 				</label>
 				<div className={`simplify-slider ${simplifyEnabled ? 'active' : ''}`}>
 					<input
-						type="range"
+						type='range'
 						min={10}
 						max={90}
 						step={10}
@@ -692,13 +698,13 @@ function App() {
 							setSimplifyRatio(Number(event.currentTarget.value) / 100);
 						}}
 					/>
-					<span className="simplify-value">{simplifyRatio.toFixed(1)}</span>
+					<span className='simplify-value'>{simplifyRatio.toFixed(1)}</span>
 				</div>
 			</div>
 
 			<button
-				type="button"
-				className="btn"
+				type='button'
+				className='btn'
 				onClick={() => {
 					compressAll().catch((error) => {
 						console.warn('Compression batch failed:', error);
@@ -710,16 +716,16 @@ function App() {
 			</button>
 
 			<div className={`log-console ${logOpen ? 'active' : ''}`}>
-				<div className="log-header">
-					<span className="log-title">Compression log</span>
-					<button type="button" className="log-close" title="Close" onClick={() => setLogOpen(false)}>
+				<div className='log-header'>
+					<span className='log-title'>Compression log</span>
+					<button type='button' className='log-close' title='Close' onClick={() => setLogOpen(false)}>
 						&times;
 					</button>
 				</div>
-				<div ref={logsRef} className="log-entries">
+				<div ref={logsRef} className='log-entries'>
 					{logs.map((line) => (
 						<div key={line.id} className={`log-line${line.type !== 'info' ? ` ${line.type}` : ''}`}>
-							<span className="log-time">{line.time}</span>
+							<span className='log-time'>{line.time}</span>
 							{line.message}
 						</div>
 					))}

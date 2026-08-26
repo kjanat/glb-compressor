@@ -33,21 +33,20 @@ function parseWorkerRequest(value: unknown): WorkerRequestMessage | undefined {
 	}
 
 	if (
-		value.type !== 'compress' ||
-		typeof value.requestId !== 'string' ||
-		typeof value.filename !== 'string' ||
-		!(value.input instanceof Uint8Array) ||
-		!isCompressPreset(value.preset)
+		value.type !== 'compress'
+		|| typeof value.requestId !== 'string'
+		|| typeof value.filename !== 'string'
+		|| !(value.input instanceof Uint8Array)
+		|| !isCompressPreset(value.preset)
 	) {
 		return undefined;
 	}
 
-	const simplifyRatio =
-		typeof value.simplifyRatio === 'number'
-			? value.simplifyRatio
-			: value.simplifyRatio === undefined
-				? undefined
-				: null;
+	const simplifyRatio = typeof value.simplifyRatio === 'number'
+		? value.simplifyRatio
+		: value.simplifyRatio === undefined
+		? undefined
+		: null;
 	if (simplifyRatio === null) {
 		return undefined;
 	}

@@ -23,12 +23,12 @@ export function parseWorkerResponse(value: unknown): WorkerResponseMessage | und
 
 	if (value.type === 'result') {
 		if (
-			typeof value.filename !== 'string' ||
-			!(value.buffer instanceof Uint8Array) ||
-			typeof value.originalSize !== 'number' ||
-			typeof value.compressedSize !== 'number' ||
-			typeof value.ratio !== 'number' ||
-			typeof value.method !== 'string'
+			typeof value.filename !== 'string'
+			|| !(value.buffer instanceof Uint8Array)
+			|| typeof value.originalSize !== 'number'
+			|| typeof value.compressedSize !== 'number'
+			|| typeof value.ratio !== 'number'
+			|| typeof value.method !== 'string'
 		) {
 			return undefined;
 		}

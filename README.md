@@ -108,7 +108,8 @@ curl -X POST -F "file=@model.glb" "http://localhost:8080/compress-stream"
 ### Library
 
 ```ts
-import { compress, type CompressOptions, init } from 'glb-compressor';
+import type { CompressOptions } from 'glb-compressor';
+import { compress, init } from 'glb-compressor';
 
 await init(); // Optional, called automatically by compress()
 

@@ -106,9 +106,11 @@ async function handleCompress(req: globalThis.Request): Promise<Response> {
 	}
 
 	console.log(
-		`[${requestId}] ${formatBytes(result.originalSize)} -> ${formatBytes(
-			result.compressedSize,
-		)} (${result.ratio}% reduction, ${result.method})`,
+		`[${requestId}] ${formatBytes(result.originalSize)} -> ${
+			formatBytes(
+				result.compressedSize,
+			)
+		} (${result.ratio}% reduction, ${result.method})`,
 	);
 
 	return new Response(result.buffer, {

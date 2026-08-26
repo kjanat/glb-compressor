@@ -75,7 +75,8 @@ texture/mesh thresholds, `DEFAULT_PORT`.
 
 - `export *` for `constants.ts` and `transforms.ts` (everything auto-public)
 - Named exports for `compress.ts` and `utils.ts` (curated)
-- Adding any `export` to constants or transforms automatically becomes public API
+- Adding any `export` to constants or transforms automatically becomes public
+  API
 
 ## Complexity hotspots
 

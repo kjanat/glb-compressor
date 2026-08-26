@@ -1,9 +1,13 @@
 {
 	"$schema": "https://dprint.dev/schemas/v0.json",
-	"extends": [
-		"https://raw.githubusercontent.com/kjanat/kjanat/refs/heads/master/configs/dprint.biome.json",
-		"https://raw.githubusercontent.com/kjanat/kjanat/refs/heads/master/configs/dprint.remote.json",
-	],
+	"extends": "https://cdn.jsdelivr.net/gh/kjanat/kjanat@35d9bb8660321d74ea0457e9f8925a14d15e6800/configs/dprint.remote.json",
+	"useTabs": true,
+	"yaml": { "printWidth": 180 },
+	"markdown": {
+		"textWrap": "always",
+		"emphasisKind": "asterisks",
+		"associations": [".rules", "*.md", "CLAUDE.md", "AGENTS.md"]
+	},
 	"exec": {
 		"cwd": "${configDir}",
 		"commands": [{
@@ -18,7 +22,5 @@
 		}],
 	},
 	"excludes": ["**/node_modules", "**/bun.lock"],
-	"plugins": [
-		"https://plugins.dprint.dev/exec-0.6.0.json@a054130d458f124f9b5c91484833828950723a5af3f8ff2bd1523bd47b83b364",
-	],
+	"plugins": ["npm:@dprint/exec@0.7.3/plugin.json@704701df449dd7e942a71144773778ac529d68c2e4657bfc236d393b898b9a67"]
 }

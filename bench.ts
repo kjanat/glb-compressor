@@ -22,7 +22,7 @@ import {
 } from '@glb-compressor/core';
 import { type Document, NodeIO, type Transform } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import * as transform from '@gltf-transform/functions';
+import * as tf from '@gltf-transform/functions';
 import draco3d from 'draco3dgltf';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
@@ -106,26 +106,26 @@ async function preProcess(input: Uint8Array, opts: PreProcessOptions = {}): Prom
 	// Phase 1: cleanup
 	const cleanup: Transform[] = [
 		analyzeMeshComplexity(MESH_WARN_THRESHOLD, TOTAL_WARN_THRESHOLD),
-		transform.dedup(),
-		transform.prune(),
+		tf.dedup(),
+		tf.prune(),
 		removeUnusedUVs(),
 	];
 	if (!hasSkins) {
-		cleanup.push(transform.flatten(), transform.join(), transform.weld());
+		cleanup.push(tf.flatten(), tf.join(), tf.weld());
 	} else if (opts.weldExact) {
-		cleanup.push(transform.weld());
+		cleanup.push(tf.weld());
 	}
 	await doc.transform(...cleanup);
 
 	// Phase 2: GPU opts
-	const gpu: Transform[] = [transform.instance({ min: INSTANCE_MIN }), transform.sparse()];
+	const gpu: Transform[] = [tf.instance({ min: INSTANCE_MIN }), tf.sparse()];
 	if (!hasSkins || opts.reorderSkinned) {
-		gpu.splice(1, 0, transform.reorder({ encoder: MeshoptEncoder }));
+		gpu.splice(1, 0, tf.reorder({ encoder: MeshoptEncoder }));
 	}
 	await doc.transform(...gpu);
 
 	// Phase 3: Animation
-	const anim: Transform[] = [transform.resample({ tolerance: opts.resampleTolerance }), removeStaticTracksWithBake()];
+	const anim: Transform[] = [tf.resample({ tolerance: opts.resampleTolerance }), removeStaticTracksWithBake()];
 	if (hasSkins) anim.push(normalizeWeights());
 	await doc.transform(...anim);
 
@@ -133,7 +133,7 @@ async function preProcess(input: Uint8Array, opts: PreProcessOptions = {}): Prom
 	if (!opts.skipWebp) {
 		const maxSz = opts.textureMaxSize ?? TEXTURE_MAX_SIZE;
 		await doc.transform(
-			transform.textureCompress({
+			tf.textureCompress({
 				targetFormat: 'webp',
 				encoder: sharp,
 				resize: [maxSz, maxSz],
@@ -143,10 +143,10 @@ async function preProcess(input: Uint8Array, opts: PreProcessOptions = {}): Prom
 
 	// Phase 5: Quantize (optionally for skins)
 	if (opts.quantizeSkinned && hasSkins) {
-		await doc.transform(transform.quantize(opts.quantizeOpts ?? {}));
+		await doc.transform(tf.quantize(opts.quantizeOpts ?? {}));
 	}
 
-	await doc.transform(transform.prune());
+	await doc.transform(tf.prune());
 
 	return await io.writeBinary(doc);
 }

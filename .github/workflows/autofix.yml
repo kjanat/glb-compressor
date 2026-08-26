@@ -9,11 +9,13 @@ permissions: { contents: read }
 jobs:
   autofix:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.stack == null
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
-      - uses: kjanat/install-dprint@v1
-      - run: bunx --bun biome check --write
+      - uses: kjanat/dprint-check@v3
+        with: { install-only: true }
+      - run: bunx --bun biome lint --write
       - run: dprint config update
       - run: dprint fmt --allow-no-files --diff --excludes ".github"
 
