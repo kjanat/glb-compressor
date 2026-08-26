@@ -108,21 +108,21 @@ curl -X POST -F "file=@model.glb" "http://localhost:8080/compress-stream"
 ### Library
 
 ```ts
-import type { CompressOptions } from "glb-compressor";
-import { compress, init } from "glb-compressor";
+import type { CompressOptions } from 'glb-compressor';
+import { compress, init } from 'glb-compressor';
 
 await init(); // Optional, called automatically by compress()
 
-const glb = new Uint8Array(await Bun.file("model.glb").arrayBuffer());
+const glb = new Uint8Array(await Bun.file('model.glb').arrayBuffer());
 const result = await compress(glb, {
-  preset: "aggressive",
-  simplifyRatio: 0.5,
-  onLog: (msg) => console.log(msg),
+	preset: 'aggressive',
+	simplifyRatio: 0.5,
+	onLog: (msg) => console.log(msg),
 });
 
-await Bun.write("compressed.glb", result.buffer);
+await Bun.write('compressed.glb', result.buffer);
 console.log(
-  `${result.method}: ${result.originalSize} -> ${result.buffer.byteLength}`,
+	`${result.method}: ${result.originalSize} -> ${result.buffer.byteLength}`,
 );
 ```
 
@@ -130,14 +130,14 @@ Individual transforms are also exported for advanced use:
 
 ```ts
 import {
-  analyzeMeshComplexity,
-  decimateBloatedMeshes,
-  mergeByDistance,
-  normalizeWeights,
-  removeDegenerateFaces,
-  removeStaticTracksWithBake,
-  removeUnusedUVs,
-} from "glb-compressor";
+	analyzeMeshComplexity,
+	decimateBloatedMeshes,
+	mergeByDistance,
+	normalizeWeights,
+	removeDegenerateFaces,
+	removeStaticTracksWithBake,
+	removeUnusedUVs,
+} from 'glb-compressor';
 ```
 
 ## Presets

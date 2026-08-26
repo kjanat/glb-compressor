@@ -109,10 +109,10 @@ function spawn(args: string[], opts?: SpawnOptions) {
 	const stderr = child.stderr
 		? (Readable.toWeb(child.stderr) as ReadableStream)
 		: new ReadableStream({
-			start(c) {
-				c.close();
-			},
-		});
+				start(c) {
+					c.close();
+				},
+			});
 
 	const exited = new Promise<number>((resolve) => {
 		child.on('close', (code) => resolve(code ?? 1));
@@ -325,8 +325,8 @@ export class Glob {
 			if (!entry.isFile()) continue;
 			if (hasGlobstar) {
 				// entry.parentPath (Node 20+) or entry.path (Node 18.17+)
-				const entryDir = (entry as { parentPath?: string }).parentPath ?? (entry as { path?: string }).path
-					?? searchDir;
+				const entryDir =
+					(entry as { parentPath?: string }).parentPath ?? (entry as { path?: string }).path ?? searchDir;
 				const rel = relative(cwd, join(entryDir, entry.name));
 				// Normalize path separators on Windows
 				const normalized = rel.replace(/\\/g, '/');

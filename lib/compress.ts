@@ -75,67 +75,48 @@ interface GltfpackPresetConfig {
  */
 export const PRESETS: Record<CompressPreset, GltfpackPresetConfig> = {
 	default: {
-		skinned: /* dprint-ignore */ [
-			'-vp', '20',
-			'-kn'
-		],
-		static: /* dprint-ignore */ [
-			'-vp', '16'
-		],
+		skinned: /* dprint-ignore */ ['-vp', '20', '-kn'],
+		static: /* dprint-ignore */ ['-vp', '16'],
 	},
 	balanced: {
-		skinned: /* dprint-ignore */ [
-			'-vp', '20',
-			'-kn',
-			'-at', '14',
-			'-ar', '10',
-			'-as', '14',
-			'-af', '24',
-		],
-		static: /* dprint-ignore */ [
-			'-vp', '16',
-			'-at', '14',
-			'-ar', '10',
-			'-as', '14',
-			'-af', '24'
-		],
+		skinned: /* dprint-ignore */ ['-vp', '20', '-kn', '-at', '14', '-ar', '10', '-as', '14', '-af', '24'],
+		static: /* dprint-ignore */ ['-vp', '16', '-at', '14', '-ar', '10', '-as', '14', '-af', '24'],
 	},
 	aggressive: {
-		skinned: /* dprint-ignore */ [
-			'-vp', '20',
-			'-kn',
-			'-at', '12',
-			'-ar', '8',
-			'-as', '12',
-			'-af', '15',
-		],
-		static: /* dprint-ignore */ [
-			'-vp', '14',
-			'-at', '12',
-			'-ar', '8',
-			'-as', '12',
-			'-af', '15'
-		],
+		skinned: /* dprint-ignore */ ['-vp', '20', '-kn', '-at', '12', '-ar', '8', '-as', '12', '-af', '15'],
+		static: /* dprint-ignore */ ['-vp', '14', '-at', '12', '-ar', '8', '-as', '12', '-af', '15'],
 	},
 	max: {
 		skinned: /* dprint-ignore */ [
 			'-cz',
-			'-vp', '14',
-			'-at', '12',
-			'-ar', '8',
-			'-as', '12',
-			'-af', '15',
-			'-si', '0.95',
+			'-vp',
+			'14',
+			'-at',
+			'12',
+			'-ar',
+			'8',
+			'-as',
+			'12',
+			'-af',
+			'15',
+			'-si',
+			'0.95',
 			'-slb',
 		],
 		static: /* dprint-ignore */ [
 			'-cz',
-			'-vp', '14',
-			'-at', '12',
-			'-ar', '8',
-			'-as', '12',
-			'-af', '15',
-			'-si', '0.95',
+			'-vp',
+			'14',
+			'-at',
+			'12',
+			'-ar',
+			'8',
+			'-as',
+			'12',
+			'-af',
+			'15',
+			'-si',
+			'0.95',
 			'-slb',
 		],
 	},
@@ -454,8 +435,10 @@ async function compressWithGltfpack(
 			const keepFlags = keepNodes ? [...(presetFlags.includes('-kn') ? [] : ['-kn']), '-km'] : [];
 			const args = /* dprint-ignore */ [
 				'gltfpack',
-				'-i', inputPath,
-				'-o', outputPath,
+				'-i',
+				inputPath,
+				'-o',
+				outputPath,
 				...(hasCompressFlag ? [] : ['-cc']),
 				'-tc',
 				...presetFlags,
