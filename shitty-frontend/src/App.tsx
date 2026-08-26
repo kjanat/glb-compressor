@@ -493,18 +493,18 @@ function App() {
 					<div className='step'>
 						<div className='step-num'>2</div>
 						<div className='step-content'>
-							<div className='step-title'>Install Bun - only once</div>
+							<div className='step-title'>Install Node.js - only once</div>
 							<div className='step-desc'>
 								Click <strong>Copy</strong> below, then paste in PowerShell and press
 								<strong>Enter</strong>.
 							</div>
 							<div className='cmd-block'>
-								<span className='cmd-text'>powershell -c "irm bun.sh/install.ps1 | iex"</span>
+								<span className='cmd-text'>winget install OpenJS.NodeJS.LTS</span>
 								<button
 									type='button'
 									className='copy-btn'
 									onClick={(event) => {
-										onCopyCommand('powershell -c "irm bun.sh/install.ps1 | iex"', event.currentTarget);
+										onCopyCommand('winget install OpenJS.NodeJS.LTS', event.currentTarget);
 									}}
 								>
 									Copy
@@ -523,12 +523,12 @@ function App() {
 								<strong>Enter</strong>.
 							</div>
 							<div className='cmd-block'>
-								<span className='cmd-text'>bun i -g glb-compressor</span>
+								<span className='cmd-text'>npm install --global glb-compressor</span>
 								<button
 									type='button'
 									className='copy-btn'
 									onClick={(event) => {
-										onCopyCommand('bun i -g glb-compressor', event.currentTarget);
+										onCopyCommand('npm install --global glb-compressor', event.currentTarget);
 									}}
 								>
 									Copy

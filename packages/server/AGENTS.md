@@ -1,13 +1,13 @@
 # @glb-compressor/server
 
-HTTP API package exposing GLB compression over `Bun.serve()`. Supports synchronous, SSE streaming, and async job queue
-modalities.
+HTTP API package exposing GLB compression over native `node:http` / `node:https`. Supports synchronous, SSE streaming,
+and async job queue modalities.
 
 ## Files
 
 ```text
 src/
-  main.ts             Server entrypoint, route handlers, Bun.serve() config
+  main.ts             Server entrypoint, routes, Fetch/Node HTTP bridge
   http.ts             CORS headers, request parsing, error response factory
   job-types.ts        Domain types (JobRecord, JobSnapshot, JobEvent, etc.) + factory
   job-protocol.ts     Worker<->main thread message protocol types
@@ -17,7 +17,7 @@ src/
   tls.ts              TLS cert resolution (custom, cached self-signed, or auto-generated)
 
 test/
-  jobs-queue.test.ts  Integration test for /jobs API (bun:test, real server)
+  jobs-queue.test.ts  Integration test for /jobs API (Vitest, real server)
   fixtures/           valid-minimal.gltf, invalid.gltf, invalid.glb
 ```
 
@@ -51,15 +51,14 @@ awaits completion, `/compress-stream` subscribes via pub/sub for SSE, `/jobs` re
 
 ### Routing architecture
 
-Static routes (`/healthz`, `/compress`, `/compress-stream`) use Bun's `routes` object. Dynamic routes (`/jobs/:id`,
-`/jobs/:id/result`) use the `fetch` fallback with manual `parseJobRoute()` parsing -- Bun's `routes` doesn't support
-path params.
+The native Node request listener converts `IncomingMessage` to a standard `Request`, dispatches static and dynamic
+routes through `handleRequest()`, then streams the standard `Response` back to `ServerResponse` with backpressure.
 
 ## Job queue architecture
 
 - **Serial execution**: one job at a time, FIFO pending queue
-- **Worker-first**: compression runs in a `Worker` thread by default; falls back to main-thread `runInline()` when
-  Workers unavailable (Node.js runtime)
+- **Worker-first**: compression runs in a `node:worker_threads` Worker and falls back to main-thread `runInline()` if
+  worker initialization fails
 - **Worker crash recovery**: error event -> fail active job -> recreate Worker
 - **Pub/sub with replay**: `subscribe()` replays existing logs to late-joining SSE clients before registering for live
   events
@@ -76,8 +75,7 @@ Server generates and caches self-signed TLS certs by default:
 3. Cached at `~/.glb-compressor/tls/*.pem` -> reuse if present
 4. Auto-generate EC P-256 cert (SAN: localhost, 127.0.0.1, ::1, 365-day)
 
-Uses `node:fs/promises` for `mkdir` + `Bun.file`/`Bun.write` for I/O (mixed because `Bun.write` doesn't create parent
-dirs).
+Uses `node:fs/promises` for certificate reads, writes, and cache directory creation.
 
 ## Complexity hotspots
 

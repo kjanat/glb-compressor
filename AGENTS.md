@@ -1,7 +1,7 @@
 # glb-compressor
 
-Multi-phase GLB/glTF 3D model compression toolkit. Bun-first monorepo with dual-runtime (Bun + Node.js) build. CLI
-(`glb-compressor`), HTTP server (`glb-server`), library API, and SvelteKit web UI.
+Multi-phase GLB/glTF 3D model compression toolkit. Node.js monorepo with a tsdown build. CLI (`glb-compressor`), HTTP
+server (`glb-server`), library API, and SvelteKit web UI.
 
 ## Structure
 
@@ -23,10 +23,9 @@ packages/
     worker.ts         Worker thread entry
     tls.ts            Auto-generated TLS certs
   shared-types/src/   Wire protocol types (SSE events)
-  bun-polyfill/src/   Node.js polyfill plugin (build-time only)
 src/index.ts          Meta-package barrel (re-exports @glb-compressor/core)
 bin/                  npm bin shims (#!/usr/bin/env node wrappers)
-build.ts              4-target build script
+build.ts              Node.js build orchestrator
 bench.ts              Compression benchmark runner (dev-only)
 scripts/              Dev utilities (e.g. social preview generator)
 compressor-frontend/  SvelteKit 2 + Svelte 5 + Tailwind v4 web UI
@@ -45,7 +44,7 @@ skills/               Agent skill documentation (read-only)
 | Add server endpoint    | `packages/server/src/main.ts`                |
 | Add/change job queue   | `packages/server/src/job-queue.ts`           |
 | Fix request parsing    | `packages/server/src/http.ts`                |
-| Fix Node.js compat     | `packages/bun-polyfill/src/polyfills.ts`     |
+| Fix Node.js compat     | Runtime package using the affected API       |
 | Change build targets   | `build.ts`                                   |
 | Public API surface     | `packages/core/src/mod.ts` (barrel)          |
 | Wire protocol types    | `packages/shared-types/src/index.ts`         |
@@ -53,47 +52,43 @@ skills/               Agent skill documentation (read-only)
 
 ## Architecture
 
-- **Bun workspace monorepo**: 5 packages under `packages/`, 2 frontend workspaces. All `@glb-compressor/*` packages use
+- **Workspace monorepo**: 4 packages under `packages/`, 2 frontend workspaces. All `@glb-compressor/*` packages use
   `workspace:*` deps.
-- **Dual-runtime**: written against Bun APIs, compiled to Node.js via polyfill layer. `package.json` exports use
-  conditional `"bun"` vs `"node"` fields.
+- **Node.js runtime**: runtime code uses `node:` APIs and Web Platform APIs. Production exports point to Node bundles;
+  the `development` condition points to TypeScript source.
 - **Skinned-model-aware**: pipeline detects skinned meshes and skips transforms that break skeleton hierarchies
   (flatten, join, weld, mergeByDistance, reorder, quantize).
 - **gltfpack-first**: prefers external `gltfpack` binary; falls back to meshopt WASM if unavailable.
 - **WASM pre-warm**: Draco + Meshopt WASM initialized eagerly at module load. Importing `@glb-compressor/core` triggers
   WASM loading as a side effect.
-- **Dependency graph**: `core` is the root -- `cli` and `server` depend on it. `shared-types` is a leaf. `bun-polyfill`
-  is build-time only (`private: true`).
+- **Dependency graph**: `core` is the root -- `cli` and `server` depend on it. `shared-types` is a leaf.
 
 ## Workspace packages
 
-| Package                        | Entry           | Role                    | Deps                                              |
-| ------------------------------ | --------------- | ----------------------- | ------------------------------------------------- |
-| `@glb-compressor/core`         | `src/mod.ts`    | Compression library     | gltf-transform, sharp, draco3dgltf, meshoptimizer |
-| `@glb-compressor/cli`          | `src/main.ts`   | CLI binary              | core                                              |
-| `@glb-compressor/server`       | `src/main.ts`   | HTTP server             | core, shared-types, @peculiar/x509                |
-| `@glb-compressor/shared-types` | `src/index.ts`  | Wire protocol types     | (none)                                            |
-| `@glb-compressor/bun-polyfill` | `src/plugin.ts` | Node.js build polyfills | (none, private)                                   |
+| Package                        | Entry          | Role                | Deps                                              |
+| ------------------------------ | -------------- | ------------------- | ------------------------------------------------- |
+| `@glb-compressor/core`         | `src/mod.ts`   | Compression library | gltf-transform, sharp, draco3dgltf, meshoptimizer |
+| `@glb-compressor/cli`          | `src/main.ts`  | CLI binary          | core                                              |
+| `@glb-compressor/server`       | `src/main.ts`  | HTTP server         | core, shared-types, @peculiar/x509                |
+| `@glb-compressor/shared-types` | `src/index.ts` | Wire protocol types | (none)                                            |
 
 ## Conventions
 
-- **Bun-first** -- always prefer Bun APIs over Node.js equivalents.
+- **Node.js-first** -- use `node:` standard-library APIs for filesystem, subprocess, HTTP, TLS, and workers.
 - **Tabs**, single quotes, 120-char line width (TS/JS).
 - **Strict TypeScript** -- `strict: true`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax` (use `import type` for
   type-only imports).
-- **Biome** for linting (formatter disabled), **dprint** for formatting (`bun run fmt`). Prettier explicitly disabled.
-- **Type checker**: `tsgo` (`bun run typecheck`), not `tsc`.
+- **Biome** for linting (formatter disabled), **dprint** for formatting (`npm run fmt`). Prettier explicitly disabled.
+- **Type checker**: TypeScript (`npm run typecheck`).
 - Import organization automated by Biome except in barrel/entry files (`mod.ts`, `index.ts`, `main.ts`).
 - Exact dependency versions (`bunfig.toml`: `install.exact = true`).
 - Default branch: `master`.
 
 ## Anti-patterns
 
-- Don't use npm/yarn/pnpm -- use `bun`.
-- Don't use express -- use `Bun.serve()`.
-- Don't use dotenv -- Bun auto-loads `.env`.
-- Don't use `node:fs` readFile/writeFile -- use `Bun.file` / `Bun.write`.
-- Don't use execa -- use `Bun.$`.
+- Don't use express -- use the native `node:http` / `node:https` server.
+- Don't use dotenv -- configuration is read from `process.env`.
+- Don't introduce Bun-native globals or `bun:` imports into runtime code.
 - No `any`, no `!` non-null assertions, no `as Type` casts.
 - Don't flatten/join/weld/quantize skinned models.
 - **Never modify `.github/workflows/`** -- CI/CD workflows are owner-managed.
@@ -101,38 +96,33 @@ skills/               Agent skill documentation (read-only)
 ## Commands
 
 ```sh
-bun run dev         # Hot-reload server + frontend
-bun run cli         # Run CLI from source
-bun run check       # Biome lint + format check
-bun run lint        # Biome lint only
-bun run fmt         # dprint format
-bun run typecheck   # tsgo type check
-bun build.ts        # Multi-target build
-bun bench.ts        # Run compression benchmarks
+npm run dev         # Hot-reload server + frontend
+npm run cli         # Run CLI from source
+npm run test        # Vitest test suite
+npm run check       # Biome lint + format check
+npm run fmt         # dprint format
+npm run typecheck   # TypeScript type check
+npm run build       # Node.js bundles + declarations
+npm run bench       # Run compression benchmarks
 ```
 
 ## Build targets
 
-| Target       | Output               | Format       | Notes                    |
-| ------------ | -------------------- | ------------ | ------------------------ |
-| Node.js      | `dist/node/`         | ESM          | Polyfilled, not minified |
-| Bun          | `dist/bun/`          | ESM          | Minified                 |
-| Bun bytecode | `dist/bun-bytecode/` | CJS + `.jsc` | Minified, no sourcemaps  |
-| Types        | `dist/types/`        | `.d.ts`      | Via tsgo                 |
+| Target  | Output        | Format  | Notes                       |
+| ------- | ------------- | ------- | --------------------------- |
+| Node.js | `dist/node/`  | ESM     | Library, server, and worker |
+| CLI     | `dist/cli/`   | ESM     | Standalone Node.js CLI      |
+| Types   | `dist/types/` | `.d.ts` | TypeScript declarations     |
 
 Externals (never bundled): `sharp`, `draco3dgltf`, `meshoptimizer`.
 
-`build.ts` contains a `workspaceResolverPlugin()` that redirects `@glb-compressor/*` imports to source `.ts` files at
-build time because the `"node"` export condition points to `dist/` which doesn't exist during build. The bun-polyfill
-plugin also resolves the `pkg` alias to root `package.json`.
+`tsdown.config.ts` aliases workspace imports to source entry points at build time because production exports point to
+`dist/`, which does not exist yet.
 
-## Conditional exports (dual-runtime)
+## Conditional exports
 
-Root `package.json` maps each subpath to the appropriate build:
-
-- Library (`.`): Bun ESM, Node ESM
-- Server (`./server`): Bun **bytecode**, Node ESM
-- CLI (`./cli`): Bun **bytecode**, Node ESM
+Root `package.json` maps library, server, and CLI subpaths to Node.js bundles. The `development` condition maps those
+imports to TypeScript source.
 
 Bin stubs in `bin/` use `#!/usr/bin/env node` for npm global installs.
 
@@ -167,8 +157,7 @@ scripts, no build step.
 
 ## Notes
 
-- `packages/server/src/main.ts` guards startup with `import.meta.main` -- safe to import as library.
-- No tests exist in core packages yet. Intended framework: `bun:test`. Server has one integration test
-  (`test/jobs-queue.test.ts`).
+- `packages/server/src/main.ts` uses a Node.js entry-path guard -- safe to import as a library.
+- Root and server tests use Vitest. Server integration coverage lives in `packages/server/test/jobs-queue.test.ts`.
 - `models/` dir (gitignored) contains `.glb` fixtures for benchmarking.
 - `prepublishOnly` uses Prettier for README only (dprint's markdown plugin differs).

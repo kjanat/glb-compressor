@@ -40,12 +40,12 @@
 		<div class="step">
 			<div class="step-num">2</div>
 			<div class="step-content">
-				<div class="step-title">Install Bun &ndash; only once</div>
+				<div class="step-title">Install Node.js &ndash; only once</div>
 				<div class="step-desc">
 					Click <strong>Copy</strong> below, then paste in PowerShell and press
 					<strong>Enter</strong>.
 				</div>
-				<SetupCommand command='powershell -c "irm bun.sh/install.ps1 | iex"' />
+				<SetupCommand command="winget install OpenJS.NodeJS.LTS" />
 				<div class="step-note">
 					&#9888; When finished: close PowerShell completely, then reopen it.
 				</div>
@@ -60,7 +60,7 @@
 					In the reopened PowerShell, click <strong>Copy</strong>, paste, then
 					press <strong>Enter</strong>.
 				</div>
-				<SetupCommand command="bun i -g glb-compressor" />
+				<SetupCommand command="npm install --global glb-compressor" />
 				<div class="step-note">Wait for it to finish. Then continue.</div>
 			</div>
 		</div>

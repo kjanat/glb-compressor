@@ -18,20 +18,19 @@ via `adapter-static`.
 | Linter       | Biome        | ESLint 9 + eslint-plugin-svelte  |
 | Formatter    | dprint       | None configured                  |
 | Type checker | tsgo         | svelte-check (wraps tsc)         |
-| Tests        | bun:test     | Vitest (browser + node projects) |
-| Build        | Custom Bun   | Vite                             |
+| Tests        | Vitest       | Vitest (browser + node projects) |
+| Build        | tsdown       | Vite                             |
 
 ## Commands
 
 ```sh
-bun run dev         # Vite dev server
-bun run build       # Vite production build
-bun run bd          # Build via Bun runtime (faster)
-bun run preview     # Build + preview
-bun run check       # svelte-kit sync + svelte-check
-bun run lint        # ESLint
-bun run test        # vitest run (single)
-bun run test:unit   # vitest (watch)
+npm run dev         # Vite dev server
+npm run build       # Vite production build
+npm run preview     # Build + preview
+npm run check       # svelte-kit sync + svelte-check
+npm run lint        # ESLint
+npm run test        # vitest run (single)
+npm run test:unit   # vitest (watch)
 ```
 
 ## Structure

@@ -2,7 +2,7 @@
 
 [![NPM Version](https://img.shields.io/npm/v/glb-compressor?logo=npm&labelColor=CB3837&color=black)](https://npm.im/glb-compressor)
 
-Multi-phase GLB/glTF 3D model compression toolkit built on [Bun].
+Multi-phase GLB/glTF 3D model compression toolkit for [Node.js].
 
 Strips existing compression, cleans geometry, optimizes animations, compresses textures to WebP, and applies mesh
 compression via [gltfpack] or [meshoptimizer].\
@@ -12,21 +12,21 @@ Available as a **CLI tool**, **HTTP server** (with SSE streaming), and **library
 
 ## Requirements
 
-- [Bun] >= 1.3
+- [Node.js] >= 24
 - [gltfpack] (optional, recommended &mdash; falls back to meshopt WASM if unavailable)
 
 ## Installation
 
 ```sh
 # Global install (recommended for CLI & server usage)
-bun i -g glb-compressor
+npm install --global glb-compressor
 ```
 
 This provides two binaries: `glb-compressor` (CLI) and `glb-server` (HTTP server with SSE streaming).
 
 ```sh
 # As a project dependency (for library usage)
-bun add glb-compressor
+npm install glb-compressor
 ```
 
 ## Usage
@@ -70,7 +70,7 @@ integrating compression into web pipelines, CI/CD, or editor plugins without she
 ```sh
 glb-server                  # default port 8080
 PORT=3000 glb-server        # custom port
-bun run dev                 # from source with hot-reload
+npm run dev                 # from source with hot-reload
 ```
 
 **Endpoints:**
@@ -103,17 +103,18 @@ curl -X POST -F "file=@model.glb" "http://localhost:8080/compress-stream"
 ```ts
 import type { CompressOptions } from 'glb-compressor';
 import { compress, init } from 'glb-compressor';
+import { readFile, writeFile } from 'node:fs/promises';
 
 await init(); // Optional, called automatically by compress()
 
-const glb = new Uint8Array(await Bun.file('model.glb').arrayBuffer());
+const glb = new Uint8Array(await readFile('model.glb'));
 const result = await compress(glb, {
 	preset: 'aggressive',
 	simplifyRatio: 0.5,
 	onLog: (msg) => console.log(msg),
 });
 
-await Bun.write('compressed.glb', result.buffer);
+await writeFile('compressed.glb', result.buffer);
 console.log(
 	`${result.method}: ${result.originalSize} -> ${result.buffer.byteLength}`,
 );
@@ -195,12 +196,13 @@ docker run -p 8080:8080 glb-compressor
 ## Development
 
 ```sh
-bun run dev         # Hot-reload server
-bun run cli         # Run CLI
-bun run check       # Biome lint + format check
-bun run lint        # Biome lint only
-bun run fmt         # dprint format
-bun run typecheck   # tsgo type check
+npm run dev         # Hot-reload server + frontend
+npm run cli         # Run CLI
+npm run test        # Run Node.js tests with Vitest
+npm run build       # Build Node.js bundles and declarations
+npm run check       # Biome lint + format check
+npm run fmt         # dprint format
+npm run typecheck   # TypeScript type check
 ```
 
 ## Agent Skills
@@ -262,7 +264,7 @@ Built on the shoulders of:
   compression pass
 - [sharp] — high-performance image processing for texture compression to WebP
 - [draco3dgltf] — Google's mesh compression decoder for handling Draco-compressed input models
-- [Bun] — the runtime, bundler, and test runner
+- [Node.js] — the server and library runtime
 
 ## License
 
@@ -276,4 +278,4 @@ Built on the shoulders of:
 [meshoptimizer]: https://github.com/zeux/meshoptimizer
 [gltfpack]: https://github.com/zeux/meshoptimizer/tree/master/gltf#readme
 [glTF-Transform]: https://gltf-transform.dev/
-[Bun]: https://bun.sh
+[Node.js]: https://nodejs.org/

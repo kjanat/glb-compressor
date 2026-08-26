@@ -28,7 +28,7 @@
 		"dist/types"
 	],
 	"scripts": {
-		"dev": "node --conditions=development --experimental-strip-types src/main.ts"
+		"dev": "node --watch --conditions=development --experimental-strip-types src/main.ts"
 	},
 	"dependencies": {
 		"@glb-compressor/core": "workspace:*",

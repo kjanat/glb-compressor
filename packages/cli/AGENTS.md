@@ -31,8 +31,7 @@ src/
 
 ## Notes
 
-- Imports version from `'pkg'` -- tsconfig path alias resolved at build time by bun-polyfill plugin. Will break if
-  polyfill plugin is removed.
+- Imports root package metadata directly with a JSON import attribute; tsdown bundles the version into the CLI.
 - Side-effects-only entry: calls `main()` at module level, no named exports.
 - 3 `as Type` casts exist for `Object.keys(PRESETS)` and preset validation narrowing -- tolerated at type-system
   boundaries.

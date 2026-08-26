@@ -395,7 +395,7 @@ function toWebRequest(nodeRequest: IncomingMessage, protocol: 'http' | 'https', 
 		body: hasBody ? Readable.toWeb(nodeRequest) : null,
 		duplex: hasBody ? 'half' : undefined,
 	};
-	return new Request(url, init);
+	return new Request(url.href, init);
 }
 
 async function writeWebResponse(response: Response, nodeResponse: ServerResponse): Promise<void> {

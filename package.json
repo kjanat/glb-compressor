@@ -81,13 +81,15 @@
 		"build": "node --experimental-strip-types build.ts",
 		"check": "biome check",
 		"cli": "node --conditions=development --experimental-strip-types packages/cli/src/main.ts",
-		"dev": "concurrently -k \"npm run dev --workspace compressor-frontend\" \"npm run dev --workspace @glb-compressor/server\"",
+		"dev": "run -pk dev:frontend dev:server",
+		"dev:frontend": "npm run dev --workspace compressor-frontend",
+		"dev:server": "npm run dev --workspace @glb-compressor/server",
 		"fmt": "dprint fmt",
 		"licences": "npx --yes license-checker --production --json --out licenses.json",
 		"lint": "biome lint",
 		"prepublishOnly": "npx --yes prettier README.md --write",
 		"start": "node --conditions=development --experimental-strip-types packages/server/src/main.ts",
-		"test": "vitest run test packages/server/test",
+		"test": "vitest run",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
@@ -104,11 +106,11 @@
 		"@types/draco3dgltf": "catalog:",
 		"@types/node": "catalog:",
 		"ansispeck": "catalog:",
-		"concurrently": "catalog:",
 		"dprint": "catalog:",
+		"runner-run": "catalog:",
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
-		"vitest": "4.1.11"
+		"vitest": "catalog:"
 	},
 	"packageManager": "bun@1.4.0",
 	"engines": {
@@ -122,13 +124,14 @@
 		"@types/draco3dgltf": "1.4.3",
 		"@types/node": "26.3.0",
 		"ansispeck": "0.4.2",
-		"concurrently": "10.0.5",
+		"runner-run": "0.25.1",
 		"dprint": "0.56.1",
 		"draco3dgltf": "1.5.7",
 		"dreamcli": "npm:@kjanat/dreamcli@^4.0.0-rc.2",
 		"meshoptimizer": "1.2.0",
 		"sharp": "0.35.4",
 		"tsdown": "0.22.14",
-		"typescript": "7.0.2"
+		"typescript": "7.0.2",
+		"vitest": "4.1.11"
 	}
 }
