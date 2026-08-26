@@ -93,7 +93,7 @@
 		"@gltf-transform/extensions": "4.4.2",
 		"@gltf-transform/functions": "4.4.2",
 		"draco3dgltf": "1.5.7",
-		"dreamcli": "npm:@kjanat/dreamcli@4.0.0-rc.2",
+		"dreamcli": "npm:@kjanat/dreamcli@3.0.1",
 		"meshoptimizer": "1.2.0",
 		"sharp": "0.35.4"
 	},
@@ -102,7 +102,8 @@
 		"@glb-compressor/bun-polyfill": "workspace:*",
 		"@types/bun": "1.4.0",
 		"@types/draco3dgltf": "1.4.3",
-		"ansispeck": "0.4.1",
+		"@types/node": "26.3.0",
+		"ansispeck": "0.4.2",
 		"dprint": "0.56.1",
 		"tsdown": "0.22.14",
 		"typescript": "7.0.2"

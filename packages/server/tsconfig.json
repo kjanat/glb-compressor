@@ -1,8 +1,12 @@
 {
 	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"rootDir": "src",
-		"paths": {}
+		"types": ["bun"],
+		"paths": {
+			"@glb-compressor/core": ["../core/src/mod.ts"],
+			"@glb-compressor/shared-types": ["../shared-types/src/index.ts"]
+		}
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts"],
+	"exclude": ["node_modules"]
 }

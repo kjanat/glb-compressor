@@ -1,11 +1,12 @@
 {
 	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"rootDir": "src",
 		"resolveJsonModule": true,
 		"paths": {
+			"@glb-compressor/core": ["../core/src/mod.ts"],
 			"pkg": ["./package.json"]
 		}
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts"],
+	"exclude": ["node_modules"]
 }
