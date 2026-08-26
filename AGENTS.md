@@ -1,8 +1,7 @@
 # glb-compressor
 
-Multi-phase GLB/glTF 3D model compression toolkit. Bun-first monorepo with
-dual-runtime (Bun + Node.js) build. CLI (`glb-compressor`), HTTP server
-(`glb-server`), library API, and SvelteKit web UI.
+Multi-phase GLB/glTF 3D model compression toolkit. Bun-first monorepo with dual-runtime (Bun + Node.js) build. CLI
+(`glb-compressor`), HTTP server (`glb-server`), library API, and SvelteKit web UI.
 
 ## Structure
 
@@ -54,19 +53,17 @@ skills/               Agent skill documentation (read-only)
 
 ## Architecture
 
-- **Bun workspace monorepo**: 5 packages under `packages/`, 2 frontend
-  workspaces. All `@glb-compressor/*` packages use `workspace:*` deps.
-- **Dual-runtime**: written against Bun APIs, compiled to Node.js via polyfill
-  layer. `package.json` exports use conditional `"bun"` vs `"node"` fields.
-- **Skinned-model-aware**: pipeline detects skinned meshes and skips transforms
-  that break skeleton hierarchies (flatten, join, weld, mergeByDistance,
-  reorder, quantize).
-- **gltfpack-first**: prefers external `gltfpack` binary; falls back to meshopt
-  WASM if unavailable.
-- **WASM pre-warm**: Draco + Meshopt WASM initialized eagerly at module load.
-  Importing `@glb-compressor/core` triggers WASM loading as a side effect.
-- **Dependency graph**: `core` is the root -- `cli` and `server` depend on it.
-  `shared-types` is a leaf. `bun-polyfill` is build-time only (`private: true`).
+- **Bun workspace monorepo**: 5 packages under `packages/`, 2 frontend workspaces. All `@glb-compressor/*` packages use
+  `workspace:*` deps.
+- **Dual-runtime**: written against Bun APIs, compiled to Node.js via polyfill layer. `package.json` exports use
+  conditional `"bun"` vs `"node"` fields.
+- **Skinned-model-aware**: pipeline detects skinned meshes and skips transforms that break skeleton hierarchies
+  (flatten, join, weld, mergeByDistance, reorder, quantize).
+- **gltfpack-first**: prefers external `gltfpack` binary; falls back to meshopt WASM if unavailable.
+- **WASM pre-warm**: Draco + Meshopt WASM initialized eagerly at module load. Importing `@glb-compressor/core` triggers
+  WASM loading as a side effect.
+- **Dependency graph**: `core` is the root -- `cli` and `server` depend on it. `shared-types` is a leaf. `bun-polyfill`
+  is build-time only (`private: true`).
 
 ## Workspace packages
 
@@ -82,13 +79,11 @@ skills/               Agent skill documentation (read-only)
 
 - **Bun-first** -- always prefer Bun APIs over Node.js equivalents.
 - **Tabs**, single quotes, 120-char line width (TS/JS).
-- **Strict TypeScript** -- `strict: true`, `noUncheckedIndexedAccess`,
-  `verbatimModuleSyntax` (use `import type` for type-only imports).
-- **Biome** for linting (formatter disabled), **dprint** for formatting
-  (`bun run fmt`). Prettier explicitly disabled.
+- **Strict TypeScript** -- `strict: true`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax` (use `import type` for
+  type-only imports).
+- **Biome** for linting (formatter disabled), **dprint** for formatting (`bun run fmt`). Prettier explicitly disabled.
 - **Type checker**: `tsgo` (`bun run typecheck`), not `tsc`.
-- Import organization automated by Biome except in barrel/entry files (`mod.ts`,
-  `index.ts`, `main.ts`).
+- Import organization automated by Biome except in barrel/entry files (`mod.ts`, `index.ts`, `main.ts`).
 - Exact dependency versions (`bunfig.toml`: `install.exact = true`).
 - Default branch: `master`.
 
@@ -127,10 +122,9 @@ bun bench.ts        # Run compression benchmarks
 
 Externals (never bundled): `sharp`, `draco3dgltf`, `meshoptimizer`.
 
-`build.ts` contains a `workspaceResolverPlugin()` that redirects
-`@glb-compressor/*` imports to source `.ts` files at build time because the
-`"node"` export condition points to `dist/` which doesn't exist during build.
-The bun-polyfill plugin also resolves the `pkg` alias to root `package.json`.
+`build.ts` contains a `workspaceResolverPlugin()` that redirects `@glb-compressor/*` imports to source `.ts` files at
+build time because the `"node"` export condition points to `dist/` which doesn't exist during build. The bun-polyfill
+plugin also resolves the `pkg` alias to root `package.json`.
 
 ## Conditional exports (dual-runtime)
 
@@ -153,8 +147,8 @@ Bin stubs in `bin/` use `#!/usr/bin/env node` for npm global installs.
 
 ## Skills
 
-Agent skills in `skills/` following the [Agent Skills](https://agentskills.io/)
-format. Read-only documentation -- no scripts, no build step.
+Agent skills in `skills/` following the [Agent Skills](https://agentskills.io/) format. Read-only documentation -- no
+scripts, no build step.
 
 | Skill                    | Purpose                               | References                |
 | ------------------------ | ------------------------------------- | ------------------------- |
@@ -165,8 +159,7 @@ format. Read-only documentation -- no scripts, no build step.
 ### When to update skills
 
 - **Add/change CLI flag** -> update `glb-compressor-cli/SKILL.md`
-- **Add/change API export** -> update `glb-compressor-library/SKILL.md` +
-  `references/api.md`
+- **Add/change API export** -> update `glb-compressor-library/SKILL.md` + `references/api.md`
 - **Add/change transform** -> update `references/transforms.md` (safety matrix)
 - **Add/change endpoint** -> update `glb-compressor-server/SKILL.md`
 - **Add/change preset** -> update all three skills (CLI, library, server)
@@ -174,10 +167,8 @@ format. Read-only documentation -- no scripts, no build step.
 
 ## Notes
 
-- `packages/server/src/main.ts` guards startup with `import.meta.main` -- safe
-  to import as library.
-- No tests exist in core packages yet. Intended framework: `bun:test`. Server
-  has one integration test (`test/jobs-queue.test.ts`).
+- `packages/server/src/main.ts` guards startup with `import.meta.main` -- safe to import as library.
+- No tests exist in core packages yet. Intended framework: `bun:test`. Server has one integration test
+  (`test/jobs-queue.test.ts`).
 - `models/` dir (gitignored) contains `.glb` fixtures for benchmarking.
-- `prepublishOnly` uses Prettier for README only (dprint's markdown plugin
-  differs).
+- `prepublishOnly` uses Prettier for README only (dprint's markdown plugin differs).

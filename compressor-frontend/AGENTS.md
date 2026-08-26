@@ -1,16 +1,13 @@
 # compressor-frontend/
 
-SvelteKit 2 + Svelte 5 + Tailwind CSS v4 web UI for the glb-compressor server.
-Single-page app deployed to GitHub Pages via `adapter-static`.
+SvelteKit 2 + Svelte 5 + Tailwind CSS v4 web UI for the glb-compressor server. Single-page app deployed to GitHub Pages
+via `adapter-static`.
 
 ## Stack
 
-- **Svelte 5** (runes: `$props`, `$state`, `$derived`, `$effect`, `$bindable`,
-  `{@render}`)
-- **SvelteKit 2** with `adapter-static` (output to `../dist/frontend`,
-  `prerender: true`, `ssr: false`)
-- **Tailwind CSS v4** (`@import "tailwindcss"`, `@plugin` syntax, NOT v3
-  `@tailwind`/`@config`)
+- **Svelte 5** (runes: `$props`, `$state`, `$derived`, `$effect`, `$bindable`, `{@render}`)
+- **SvelteKit 2** with `adapter-static` (output to `../dist/frontend`, `prerender: true`, `ssr: false`)
+- **Tailwind CSS v4** (`@import "tailwindcss"`, `@plugin` syntax, NOT v3 `@tailwind`/`@config`)
 - **Vite 7** (build + dev server)
 - **Vitest 4** with Playwright browser testing for component specs
 
@@ -76,11 +73,9 @@ static/
 
 ### State management
 
-`createCompressionSession()` returns a reactive `CompressionSession` object
-using closure-based `$state()`. Not a class, not a Svelte store. The page
-component calls it once and destructures `session.state` for reactive reads.
-Mutations happen through returned methods that mutate `state.*` in-place,
-relying on Svelte 5's deep proxy tracking.
+`createCompressionSession()` returns a reactive `CompressionSession` object using closure-based `$state()`. Not a class,
+not a Svelte store. The page component calls it once and destructures `session.state` for reactive reads. Mutations
+happen through returned methods that mutate `state.*` in-place, relying on Svelte 5's deep proxy tracking.
 
 ### Communication protocol
 
@@ -92,9 +87,8 @@ Uses **queue-based REST polling** (NOT SSE):
 
 ### glTF resource resolution
 
-For `.gltf` files: parses JSON, extracts `buffers[*].uri` + `images[*].uri`,
-resolves against a `resourcePool` (SvelteMap) of non-model files. Multi-strategy
-URI matching: raw, normalized, decoded, basename.
+For `.gltf` files: parses JSON, extracts `buffers[*].uri` + `images[*].uri`, resolves against a `resourcePool`
+(SvelteMap) of non-model files. Multi-strategy URI matching: raw, normalized, decoded, basename.
 
 ### Data flow (`+page.svelte`)
 
@@ -111,26 +105,19 @@ createCompressionSession() -> session
 
 ## Complexity hotspots
 
-- `compression-session.svelte.ts` (~770 lines) -- largest file; hand-rolled JSON
-  parsers for all server responses (no `as`/`any`); `pollJob()` is an infinite
-  `for(;;)` loop with no timeout/max-retry guard; `compressAll()` fires
-  `Promise.all` with no concurrency limit; `resourcePool` SvelteMap grows
-  monotonically (never cleared)
-- `parseQueueJobSnapshot()` (~80 lines) -- deepest nesting for manual runtime
-  type validation
+- `compression-session.svelte.ts` (~770 lines) -- largest file; hand-rolled JSON parsers for all server responses (no
+  `as`/`any`); `pollJob()` is an infinite `for(;;)` loop with no timeout/max-retry guard; `compressAll()` fires
+  `Promise.all` with no concurrency limit; `resourcePool` SvelteMap grows monotonically (never cleared)
+- `parseQueueJobSnapshot()` (~80 lines) -- deepest nesting for manual runtime type validation
 - `clearFiles()` preserves active jobs (not a true "clear all" despite UI label)
 
 ## Dead code
 
-- `lib/sse.ts` -- SSE client module, not imported anywhere since migration to
-  queue-based polling
-- `lib/types.ts` `StreamCompressResult` type -- `payloadType: 'base64'` branch
-  never constructed
-- `lib/utils.ts` `downloadBase64()` -- unreachable (only called for
-  StreamCompressResult)
+- `lib/sse.ts` -- SSE client module, not imported anywhere since migration to queue-based polling
+- `lib/types.ts` `StreamCompressResult` type -- `payloadType: 'base64'` branch never constructed
+- `lib/utils.ts` `downloadBase64()` -- unreachable (only called for StreamCompressResult)
 - `lib/index.ts` -- empty `$lib` barrel placeholder
-- Several `SvelteMap`/`SvelteSet` usages in non-reactive contexts where plain
-  `Map`/`Set` would suffice
+- Several `SvelteMap`/`SvelteSet` usages in non-reactive contexts where plain `Map`/`Set` would suffice
 
 ## Test conventions
 
@@ -138,13 +125,10 @@ createCompressionSession() -> session
 - Component tests: `*.svelte.spec.ts` (browser/Playwright project)
 - Other tests: `*.spec.ts` (node project)
 - `requireAssertions: true` -- every test must assert something
-- Test filenames drop the `+` prefix (`page.svelte.spec.ts`, not
-  `+page.svelte.spec.ts`)
+- Test filenames drop the `+` prefix (`page.svelte.spec.ts`, not `+page.svelte.spec.ts`)
 
 ## Anti-patterns (this workspace)
 
-- Don't use Svelte 4 patterns: no `export let`, no `$$props`, no `on:event`
-  directive -- use Svelte 5 runes only.
-- Don't use Tailwind v3 syntax: no `@tailwind base`, no `@config` -- use v4
-  `@import "tailwindcss"`.
+- Don't use Svelte 4 patterns: no `export let`, no `$$props`, no `on:event` directive -- use Svelte 5 runes only.
+- Don't use Tailwind v3 syntax: no `@tailwind base`, no `@config` -- use v4 `@import "tailwindcss"`.
 - Same type safety rules as root: no `any`, no `!`, no `as Type`.

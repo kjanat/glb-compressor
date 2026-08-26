@@ -1,8 +1,7 @@
 # @glb-compressor/cli
 
-CLI package wrapping `@glb-compressor/core` compression for local files.
-Published bin name is `glb-compressor` (root wrapper); help text still prints
-`glb-compress`.
+CLI package wrapping `@glb-compressor/core` compression for local files. Published bin name is `glb-compressor` (root
+wrapper); help text still prints `glb-compress`.
 
 ## Files
 
@@ -32,15 +31,15 @@ src/
 
 ## Notes
 
-- Imports version from `'pkg'` -- tsconfig path alias resolved at build time by
-  bun-polyfill plugin. Will break if polyfill plugin is removed.
+- Imports version from `'pkg'` -- tsconfig path alias resolved at build time by bun-polyfill plugin. Will break if
+  polyfill plugin is removed.
 - Side-effects-only entry: calls `main()` at module level, no named exports.
-- 3 `as Type` casts exist for `Object.keys(PRESETS)` and preset validation
-  narrowing -- tolerated at type-system boundaries.
+- 3 `as Type` casts exist for `Object.keys(PRESETS)` and preset validation narrowing -- tolerated at type-system
+  boundaries.
 
 ## Anti-patterns
 
 - Don't bypass `validateGlbMagic()` for input validation.
-- Don't parallelize blindly; current sequential flow keeps output readable and
-  avoids contention with heavy compression subprocesses.
+- Don't parallelize blindly; current sequential flow keeps output readable and avoids contention with heavy compression
+  subprocesses.
 - Don't import from `server/`; CLI depends only on core.

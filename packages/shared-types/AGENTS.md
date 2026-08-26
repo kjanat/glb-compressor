@@ -13,18 +13,15 @@ src/
 
 - `CompressionLogEvent` (`message`)
 - `CompressionErrorEvent` (`message?`, `requestId?`, `code?`)
-- `CompressionResultEvent` (`requestId`, `filename`, `data`, `originalSize`,
-  `compressedSize`, `ratio`, `method`)
+- `CompressionResultEvent` (`requestId`, `filename`, `data`, `originalSize`, `compressedSize`, `ratio`, `method`)
 - `CompressionStreamEventMap` (`log|error|result` -> payload type)
 
 ## Consumers
 
 - Producer: `packages/server/src/main.ts` (`handleCompressStream`)
-- Consumer: `compressor-frontend/src/lib/sse.ts` (currently dead code --
-  frontend switched to queue-based polling)
+- Consumer: `compressor-frontend/src/lib/sse.ts` (currently dead code -- frontend switched to queue-based polling)
 
 ## Anti-patterns
 
 - Don't add runtime code; package should stay type-only.
-- Don't break event field names/types without coordinated server + frontend
-  updates.
+- Don't break event field names/types without coordinated server + frontend updates.

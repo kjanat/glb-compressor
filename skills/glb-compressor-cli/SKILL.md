@@ -7,10 +7,9 @@ compatibility: Requires Bun >= 1.3 or Node.js >= 22.22.2. Optional gltfpack bina
 
 # glb-compressor CLI
 
-Command-line tool for compressing GLB/glTF 3D model files. Supports glob
-patterns, configurable presets, mesh simplification, and batch processing. Built
-on [dreamcli](https://dreamcli.kjanat.dev), so `--help`, `--version`, `--quiet`,
-and `--json` are framework-owned root flags.
+Command-line tool for compressing GLB/glTF 3D model files. Supports glob patterns, configurable presets, mesh
+simplification, and batch processing. Built on [dreamcli](https://dreamcli.kjanat.dev), so `--help`, `--version`,
+`--quiet`, and `--json` are framework-owned root flags.
 
 ## Binary Name
 
@@ -69,9 +68,8 @@ bun run cli -- model.glb -p aggressive -o ./compressed/
 
 ## Output Naming
 
-Output files are named `<input>-compressed.glb`. When `-o` is specified, files
-are placed in that directory. Without `-o`, output is written alongside the
-input file.
+Output files are named `<input>-compressed.glb`. When `-o` is specified, files are placed in that directory. Without
+`-o`, output is written alongside the input file.
 
 ## Exit Codes
 
@@ -85,26 +83,23 @@ input file.
 
 The CLI runs the same 6-phase pipeline as the library:
 
-1. **Cleanup** - dedup, prune, remove unused UVs (+ flatten/join/weld for
-   static)
+1. **Cleanup** - dedup, prune, remove unused UVs (+ flatten/join/weld for static)
 2. **Geometry** - merge by distance, remove degenerate faces, auto-decimate
 3. **GPU** - instancing, vertex reorder, sparse encoding
 4. **Animation** - resample keyframes, remove static tracks, normalize weights
 5. **Textures** - compress to WebP (max 1024x1024)
 6. **Final** - gltfpack (preferred) or meshopt WASM fallback
 
-Skinned models are auto-detected and take a conservative path that skips
-transforms known to break skeleton hierarchies.
+Skinned models are auto-detected and take a conservative path that skips transforms known to break skeleton hierarchies.
 
 ## Skinned Model Awareness
 
-When a GLB contains skins (e.g. avatars), the CLI automatically skips: flatten,
-join, weld, mergeByDistance, reorder, quantize, and auto-decimate. This prevents
-broken skeleton hierarchies, vertex weight denormalization, and mesh clipping
+When a GLB contains skins (e.g. avatars), the CLI automatically skips: flatten, join, weld, mergeByDistance, reorder,
+quantize, and auto-decimate. This prevents broken skeleton hierarchies, vertex weight denormalization, and mesh clipping
 artifacts.
 
 ## Dependencies
 
-- **gltfpack** (optional): If found in `$PATH`, used for final compression (best
-  results). Falls back to meshopt WASM if unavailable.
+- **gltfpack** (optional): If found in `$PATH`, used for final compression (best results). Falls back to meshopt WASM if
+  unavailable.
 - **sharp**: Used for texture compression to WebP.

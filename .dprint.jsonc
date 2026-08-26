@@ -4,9 +4,11 @@
 	"useTabs": true,
 	"yaml": { "printWidth": 180 },
 	"markdown": {
+		"lineWidth": 120,
 		"textWrap": "always",
 		"emphasisKind": "asterisks",
-		"associations": [".rules", "*.md", "CLAUDE.md", "AGENTS.md"]
+		"associations": [".rules", "*.md", "CLAUDE.md", "AGENTS.md"],
+		"overrides": [{ "files": ["CHANGELOG.md"], "lineWidth": 999999 }]
 	},
 	"exec": {
 		"cwd": "${configDir}",

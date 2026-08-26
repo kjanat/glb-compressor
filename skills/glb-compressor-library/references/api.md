@@ -73,8 +73,7 @@ Validate GLB magic bytes. Throws if invalid.
 
 ### `sanitizeFilename(name: string): string`
 
-Strip path traversal, invalid chars, cap at 200 chars. Returns `"model.glb"` if
-empty.
+Strip path traversal, invalid chars, cap at 200 chars. Returns `"model.glb"` if empty.
 
 ### `parseSimplifyRatio(raw: string | null): number | undefined`
 

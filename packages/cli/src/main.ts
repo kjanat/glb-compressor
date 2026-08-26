@@ -11,4 +11,4 @@
 
 import { buildCli } from './command';
 
-void buildCli().run();
+buildCli().run();

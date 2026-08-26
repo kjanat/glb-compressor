@@ -4,20 +4,16 @@
 
 Multi-phase GLB/glTF 3D model compression toolkit built on [Bun].
 
-Strips existing compression, cleans geometry, optimizes animations, compresses
-textures to WebP, and applies mesh compression via [gltfpack] or
-[meshoptimizer].\
-Tuned for skinned avatar models with automatic conservative handling of skeleton
-hierarchies.
+Strips existing compression, cleans geometry, optimizes animations, compresses textures to WebP, and applies mesh
+compression via [gltfpack] or [meshoptimizer].\
+Tuned for skinned avatar models with automatic conservative handling of skeleton hierarchies.
 
-Available as a **CLI tool**, **HTTP server** (with SSE streaming), and **library
-API**.
+Available as a **CLI tool**, **HTTP server** (with SSE streaming), and **library API**.
 
 ## Requirements
 
 - [Bun] >= 1.3
-- [gltfpack] (optional, recommended &mdash; falls back to meshopt WASM if
-  unavailable)
+- [gltfpack] (optional, recommended &mdash; falls back to meshopt WASM if unavailable)
 
 ## Installation
 
@@ -26,8 +22,7 @@ API**.
 bun i -g glb-compressor
 ```
 
-This provides two binaries: `glb-compressor` (CLI) and `glb-server` (HTTP server
-with SSE streaming).
+This provides two binaries: `glb-compressor` (CLI) and `glb-server` (HTTP server with SSE streaming).
 
 ```sh
 # As a project dependency (for library usage)
@@ -69,9 +64,8 @@ glb-compressor model.glb -q -p max -f
 
 ### Server
 
-The `glb-server` binary starts an HTTP server that accepts GLB uploads and
-returns compressed files — useful for integrating compression into web
-pipelines, CI/CD, or editor plugins without shelling out to the CLI.
+The `glb-server` binary starts an HTTP server that accepts GLB uploads and returns compressed files — useful for
+integrating compression into web pipelines, CI/CD, or editor plugins without shelling out to the CLI.
 
 ```sh
 glb-server                  # default port 8080
@@ -87,19 +81,18 @@ bun run dev                 # from source with hot-reload
 | POST   | `/compress`        | Synchronous compression, returns compressed GLB binary |
 | POST   | `/compress-stream` | SSE streaming with progress logs and base64 result     |
 
-**`POST /compress`** accepts `multipart/form-data` (field: `file`) or raw binary
-body. Query params: `?simplify=0.5&preset=aggressive`.
+**`POST /compress`** accepts `multipart/form-data` (field: `file`) or raw binary body.\
+Query params: `?simplify=0.5&preset=aggressive`.
 
-Response headers include `X-Original-Size`, `X-Compressed-Size`,
-`X-Compression-Method`, and `X-Compression-Ratio`.
+Response headers include `X-Original-Size`, `X-Compressed-Size`, `X-Compression-Method`, and `X-Compression-Ratio`.
 
 ```sh
 # Upload with curl
 curl -X POST -F "file=@model.glb" "http://localhost:8080/compress?preset=aggressive" -o compressed.glb
 ```
 
-**`POST /compress-stream`** accepts `multipart/form-data` and returns
-`text/event-stream` with `log`, `result`, and `error` events:
+**`POST /compress-stream`** accepts `multipart/form-data` and returns `text/event-stream` with `log`, `result`, and
+`error` events:
 
 ```sh
 curl -X POST -F "file=@model.glb" "http://localhost:8080/compress-stream"
@@ -142,8 +135,7 @@ import {
 
 ## Presets
 
-Benchmarked on one 30 MB skinned avatar (`bench.ts`, 77 animations, 89k
-vertices):
+Benchmarked on one 30 MB skinned avatar (`bench.ts`, 77 animations, 89k vertices):
 
 | Preset       | Owen benchmark output | Owen benchmark reduction* | Description                                            |
 | ------------ | --------------------- | ------------------------- | ------------------------------------------------------ |
@@ -152,8 +144,8 @@ vertices):
 | `aggressive` | 4.83 MB               | -84.1%                    | Strong animation quantization, 15 Hz resample          |
 | `max`        | 4.77 MB               | -84.3%                    | Aggressive + supercompression + lower vertex precision |
 
-\* Benchmark numbers are directional only, not guaranteed. Real reductions vary
-by mesh topology, texture payloads, animation density, and source quality.
+\* Benchmark numbers are directional only, not guaranteed. Real reductions vary by mesh topology, texture payloads,
+animation density, and source quality.
 
 ## Compression Pipeline
 
@@ -188,13 +180,12 @@ Final compression: gltfpack (preferred) or meshopt WASM (fallback)
 Output compressed GLB
 ```
 
-Skinned models skip `flatten`, `join`, `weld`, `mergeByDistance`, `reorder`, and
-`quantize` to protect skeleton hierarchies and vertex weight integrity.
+Skinned models skip `flatten`, `join`, `weld`, `mergeByDistance`, `reorder`, and `quantize` to protect skeleton
+hierarchies and vertex weight integrity.
 
 ## Docker
 
-The Dockerfile builds gltfpack from source with BasisU texture compression
-support:
+The Dockerfile builds gltfpack from source with BasisU texture compression support:
 
 ```sh
 docker build -t glb-compressor .
@@ -214,8 +205,8 @@ bun run typecheck   # tsgo type check
 
 ## Agent Skills
 
-This project includes [Agent Skills](https://agentskills.io/) that give AI
-coding agents context about the CLI, library API, and server endpoints.
+This project includes [Agent Skills](https://agentskills.io/) that give AI coding agents context about the CLI, library
+API, and server endpoints.
 
 | Skill                    | Purpose                               |
 | ------------------------ | ------------------------------------- |
@@ -265,13 +256,12 @@ cp -r skills/glb-compressor-cli ~/.config/opencode/skills/
 
 Built on the shoulders of:
 
-- [glTF-Transform] by Don McCurdy — the core document model and standard
-  transform library that powers the entire pipeline
-- [meshoptimizer] / [gltfpack] by Arseny Kapoulkine — mesh compression, vertex
-  reordering, simplification, and the final compression pass
+- [glTF-Transform] by Don McCurdy — the core document model and standard transform library that powers the entire
+  pipeline
+- [meshoptimizer] / [gltfpack] by Arseny Kapoulkine — mesh compression, vertex reordering, simplification, and the final
+  compression pass
 - [sharp] — high-performance image processing for texture compression to WebP
-- [draco3dgltf] — Google's mesh compression decoder for handling
-  Draco-compressed input models
+- [draco3dgltf] — Google's mesh compression decoder for handling Draco-compressed input models
 - [Bun] — the runtime, bundler, and test runner
 
 ## License

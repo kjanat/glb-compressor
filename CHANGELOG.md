@@ -2,9 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog], and this project adheres to [Semantic Versioning].
+
+[Keep a Changelog]: https://keepachangelog.com/en/1.1.0/
+[Semantic Versioning]: https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
@@ -12,27 +13,21 @@ and this project adheres to
 
 ### Added
 
-- Skills validated against source code — all types, exports, flags, endpoints
-  confirmed accurate.
-- User-facing skill installation docs in README and AGENTS.md\
-  (`npx skills add` - manual paths for Claude Code, Cursor, OpenCode).
-- Skills section in `.rules` (AGENTS.md/CLAUDE.md) with directory structure,
-  conventions, and "when to update" guide.
-- Skills relocated from `.agents/skills/` to `skills/` (standard discovery
-  path).
+- Skills validated against source code — all types, exports, flags, endpoints confirmed accurate.
+- User-facing skill installation docs in README and AGENTS.md (`npx skills add` - manual paths for Claude Code, Cursor, OpenCode).
+- Skills section in `.rules` (AGENTS.md/CLAUDE.md) with directory structure, conventions, and "when to update" guide.
+- Skills relocated from `.agents/skills/` to `skills/` (standard discovery path).
 
 ## [1.0.1] - 2026-02-12
 
 ### Added
 
-- Agent skills for CLI, HTTP server, and library API usage
-  (`.agents/skills/glb-compressor-{cli,server,library}/`).
+- Agent skills for CLI, HTTP server, and library API usage (`.agents/skills/glb-compressor-{cli,server,library}/`).
 - CHANGELOG.md and `.agents/` included in published npm tarball.
 
 ### Fixed
 
-- `dist/bun-bytecode` files glob narrowed to `*.{cjs,cjs.jsc}` to exclude
-  extraneous files from tarball.
+- `dist/bun-bytecode` files glob narrowed to `*.{cjs,cjs.jsc}` to exclude extraneous files from tarball.
 
 ## [1.0.0] - 2026-02-12
 
@@ -75,17 +70,12 @@ and this project adheres to
 
 ### Added
 
-- Multi-phase GLB/glTF compression pipeline with 5 phases: cleanup, geometry,
-  GPU optimizations, animation/weights, and texture compression.
-- Automatic skinned-model detection — skips destructive transforms on skeleton
-  hierarchies.
-- CLI with preset selection (`default`, `balanced`, `aggressive`, `max`),
-  simplification ratio, batch processing, and quiet mode.
-- HTTP server with `/compress` (synchronous) and `/compress-stream` (SSE)
-  endpoints.
+- Multi-phase GLB/glTF compression pipeline with 5 phases: cleanup, geometry, GPU optimizations, animation/weights, and texture compression.
+- Automatic skinned-model detection — skips destructive transforms on skeleton hierarchies.
+- CLI with preset selection (`default`, `balanced`, `aggressive`, `max`), simplification ratio, batch processing, and quiet mode.
+- HTTP server with `/compress` (synchronous) and `/compress-stream` (SSE) endpoints.
 - Library API exporting `compress()`, `init()`, and individual transforms.
-- Multi-target build system (Bun, Bun bytecode, Node.js) with Node.js polyfills
-  for `Bun.file`, `Bun.write`, and `Bun.$`.
+- Multi-target build system (Bun, Bun bytecode, Node.js) with Node.js polyfills for `Bun.file`, `Bun.write`, and `Bun.$`.
 - TypeScript declaration generation.
 - WebP texture compression via sharp (max 1024x1024).
 - gltfpack integration with automatic fallback to meshopt WASM.

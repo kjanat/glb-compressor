@@ -13,7 +13,7 @@ const isPreset = (value: string): value is CompressPreset => {
 	return value === 'default' || value === 'balanced' || value === 'aggressive' || value === 'max';
 };
 
-export interface ApiError {
+interface ApiError {
 	error: {
 		code: string;
 		message: string;
@@ -21,7 +21,7 @@ export interface ApiError {
 	requestId: string;
 }
 
-export const CORS_HEADERS: Record<string, string> = {
+const CORS_HEADERS: Record<string, string> = {
 	'Access-Control-Allow-Origin': '*',
 	'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 	'Access-Control-Allow-Headers': 'Content-Type, X-Request-ID',
@@ -29,7 +29,7 @@ export const CORS_HEADERS: Record<string, string> = {
 		'X-Request-ID, X-Original-Size, X-Compressed-Size, X-Compression-Method, X-Compression-Ratio',
 };
 
-export interface ParsedRequest {
+interface ParsedRequest {
 	input: Uint8Array;
 	filename: string;
 	preset: CompressPreset;
@@ -37,7 +37,7 @@ export interface ParsedRequest {
 	resources: Record<string, Uint8Array> | undefined;
 }
 
-export function jsonError(code: string, message: string, status: number, requestId: string): Response {
+function jsonError(code: string, message: string, status: number, requestId: string): Response {
 	const body: ApiError = {
 		error: { code, message },
 		requestId,
@@ -49,7 +49,7 @@ export function jsonError(code: string, message: string, status: number, request
 	});
 }
 
-export async function parseCompressRequest(
+async function parseCompressRequest(
 	req: globalThis.Request,
 	requestId: string,
 	requireMultipart: boolean,
@@ -204,3 +204,6 @@ export async function parseCompressRequest(
 		resources,
 	};
 }
+
+export type { ApiError, ParsedRequest };
+export { CORS_HEADERS, jsonError, parseCompressRequest };

@@ -1,7 +1,7 @@
 # @glb-compressor/server
 
-HTTP API package exposing GLB compression over `Bun.serve()`. Supports
-synchronous, SSE streaming, and async job queue modalities.
+HTTP API package exposing GLB compression over `Bun.serve()`. Supports synchronous, SSE streaming, and async job queue
+modalities.
 
 ## Files
 
@@ -46,27 +46,25 @@ main.ts              <- job-queue, http, tls, core, shared-types
 | GET     | `/jobs/:id/result` | `handleGetJobResult`   | Binary GLB or error                                 |
 | OPTIONS | POST/job routes    | `handleOptions`        | 204 CORS preflight                                  |
 
-All three POST endpoints share `parseCompressRequest()` -> `jobQueue.submit()`.
-They differ in delivery: `/compress` awaits completion, `/compress-stream`
-subscribes via pub/sub for SSE, `/jobs` returns 202 immediately for polling.
+All three POST endpoints share `parseCompressRequest()` -> `jobQueue.submit()`. They differ in delivery: `/compress`
+awaits completion, `/compress-stream` subscribes via pub/sub for SSE, `/jobs` returns 202 immediately for polling.
 
 ### Routing architecture
 
-Static routes (`/healthz`, `/compress`, `/compress-stream`) use Bun's `routes`
-object. Dynamic routes (`/jobs/:id`, `/jobs/:id/result`) use the `fetch`
-fallback with manual `parseJobRoute()` parsing -- Bun's `routes` doesn't support
+Static routes (`/healthz`, `/compress`, `/compress-stream`) use Bun's `routes` object. Dynamic routes (`/jobs/:id`,
+`/jobs/:id/result`) use the `fetch` fallback with manual `parseJobRoute()` parsing -- Bun's `routes` doesn't support
 path params.
 
 ## Job queue architecture
 
 - **Serial execution**: one job at a time, FIFO pending queue
-- **Worker-first**: compression runs in a `Worker` thread by default; falls back
-  to main-thread `runInline()` when Workers unavailable (Node.js runtime)
+- **Worker-first**: compression runs in a `Worker` thread by default; falls back to main-thread `runInline()` when
+  Workers unavailable (Node.js runtime)
 - **Worker crash recovery**: error event -> fail active job -> recreate Worker
-- **Pub/sub with replay**: `subscribe()` replays existing logs to late-joining
-  SSE clients before registering for live events
-- **Auto-pruning**: finished jobs pruned after `JOB_RETENTION_MS` (10 min),
-  triggered lazily on `submit()`, `getSnapshot()`, `getResult()`
+- **Pub/sub with replay**: `subscribe()` replays existing logs to late-joining SSE clients before registering for live
+  events
+- **Auto-pruning**: finished jobs pruned after `JOB_RETENTION_MS` (10 min), triggered lazily on `submit()`,
+  `getSnapshot()`, `getResult()`
 - **Log capping**: `MAX_LOG_ENTRIES = 200`; oldest shifted off
 
 ## TLS
@@ -78,30 +76,26 @@ Server generates and caches self-signed TLS certs by default:
 3. Cached at `~/.glb-compressor/tls/*.pem` -> reuse if present
 4. Auto-generate EC P-256 cert (SAN: localhost, 127.0.0.1, ::1, 365-day)
 
-Uses `node:fs/promises` for `mkdir` + `Bun.file`/`Bun.write` for I/O (mixed
-because `Bun.write` doesn't create parent dirs).
+Uses `node:fs/promises` for `mkdir` + `Bun.file`/`Bun.write` for I/O (mixed because `Bun.write` doesn't create parent
+dirs).
 
 ## Complexity hotspots
 
-- `parseCompressRequest()` (http.ts) -- handles multipart + raw body, `.gltf`
-  resource bundle detection, cumulative size check
-- `isObjectRecord` defined 3 times (job-queue, worker-runtime, worker) -- worker
-  can't share code (separate thread), but job-queue and worker-runtime could
-- Filename transform (`-compressed.glb` suffix) duplicated in job-queue.ts and
-  worker.ts -- must stay in sync
-- `resolveWorkerSpecifier()` inspects file extension heuristic to pick worker
-  entry -- breaks silently on naming convention changes
-- `createJobRecord()` deferred promise with noop `.catch()` -- removing this
-  crashes the process on polling-only error jobs
-- SSE stream has no heartbeat/keepalive; long compressions may trigger proxy
-  idle timeouts
+- `parseCompressRequest()` (http.ts) -- handles multipart + raw body, `.gltf` resource bundle detection, cumulative size
+  check
+- `isObjectRecord` defined 3 times (job-queue, worker-runtime, worker) -- worker can't share code (separate thread), but
+  job-queue and worker-runtime could
+- Filename transform (`-compressed.glb` suffix) duplicated in job-queue.ts and worker.ts -- must stay in sync
+- `resolveWorkerSpecifier()` inspects file extension heuristic to pick worker entry -- breaks silently on naming
+  convention changes
+- `createJobRecord()` deferred promise with noop `.catch()` -- removing this crashes the process on polling-only error
+  jobs
+- SSE stream has no heartbeat/keepalive; long compressions may trigger proxy idle timeouts
 
 ## Anti-patterns
 
 - Don't bypass `jsonError()`; keep structured `code/message/requestId` shape.
-- Don't change SSE event payloads without updating
-  `@glb-compressor/shared-types`.
+- Don't change SSE event payloads without updating `@glb-compressor/shared-types`.
 - Don't import from CLI; server depends on core + shared-types only.
-- Don't change Worker message protocol types without updating BOTH
-  `parseWorkerResponse()` (main-thread) and `parseWorkerRequest()` (worker) --
-  each side validates independently.
+- Don't change Worker message protocol types without updating BOTH `parseWorkerResponse()` (main-thread) and
+  `parseWorkerRequest()` (worker) -- each side validates independently.

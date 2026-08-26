@@ -7,8 +7,8 @@ compatibility: Requires Bun >= 1.3 or Node.js >= 22.22.2. Optional gltfpack bina
 
 # glb-compressor Server
 
-HTTP compression server built on `Bun.serve()`. Provides synchronous, streaming
-(SSE), and async job-queue endpoints with full CORS support.
+HTTP compression server built on `Bun.serve()`. Provides synchronous, streaming (SSE), and async job-queue endpoints
+with full CORS support.
 
 ## Starting the Server
 
@@ -35,8 +35,7 @@ Health check. Returns `200 ok`.
 
 Synchronous compression. Returns compressed GLB binary.
 
-**Accepts:** `multipart/form-data` (field: `file`) or raw
-`application/octet-stream`.
+**Accepts:** `multipart/form-data` (field: `file`) or raw `application/octet-stream`.
 
 **Query params / form fields:**
 
@@ -171,9 +170,8 @@ All errors return structured JSON:
 
 ## CORS
 
-Full CORS enabled on all endpoints. Exposed headers: `X-Request-ID`,
-`X-Original-Size`, `X-Compressed-Size`, `X-Compression-Method`,
-`X-Compression-Ratio`.
+Full CORS enabled on all endpoints. Exposed headers: `X-Request-ID`, `X-Original-Size`, `X-Compressed-Size`,
+`X-Compression-Method`, `X-Compression-Ratio`.
 
 ## Limits
 
@@ -182,11 +180,9 @@ Full CORS enabled on all endpoints. Exposed headers: `X-Request-ID`,
 
 ## Architecture Notes
 
-- `import.meta.main` guard: safe to import `server/main.ts` as a library without
-  starting the server.
+- `import.meta.main` guard: safe to import `server/main.ts` as a library without starting the server.
 - Request ID (`X-Request-ID`) is generated per request and logged server-side.
-- Compression is executed by a worker-backed in-memory queue (FIFO, single
-  worker) so `/healthz` and status polling stay responsive during heavy jobs.
-- The `/compress-stream` endpoint sends the compressed GLB as base64 in the
-  `result` SSE event (~33% larger than binary). For large files near the 100 MB
-  limit, prefer `/compress`.
+- Compression is executed by a worker-backed in-memory queue (FIFO, single worker) so `/healthz` and status polling stay
+  responsive during heavy jobs.
+- The `/compress-stream` endpoint sends the compressed GLB as base64 in the `result` SSE event (~33% larger than
+  binary). For large files near the 100 MB limit, prefer `/compress`.

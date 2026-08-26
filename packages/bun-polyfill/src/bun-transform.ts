@@ -9,7 +9,7 @@
 
 import { join } from 'node:path';
 
-export const POLYFILL_PATH = join(import.meta.dirname, 'polyfills.ts');
+const POLYFILL_PATH = join(import.meta.dirname, 'polyfills.ts');
 
 const BUN_GLOBAL_RE = /\bBun\.(file|write|spawn|argv|serve|which)\b/;
 /** Non-global regex for .test() detection (avoids lastIndex interference). */
@@ -21,7 +21,7 @@ const IMPORT_META_MAIN_RE = /\bimport\.meta\.main\b/g;
  * Rewrite one module's source for Node, or return `undefined` when the file
  * needs no rewrite.
  */
-export function polyfillBunSource(raw: string): string | undefined {
+function polyfillBunSource(raw: string): string | undefined {
 	const usesBunGlobal = BUN_GLOBAL_RE.test(raw);
 	const usesImportMetaMain = IMPORT_META_MAIN_TEST_RE.test(raw);
 	if (!usesBunGlobal && !usesImportMetaMain) return undefined;
@@ -45,3 +45,5 @@ export function polyfillBunSource(raw: string): string | undefined {
 
 	return `${imports.join('\n')}\n${transformed}`;
 }
+
+export { POLYFILL_PATH, polyfillBunSource };

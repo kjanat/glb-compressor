@@ -10,8 +10,8 @@ references:
 
 # glb-compressor Library
 
-Programmatic API for multi-phase GLB/glTF compression. Skinned-model-aware
-pipeline with gltfpack-first strategy and meshopt WASM fallback.
+Programmatic API for multi-phase GLB/glTF compression. Skinned-model-aware pipeline with gltfpack-first strategy and
+meshopt WASM fallback.
 
 ## Quick Start
 
@@ -38,9 +38,8 @@ Conditional exports: `"bun"` field for Bun runtime, `"node"` for Node.js.
 
 ### `init(): Promise<void>`
 
-Pre-warm Draco + Meshopt WASM and configure glTF-Transform I/O. Called
-automatically by `compress()`, but can be called at boot to eliminate cold-start
-latency. Safe to call multiple times (shared promise).
+Pre-warm Draco + Meshopt WASM and configure glTF-Transform I/O. Called automatically by `compress()`, but can be called
+at boot to eliminate cold-start latency. Safe to call multiple times (shared promise).
 
 ### `compress(input, options?): Promise<CompressResult>`
 
@@ -88,8 +87,7 @@ Whether the `gltfpack` binary was found during initialization.
 
 ## Pipeline Phases
 
-1. **Cleanup** - dedup, prune, remove unused UVs (+ flatten/join/weld for
-   static)
+1. **Cleanup** - dedup, prune, remove unused UVs (+ flatten/join/weld for static)
 2. **Geometry** - merge by distance, remove degenerate faces, auto-decimate
 3. **GPU** - instancing, vertex reorder, sparse encoding
 4. **Animation** - resample keyframes, remove static tracks, normalize weights
@@ -98,10 +96,8 @@ Whether the `gltfpack` binary was found during initialization.
 
 ## Skinned Model Awareness
 
-When skins are detected, the pipeline automatically skips destructive
-transforms: flatten, join, weld, mergeByDistance, reorder, quantize, and
-auto-decimate. This prevents broken skeletons, weight denormalization, and mesh
-clipping.
+When skins are detected, the pipeline automatically skips destructive transforms: flatten, join, weld, mergeByDistance,
+reorder, quantize, and auto-decimate. This prevents broken skeletons, weight denormalization, and mesh clipping.
 
 ## Presets
 

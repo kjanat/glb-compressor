@@ -1,6 +1,6 @@
 import type { CompressPreset } from '@glb-compressor/core';
 
-export interface WorkerCompressRequest {
+interface WorkerCompressRequest {
 	type: 'compress';
 	requestId: string;
 	filename: string;
@@ -10,18 +10,18 @@ export interface WorkerCompressRequest {
 	resources: Record<string, Uint8Array> | undefined;
 }
 
-export type WorkerRequestMessage = WorkerCompressRequest;
+type WorkerRequestMessage = WorkerCompressRequest;
 
 interface WorkerBaseMessage {
 	requestId: string;
 }
 
-export interface WorkerLogMessage extends WorkerBaseMessage {
+interface WorkerLogMessage extends WorkerBaseMessage {
 	type: 'log';
 	message: string;
 }
 
-export interface WorkerResultMessage extends WorkerBaseMessage {
+interface WorkerResultMessage extends WorkerBaseMessage {
 	type: 'result';
 	filename: string;
 	buffer: Uint8Array;
@@ -31,10 +31,19 @@ export interface WorkerResultMessage extends WorkerBaseMessage {
 	method: string;
 }
 
-export interface WorkerErrorMessage extends WorkerBaseMessage {
+interface WorkerErrorMessage extends WorkerBaseMessage {
 	type: 'error';
 	code: string;
 	message: string;
 }
 
-export type WorkerResponseMessage = WorkerLogMessage | WorkerResultMessage | WorkerErrorMessage;
+type WorkerResponseMessage = WorkerLogMessage | WorkerResultMessage | WorkerErrorMessage;
+
+export type {
+	WorkerCompressRequest,
+	WorkerErrorMessage,
+	WorkerLogMessage,
+	WorkerRequestMessage,
+	WorkerResponseMessage,
+	WorkerResultMessage,
+};
